@@ -1,0 +1,6 @@
+@DigiTekShop.API_HostAddress = http://localhost:5248
+
+GET {{DigiTekShop.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
