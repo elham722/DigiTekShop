@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DigiTekShop.Application\DigiTekShop.Application.csproj" />
+  </ItemGroup>
+
 </Project>

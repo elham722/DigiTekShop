@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DigiTekShop.Domain\DigiTekShop.Domain.csproj" />
+    <ProjectReference Include="..\DigiTekShop.SharedKernel\DigiTekShop.SharedKernel.csproj" />
+  </ItemGroup>
+
 </Project>
