@@ -28,6 +28,7 @@ namespace DigiTekShop.Identity.DependencyInjection;
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequiredLength = 8;
+                options.Password.RequiredUniqueChars = 1;
 
                 // Lockout settings
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
@@ -44,13 +45,16 @@ namespace DigiTekShop.Identity.DependencyInjection;
             .AddEntityFrameworkStores<DigiTekShopIdentityDbContext>()
             .AddDefaultTokenProviders();
 
+        // 3️⃣ Cookie / Authentication Settings
         services.ConfigureApplicationCookie(options =>
         {
             options.LoginPath = "/Account/Login";
             options.AccessDeniedPath = "/Account/AccessDenied";
+            options.SlidingExpiration = true;
             options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+            options.Cookie.HttpOnly = true;
+            options.Cookie.Name = "DigiTekShopAuth";
         });
-
 
         return services;
         }
