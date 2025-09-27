@@ -13,4 +13,7 @@ namespace DigiTekShop.Identity.Context;
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
         public DbSet<Permission> Permissions => Set<Permission>();
         public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+        public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
+        public DbSet<LoginAttempt> LoginAttempts => Set<LoginAttempt>();
+        public DbSet<PhoneVerification> PhoneVerifications => Set<PhoneVerification>();
 }

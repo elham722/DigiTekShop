@@ -17,6 +17,7 @@ namespace DigiTekShop.Identity.Models
         public DateTime? UpdatedAt { get; private set; }
 
         public ICollection<RolePermission> Roles { get; private set; } = new List<RolePermission>();
+        public ICollection<UserPermission> UserPermissions { get; private set; } = new List<UserPermission>();
 
         private Permission() { }
 

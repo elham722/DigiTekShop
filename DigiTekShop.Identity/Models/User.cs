@@ -18,6 +18,7 @@ public class User : IdentityUser<Guid>
 
     public ICollection<UserDevice> Devices { get; private set; } = new List<UserDevice>();
     public ICollection<RefreshToken> RefreshTokens { get; private set; } = new List<RefreshToken>();
+    public ICollection<UserPermission> UserPermissions { get; private set; } = new List<UserPermission>();
 
     private User() : base() { }
 
