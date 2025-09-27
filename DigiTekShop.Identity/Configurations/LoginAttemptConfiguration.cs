@@ -1,8 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
-namespace DigiTekShop.Identity.Configurations
-{
+namespace DigiTekShop.Identity.Configurations;
     internal class LoginAttemptConfiguration : IEntityTypeConfiguration<LoginAttempt>
     {
         public void Configure(EntityTypeBuilder<LoginAttempt> builder)
@@ -55,4 +51,3 @@ namespace DigiTekShop.Identity.Configurations
                 .HasDatabaseName("IX_LoginAttempts_IpAddress_AttemptedAt");
         }
     }
-}

@@ -1,8 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
-namespace DigiTekShop.Identity.Configurations
-{
+﻿namespace DigiTekShop.Identity.Configurations;
     internal class UserConfiguration : IEntityTypeConfiguration<User>
     {
         public void Configure(EntityTypeBuilder<User> builder)
@@ -69,4 +65,3 @@ namespace DigiTekShop.Identity.Configurations
                 .HasDatabaseName("IX_Users_IsDeleted");
         }
     }
-}

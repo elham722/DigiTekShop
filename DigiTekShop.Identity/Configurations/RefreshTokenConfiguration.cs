@@ -1,8 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
-namespace DigiTekShop.Identity.Configurations
-{
+namespace DigiTekShop.Identity.Configurations;
     internal class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
     {
         public void Configure(EntityTypeBuilder<RefreshToken> builder)
@@ -57,4 +53,3 @@ namespace DigiTekShop.Identity.Configurations
                 .HasDatabaseName("IX_RefreshTokens_CreatedAt");
         }
     }
-}

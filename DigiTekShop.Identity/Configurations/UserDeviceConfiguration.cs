@@ -1,8 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
-namespace DigiTekShop.Identity.Configurations
-{
+namespace DigiTekShop.Identity.Configurations;
     internal class UserDeviceConfiguration : IEntityTypeConfiguration<UserDevice>
     {
         public void Configure(EntityTypeBuilder<UserDevice> builder)
@@ -48,4 +44,3 @@ namespace DigiTekShop.Identity.Configurations
                 .HasDatabaseName("IX_UserDevices_LastLoginAt");
         }
     }
-}

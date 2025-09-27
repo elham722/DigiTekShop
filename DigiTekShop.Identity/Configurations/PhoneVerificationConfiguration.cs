@@ -1,8 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
-namespace DigiTekShop.Identity.Configurations
-{
+namespace DigiTekShop.Identity.Configurations;
     internal class PhoneVerificationConfiguration : IEntityTypeConfiguration<PhoneVerification>
     {
         public void Configure(EntityTypeBuilder<PhoneVerification> builder)
@@ -47,4 +43,3 @@ namespace DigiTekShop.Identity.Configurations
                 .HasDatabaseName("IX_PhoneVerifications_UserId_ExpiresAt");
         }
     }
-}

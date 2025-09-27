@@ -1,8 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
-namespace DigiTekShop.Identity.Configurations
-{
+namespace DigiTekShop.Identity.Configurations;
     internal class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
     {
         public void Configure(EntityTypeBuilder<AuditLog> builder)
@@ -82,4 +78,3 @@ namespace DigiTekShop.Identity.Configurations
                 .HasDatabaseName("IX_AuditLogs_UserId_Timestamp");
         }
     }
-}

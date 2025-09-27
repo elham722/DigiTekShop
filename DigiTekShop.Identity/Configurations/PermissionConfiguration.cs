@@ -1,8 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
-namespace DigiTekShop.Identity.Configurations
-{
+namespace DigiTekShop.Identity.Configurations;
     internal class PermissionConfiguration : IEntityTypeConfiguration<Permission>
     {
         public void Configure(EntityTypeBuilder<Permission> builder)
@@ -46,4 +42,3 @@ namespace DigiTekShop.Identity.Configurations
                 .HasDatabaseName("IX_Permissions_CreatedAt");
         }
     }
-}
