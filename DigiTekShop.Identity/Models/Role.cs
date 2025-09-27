@@ -1,8 +1,4 @@
-﻿using DigiTekShop.SharedKernel.Guards;
-using Microsoft.AspNetCore.Identity;
-
-namespace DigiTekShop.Identity.Models
-{
+﻿namespace DigiTekShop.Identity.Models;
     public sealed class Role : IdentityRole<Guid>
     {
         public ICollection<RolePermission> Permissions { get; private set; } = new List<RolePermission>();
@@ -47,4 +43,3 @@ namespace DigiTekShop.Identity.Models
                 Permissions.Remove(permission);
         }
     }
-}

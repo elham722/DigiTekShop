@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DigiTekShop.Identity.Enums
-{
+﻿namespace DigiTekShop.Identity.Enums;
     public enum AuditSeverity
     {
         Info = 0,
@@ -14,4 +7,3 @@ namespace DigiTekShop.Identity.Enums
         Critical = 3,
         Debug = 4
     }
-}

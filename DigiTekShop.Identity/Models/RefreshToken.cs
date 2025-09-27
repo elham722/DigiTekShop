@@ -1,7 +1,4 @@
-﻿using DigiTekShop.SharedKernel.Guards;
-
-namespace DigiTekShop.Identity.Models
-{
+﻿namespace DigiTekShop.Identity.Models;
     public class RefreshToken
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
@@ -44,4 +41,3 @@ namespace DigiTekShop.Identity.Models
         public bool IsActive => !IsRevoked && ExpiresAt > DateTime.UtcNow;
         public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
     }
-}

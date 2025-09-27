@@ -1,8 +1,4 @@
-﻿using System;
-using DigiTekShop.SharedKernel.Guards;
-
-namespace DigiTekShop.Identity.Models
-{
+﻿namespace DigiTekShop.Identity.Models;
     public class UserPermission
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
@@ -35,4 +31,3 @@ namespace DigiTekShop.Identity.Models
 
         public void Toggle() => IsGranted = !IsGranted;
     }
-}

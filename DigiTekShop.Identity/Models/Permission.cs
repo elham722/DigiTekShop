@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DigiTekShop.SharedKernel.Guards;
-
-namespace DigiTekShop.Identity.Models
-{
+﻿namespace DigiTekShop.Identity.Models;
     public class Permission
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
@@ -42,4 +34,3 @@ namespace DigiTekShop.Identity.Models
             UpdatedAt = DateTime.UtcNow;
         }
     }
-}

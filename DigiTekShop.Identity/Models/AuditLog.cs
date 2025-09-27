@@ -1,9 +1,4 @@
-﻿using DigiTekShop.Identity.Enums;
-using DigiTekShop.SharedKernel.Guards;
-using System;
-
-namespace DigiTekShop.Identity.Models
-{
+﻿namespace DigiTekShop.Identity.Models;
     public class AuditLog
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
@@ -53,4 +48,3 @@ namespace DigiTekShop.Identity.Models
         }
     
     }
-}

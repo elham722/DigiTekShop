@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DigiTekShop.Identity.Exceptions.PhoneVerification;
-using DigiTekShop.SharedKernel.Guards;
-
-namespace DigiTekShop.Identity.Models
-{
+﻿namespace DigiTekShop.Identity.Models;
     public class PhoneVerification
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
@@ -47,4 +38,3 @@ namespace DigiTekShop.Identity.Models
             CodeHash == providedHash && !IsExpired();
     }
 
-}

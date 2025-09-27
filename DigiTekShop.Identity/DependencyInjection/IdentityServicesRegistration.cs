@@ -1,16 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using DigiTekShop.Identity.Context;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-
-namespace DigiTekShop.Identity.DependencyInjection;
+﻿namespace DigiTekShop.Identity.DependencyInjection;
 
     public static class IdentityServicesRegistration
     {

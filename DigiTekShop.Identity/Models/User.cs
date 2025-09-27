@@ -1,5 +1,4 @@
-﻿using DigiTekShop.SharedKernel.Guards;
-
+﻿namespace DigiTekShop.Identity.Models;
 public class User : IdentityUser<Guid>
 {
     public Guid? CustomerId { get; private set; }

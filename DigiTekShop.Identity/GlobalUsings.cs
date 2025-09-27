@@ -8,4 +8,12 @@ global using Microsoft.EntityFrameworkCore;
 global using Microsoft.AspNetCore.Identity;
 global using DigiTekShop.Identity.Models;
 global using Microsoft.EntityFrameworkCore.Metadata.Builders;
+global using DigiTekShop.Identity.Configurations;
+global using DigiTekShop.Identity.Context;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;
+global using DigiTekShop.SharedKernel.Exceptions.Common;
+global using DigiTekShop.Identity.Enums;
+global using DigiTekShop.SharedKernel.Guards;
+global using DigiTekShop.Identity.Exceptions.PhoneVerification;
 

@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DigiTekShop.Identity.Enums;
-using DigiTekShop.SharedKernel.Guards;
-
-namespace DigiTekShop.Identity.Models
-{
+﻿namespace DigiTekShop.Identity.Models;
     public class LoginAttempt
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
@@ -33,4 +24,3 @@ namespace DigiTekShop.Identity.Models
         }
     }
 
-}

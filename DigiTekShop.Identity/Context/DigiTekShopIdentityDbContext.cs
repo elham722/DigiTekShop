@@ -1,7 +1,4 @@
-﻿
-using DigiTekShop.Identity.Configurations;
-
-namespace DigiTekShop.Identity.Context;
+﻿namespace DigiTekShop.Identity.Context;
 
 public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
 {

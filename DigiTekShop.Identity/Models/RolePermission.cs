@@ -1,7 +1,4 @@
-﻿using DigiTekShop.SharedKernel.Guards;
-
-namespace DigiTekShop.Identity.Models
-{
+﻿namespace DigiTekShop.Identity.Models;
     public sealed class RolePermission
     {
         public Guid RoleId { get; private set; }
@@ -26,4 +23,3 @@ namespace DigiTekShop.Identity.Models
             };
         }
     }
-}
