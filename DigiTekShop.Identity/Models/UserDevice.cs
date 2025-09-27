@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using DigiTekShop.SharedKernel.Guards;
 
 namespace DigiTekShop.Identity.Models
 {
@@ -14,19 +11,32 @@ namespace DigiTekShop.Identity.Models
         public DateTime LastLoginAt { get; private set; } = DateTime.UtcNow;
         public bool IsActive { get; private set; } = true;
 
-        // ارتباط با User
-        public string UserId { get; private set; } = default!;
+        public Guid UserId { get; private set; }
         public User User { get; private set; } = default!;
 
-        private UserDevice() { } // EF Core
-        public UserDevice(string deviceName, string ipAddress, string userId)
+        private UserDevice() { }
+
+        public static UserDevice Create(Guid userId, string deviceName, string ipAddress)
         {
-            DeviceName = deviceName;
-            IpAddress = ipAddress;
-            UserId = userId;
+            Guard.AgainstEmpty(userId, nameof(userId));
+            Guard.AgainstNullOrEmpty(deviceName, nameof(deviceName));
+            Guard.AgainstNullOrEmpty(ipAddress, nameof(ipAddress));
+
+            return new UserDevice
+            {
+                UserId = userId,
+                DeviceName = deviceName,
+                IpAddress = ipAddress
+            };
         }
 
         public void Deactivate() => IsActive = false;
-        public void UpdateLogin(DateTime loginTime) => LastLoginAt = loginTime;
+
+        public void UpdateLogin(DateTime loginTime)
+        {
+            Guard.AgainstPastDate(loginTime, () => DateTime.UtcNow, nameof(loginTime));
+            LastLoginAt = loginTime;
+            IsActive = true; 
+        }
     }
 }

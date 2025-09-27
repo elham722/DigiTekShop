@@ -22,5 +22,7 @@
 
         // System Errors
         public const string Timeout = "TIMEOUT";
+
+        public const string VerificationMaxAttemptsExceeded = "VERIFICATION_MAX_ATTEMPTS_EXCEEDED";
     }
 }

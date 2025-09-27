@@ -1,7 +1,7 @@
 ﻿
 
 namespace DigiTekShop.Identity.Context;
-    public class DigiTekShopIdentityDbContext:IdentityDbContext<User,Role,string>
+    public class DigiTekShopIdentityDbContext:IdentityDbContext<User,Role,Guid>
     {
         public DigiTekShopIdentityDbContext(DbContextOptions<DigiTekShopIdentityDbContext> options):base(options)
         {

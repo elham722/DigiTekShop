@@ -11,10 +11,9 @@
             { DomainErrorCodes.ConcurrencyConflict, "Concurrency conflict occurred." },
             { DomainErrorCodes.Forbidden, "Access is forbidden." },
             { DomainErrorCodes.Timeout, "The operation timed out." },
+            { DomainErrorCodes.VerificationMaxAttemptsExceeded, "Maximum verification attempts exceeded." }
         };
 
-        public static string GetMessage(string errorCode) =>
-            _messages.TryGetValue(errorCode, out var message)
-                ? message
-                : "Unknown error.";
-    }
+    public static string GetMessage(string errorCode)
+        => _messages.TryGetValue(errorCode, out var msg) ? msg : "Unknown error.";
+}
