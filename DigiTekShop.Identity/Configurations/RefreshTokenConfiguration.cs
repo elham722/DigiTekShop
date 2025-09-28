@@ -7,7 +7,7 @@ namespace DigiTekShop.Identity.Configurations;
             builder.HasKey(rt => rt.Id);
 
             // Configure properties
-            builder.Property(rt => rt.Token)
+            builder.Property(rt => rt.TokenHash)
                 .IsRequired()
                 .HasMaxLength(512);
 
@@ -36,7 +36,7 @@ namespace DigiTekShop.Identity.Configurations;
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Configure indexes
-            builder.HasIndex(rt => rt.Token)
+            builder.HasIndex(rt => rt.TokenHash)
                 .IsUnique()
                 .HasDatabaseName("IX_RefreshTokens_Token");
 

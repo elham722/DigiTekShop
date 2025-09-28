@@ -109,14 +109,14 @@ public class User : IdentityUser<Guid>
     {
         Guard.AgainstNull(token, nameof(token));
 
-        if (RefreshTokens.Any(t => t.Token == token.Token)) return; 
+        if (RefreshTokens.Any(t => t.TokenHash == token.TokenHash)) return; 
         RefreshTokens.Add(token);
         Touch();
     }
 
     public void RevokeRefreshToken(string token)
     {
-        var refreshToken = RefreshTokens.FirstOrDefault(t => t.Token == token);
+        var refreshToken = RefreshTokens.FirstOrDefault(t => t.TokenHash == token);
         if (refreshToken != null && refreshToken.IsActive)
         {
             refreshToken.Revoke();

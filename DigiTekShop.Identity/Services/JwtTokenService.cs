@@ -1,0 +1,325 @@
+﻿
+
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using DigiTekShop.Contracts.DTOs.JwtSettings;
+using DigiTekShop.Contracts.Interfaces.Identity;
+using DigiTekShop.Identity.Models;
+using DigiTekShop.SharedKernel.Results;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+
+namespace DigiTekShop.Identity.Services;
+
+public class JwtTokenService : IJwtTokenService
+{
+    private readonly UserManager<User> _userManager;
+    private readonly DigiTekShopIdentityDbContext _context;
+    private readonly JwtSettings _jwtSettings;
+    private readonly ILogger<JwtTokenService> _logger;
+
+
+    public JwtTokenService(
+        UserManager<User> userManager,
+        DigiTekShopIdentityDbContext context,
+        IOptions<JwtSettings> jwtOptions,
+        ILogger<JwtTokenService> logger)
+    {
+        _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _jwtSettings = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    #region Generate / Create tokens
+
+    public async Task<Result<TokenResponseDto>> GenerateTokensAsync(string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return Result<TokenResponseDto>.Fail("UserNotFound");
+
+        var claims = await GetUserClaimsAsync(user);
+        var accessExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+
+        // Create access token (with jti)
+        var (accessToken, jti) = CreateJwtToken(claims, accessExpires);
+
+        // Create secure refresh token (raw)
+        var refreshTokenRaw = GenerateRefreshToken();
+        var refreshExpires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays);
+        var refreshTokenHash = HashToken(refreshTokenRaw);
+
+        var refreshEntity = RefreshToken.Create(refreshTokenHash, refreshExpires, Guid.Parse(userId));
+    
+        _context.RefreshTokens.Add(refreshEntity);
+
+        // Optionally: store access token jti if you want to support immediate revoke (not implemented DB model by default)
+        // await StoreAccessJtiAsync(userId, jti, accessExpires, deviceId);
+
+        await _context.SaveChangesAsync();
+
+        var dto = new TokenResponseDto(accessToken, (int)(accessExpires - DateTime.UtcNow).TotalSeconds, refreshTokenRaw, refreshExpires);
+        return Result<TokenResponseDto>.Success(dto);
+    }
+
+    #endregion
+
+    #region Refresh / Rotation
+
+    public async Task<Result<TokenResponseDto>> RefreshTokensAsync(string refreshToken, string? deviceId = null, string? ipAddress = null, string? userAgent = null)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return Result<TokenResponseDto>.Fail("InvalidRefreshToken");
+
+        var refreshHash = HashToken(refreshToken);
+
+        // Find existing refresh token entry by hash
+        var existing = await _context.RefreshTokens
+            .Where(rt => rt.TokenHash == refreshHash)
+            .FirstOrDefaultAsync();
+
+        if (existing == null) return Result<TokenResponseDto>.Fail("RefreshTokenNotFound");
+        if (existing.IsRevoked) return Result<TokenResponseDto>.Fail("RefreshTokenRevoked");
+        if (existing.ExpiresAt <= DateTime.UtcNow) return Result<TokenResponseDto>.Fail("RefreshTokenExpired");
+
+        // Load user
+        var user = await _userManager.FindByIdAsync(existing.UserId.ToString());
+        if (user == null) return Result<TokenResponseDto>.Fail("UserNotFound");
+
+        // Begin rotation transaction
+        using var tx = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // Revoke existing (mark)
+            existing.Revoke("Rotated");
+            _context.RefreshTokens.Update(existing);
+
+            // create new refresh token
+            var newRefreshRaw = GenerateRefreshToken();
+            var newRefreshHash = HashToken(newRefreshRaw);
+            var newRefresh = RefreshToken.Create(newRefreshHash, DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays)
+                , existing.UserId);
+ 
+            _context.RefreshTokens.Add(newRefresh);
+
+            // create new access token
+            var claims = await GetUserClaimsAsync(user);
+            var accessExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+            var (accessToken, jti) = CreateJwtToken(claims, accessExpires);
+
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+
+
+            var dto = new TokenResponseDto(accessToken, (int)(accessExpires - DateTime.UtcNow).TotalSeconds, newRefreshRaw, newRefresh.ExpiresAt);
+            return Result<TokenResponseDto>.Success(dto);
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync();
+            _logger.LogError(ex, "Error rotating refresh token");
+            return Result<TokenResponseDto>.Fail("TokenRotationFailed");
+        }
+    }
+
+    #endregion
+
+    #region Revoke
+
+    public async Task<Result> RevokeRefreshTokenAsync(string refreshToken, string? reason = null)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return Result.Fail("InvalidRefreshToken");
+
+        var refreshHash = HashToken(refreshToken);
+        var existing = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == refreshHash);
+        if (existing == null) return Result.Fail("RefreshTokenNotFound");
+
+        if (existing.IsRevoked) return Result.Fail("AlreadyRevoked");
+
+        existing.Revoke("RevokedByUser");
+        _context.RefreshTokens.Update(existing);
+        await _context.SaveChangesAsync();
+
+        return Result.Success();
+    }
+
+    public async Task<Result> RevokeAllUserTokensAsync(string userId, string? reason = null)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return Result.Fail("InvalidUserId");
+
+        var userGuid = Guid.Parse(userId);
+        var tokens = await _context.RefreshTokens.Where(rt => rt.UserId == userGuid && !rt.IsRevoked).ToListAsync();
+        if (!tokens.Any()) return Result.Success();
+
+        foreach (var t in tokens)
+        {
+            t.Revoke("RevokedAll");
+        }
+
+        _context.RefreshTokens.UpdateRange(tokens);
+        await _context.SaveChangesAsync();
+
+        return Result.Success();
+    }
+
+    #endregion
+
+    #region Validate Access Token
+
+    public async Task<Result<ClaimsPrincipal>> ValidateAccessTokenAsync(string accessToken)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken)) return Result<ClaimsPrincipal>.Fail("InvalidToken");
+
+        try
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(_jwtSettings.Key);
+
+            var validationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+                ValidateIssuer = true,
+                ValidIssuer = _jwtSettings.Issuer,
+                ValidateAudience = true,
+                ValidAudience = _jwtSettings.Audience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.FromSeconds(30)
+            };
+
+            var principal = tokenHandler.ValidateToken(accessToken, validationParameters, out var validatedToken);
+
+            // Optionally check jti in DB for revocation — implement if you store jti
+            var jti = principal.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+            if (!string.IsNullOrEmpty(jti))
+            {
+                var revoked = await IsAccessTokenRevokedAsync(jti);
+                if (revoked) return Result<ClaimsPrincipal>.Fail("TokenRevoked");
+            }
+
+            return Result<ClaimsPrincipal>.Success(principal);
+        }
+        catch (SecurityTokenExpiredException)
+        {
+            return Result<ClaimsPrincipal>.Fail("TokenExpired");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Token validation failed");
+            return Result<ClaimsPrincipal>.Fail("InvalidToken");
+        }
+    }
+
+    private Task<bool> IsAccessTokenRevokedAsync(string jti)
+    {
+        // Placeholder:
+        // If you implement storing access-jti in DB, check it here (and check revoked flag).
+        return Task.FromResult(false);
+    }
+
+    #endregion
+
+    #region Helpers & Utils
+
+    private (string token, string jti) CreateJwtToken(IEnumerable<Claim> claims, DateTime expires)
+    {
+        var jti = Guid.NewGuid().ToString();
+        var claimsList = claims.ToList();
+        claimsList.Add(new Claim(JwtRegisteredClaimNames.Jti, jti));
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claimsList,
+            expires: expires,
+            signingCredentials: creds
+        );
+
+        var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+        return (tokenString, jti);
+    }
+
+    private string GenerateRefreshToken()
+    {
+        var randomBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return WebEncoders.Base64UrlEncode(randomBytes);
+    }
+
+    private string HashToken(string token)
+    {
+        Guard.AgainstNullOrEmpty(token,nameof(token));
+        var secret = Encoding.UTF8.GetBytes(_jwtSettings.RefreshTokenHashSecret); // اضافه کن به JwtSettings
+        using var hmac = new HMACSHA256(secret);
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(token));
+        return WebEncoders.Base64UrlEncode(hash);
+
+    }
+
+    private async Task<List<Claim>> GetUserClaimsAsync(User user)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
+            new Claim(ClaimTypes.Email, user.Email ?? string.Empty)
+        };
+
+        // Add roles
+        var roles = await _userManager.GetRolesAsync(user);
+        foreach (var role in roles) claims.Add(new Claim(ClaimTypes.Role, role));
+
+        // Add permissions from your domain model if any (example)
+        var permissions = await _context.UserPermissions
+            .Where(up => up.UserId == Guid.Parse(user.Id.ToString()) && up.IsGranted)
+            .Select(up => up.Permission)
+            .Select(p => p.Name)
+            .ToListAsync();
+
+        foreach (var p in permissions)
+        {
+            claims.Add(new Claim("permission", p));
+        }
+
+        return claims;
+    }
+
+    public async Task<IEnumerable<UserTokenDto>> GetUserTokensAsync(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return Enumerable.Empty<UserTokenDto>();
+
+        var uid = Guid.Parse(userId);
+        var tokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == uid)
+            .OrderByDescending(rt => rt.CreatedAt)
+            .ToListAsync();
+
+        return tokens.Select(rt => new UserTokenDto(
+            TokenType: "Refresh",
+            CreatedAt: rt.CreatedAt,
+            ExpiresAt: rt.ExpiresAt,
+            IsRevoked: rt.IsRevoked,
+            DeviceId: null,
+            IpAddress: null));
+    }
+
+    public async Task CleanupExpiredTokensAsync()
+    {
+        var expired = await _context.RefreshTokens.Where(rt => rt.ExpiresAt <= DateTime.UtcNow).ToListAsync();
+        if (!expired.Any()) return;
+
+        _context.RefreshTokens.RemoveRange(expired);
+        await _context.SaveChangesAsync();
+    }
+
+    #endregion
+}
+
