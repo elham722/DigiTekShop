@@ -1,4 +1,5 @@
-﻿namespace DigiTekShop.Identity.Models;
+﻿namespace DigiTekShop.Identity.Models
+{
     public class UserDevice
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
@@ -7,12 +8,26 @@
         public DateTime LastLoginAt { get; private set; } = DateTime.UtcNow;
         public bool IsActive { get; private set; } = true;
 
+        // پیشنهاد جدید
+        public string? DeviceFingerprint { get; private set; }
+        public string? BrowserInfo { get; private set; }
+        public string? OperatingSystem { get; private set; }
+        public bool IsTrusted { get; private set; }
+        public DateTime? TrustedAt { get; private set; }
+
+        // User
         public Guid UserId { get; private set; }
         public User User { get; private set; } = default!;
 
         private UserDevice() { }
 
-        public static UserDevice Create(Guid userId, string deviceName, string ipAddress)
+        public static UserDevice Create(
+            Guid userId,
+            string deviceName,
+            string ipAddress,
+            string? fingerprint = null,
+            string? browser = null,
+            string? os = null)
         {
             Guard.AgainstEmpty(userId, nameof(userId));
             Guard.AgainstNullOrEmpty(deviceName, nameof(deviceName));
@@ -22,7 +37,10 @@
             {
                 UserId = userId,
                 DeviceName = deviceName,
-                IpAddress = ipAddress
+                IpAddress = ipAddress,
+                DeviceFingerprint = fingerprint,
+                BrowserInfo = browser,
+                OperatingSystem = os
             };
         }
 
@@ -32,6 +50,19 @@
         {
             Guard.AgainstPastDate(loginTime, () => DateTime.UtcNow, nameof(loginTime));
             LastLoginAt = loginTime;
-            IsActive = true; 
+            IsActive = true;
+        }
+
+        public void MarkAsTrusted()
+        {
+            IsTrusted = true;
+            TrustedAt = DateTime.UtcNow;
+        }
+
+        public void MarkAsUntrusted()
+        {
+            IsTrusted = false;
+            TrustedAt = null;
         }
     }
+}
