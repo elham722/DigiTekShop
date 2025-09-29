@@ -114,9 +114,9 @@ public class User : IdentityUser<Guid>
         Touch();
     }
 
-    public void RevokeRefreshToken(string token)
+    public void RevokeRefreshToken(string tokenHash)
     {
-        var refreshToken = RefreshTokens.FirstOrDefault(t => t.TokenHash == token);
+        var refreshToken = RefreshTokens.FirstOrDefault(t => t.TokenHash == tokenHash);
         if (refreshToken != null && refreshToken.IsActive)
         {
             refreshToken.Revoke();

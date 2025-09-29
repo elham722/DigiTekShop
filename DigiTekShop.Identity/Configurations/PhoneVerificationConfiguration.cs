@@ -41,5 +41,10 @@ namespace DigiTekShop.Identity.Configurations;
 
             builder.HasIndex(pv => new { pv.UserId, pv.ExpiresAt })
                 .HasDatabaseName("IX_PhoneVerifications_UserId_ExpiresAt");
-        }
+
+            builder.HasIndex(pv => new { pv.UserId, pv.CodeHash, pv.ExpiresAt })
+                .IsUnique()
+                .HasDatabaseName("UX_PhoneVerifications_User_Code_ExpiresAt");
+
     }
+}

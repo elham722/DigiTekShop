@@ -1,4 +1,8 @@
-﻿namespace DigiTekShop.Identity.DependencyInjection;
+﻿using DigiTekShop.Contracts.DTOs.JwtSettings;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+
+namespace DigiTekShop.Identity.DependencyInjection;
 
     public static class IdentityServicesRegistration
     {
@@ -43,6 +47,28 @@
             options.Cookie.HttpOnly = true;
             options.Cookie.Name = "DigiTekShopAuth";
         });
+
+        services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(o =>
+            {
+                var cfg = configuration.GetSection("JwtSettings").Get<JwtSettings>();
+                o.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(cfg.Key)),
+                    ValidateIssuer = true,
+                    ValidIssuer = cfg.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = cfg.Audience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromSeconds(30)
+                };
+            });
+
 
         return services;
         }

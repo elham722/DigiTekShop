@@ -51,5 +51,12 @@ namespace DigiTekShop.Identity.Configurations;
 
             builder.HasIndex(rt => rt.CreatedAt)
                 .HasDatabaseName("IX_RefreshTokens_CreatedAt");
-        }
+
+            builder.HasIndex(rt => rt.ParentTokenHash)
+                .HasDatabaseName("IX_RefreshTokens_ParentTokenHash");
+
+            builder.HasIndex(rt => rt.ReplacedByTokenHash)
+                .HasDatabaseName("IX_RefreshTokens_ReplacedByTokenHash");
+
     }
+}

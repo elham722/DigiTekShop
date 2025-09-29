@@ -42,5 +42,11 @@ namespace DigiTekShop.Identity.Configurations;
 
             builder.HasIndex(ud => ud.LastLoginAt)
                 .HasDatabaseName("IX_UserDevices_LastLoginAt");
-        }
+
+            builder.HasIndex(ud => new { ud.UserId, ud.DeviceFingerprint })
+                .IsUnique()
+                .HasDatabaseName("UX_UserDevices_User_DeviceFingerprint")
+                .HasFilter("[DeviceFingerprint] IS NOT NULL");
+
     }
+}
