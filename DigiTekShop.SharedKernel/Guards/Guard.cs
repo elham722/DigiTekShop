@@ -61,27 +61,28 @@ namespace DigiTekShop.SharedKernel.Guards
 
         public static void AgainstInvalidEmail(string email)
         {
+            var isInvalid = false;
             try
             {
                 var addr = new MailAddress(email);
-                if (addr.Address != email)
-                    throwEmail();
+                isInvalid = addr.Address != email;
             }
             catch
             {
-                throwEmail();
+                isInvalid = true;
             }
 
-            void throwEmail() => ThrowIf(true, "Invalid email format.", "Email", email);
+            ThrowIf(isInvalid, "Invalid email format.", "Email", email);
         }
 
         public static void AgainstInvalidPhoneNumber(string phoneNumber, int minLength = 10)
-            => ThrowIf(
-                string.IsNullOrWhiteSpace(phoneNumber) ||
-                !Regex.IsMatch(phoneNumber, @"^\+?\d+$") ||
-                phoneNumber.Length < minLength,
-                "Invalid phone number format.",
-                "PhoneNumber", phoneNumber);
+        {
+            var isInvalid = string.IsNullOrWhiteSpace(phoneNumber) ||
+                           !Regex.IsMatch(phoneNumber, @"^\+?\d+$") ||
+                           phoneNumber.Length < minLength;
+            
+            ThrowIf(isInvalid, "Invalid phone number format.", "PhoneNumber", phoneNumber);
+        }
 
         #endregion
 
@@ -99,20 +100,26 @@ namespace DigiTekShop.SharedKernel.Guards
 
         #region Business / Domain
 
-        public static void AgainstInvalidOperation(string operation, string entityId, string propertyName = "Unknown")
-            => ThrowIf(true, $"Invalid operation '{operation}' on entity {entityId}.", propertyName, entityId);
+        public static void AgainstInvalidOperation(bool condition, string operation, string entityId, string propertyName = "Unknown")
+            => ThrowIf(condition, $"Invalid operation '{operation}' on entity {entityId}.", propertyName, entityId);
 
-        public static void AgainstEntityNotFound(string entityName, object key)
-            => ThrowIf(true, $"{entityName} with key '{key}' was not found.", "Entity", key);
+        public static void AgainstEntityNotFound(bool condition, string entityName, object key)
+            => ThrowIf(condition, $"{entityName} with key '{key}' was not found.", entityName, key);
 
-        public static void AgainstDuplicateEntity(string entityName, object key)
-            => ThrowIf(true, $"{entityName} with key '{key}' already exists.", "Entity", key);
+        public static void AgainstDuplicateEntity(bool condition, string entityName, object key)
+            => ThrowIf(condition, $"{entityName} with key '{key}' already exists.", entityName, key);
 
-        public static void AgainstForbiddenAction(string action, string? userId = null)
-            => ThrowIf(true, $"Forbidden action: {action}.", "Action", action );
+        public static void AgainstForbiddenAction(bool condition, string action, string? userId = null)
+        {
+            var message = userId is null
+                ? $"Forbidden action: {action}."
+                : $"Forbidden action: {action} for user '{userId}'.";
 
-        public static void AgainstConcurrencyConflict(string entityName, object key)
-            => ThrowIf(true, $"Concurrency conflict on {entityName} with key '{key}'.", "Entity", key);
+            ThrowIf(condition, message, "Action", action);
+        }
+
+        public static void AgainstConcurrencyConflict(bool condition, string entityName, object key)
+            => ThrowIf(condition, $"Concurrency conflict on {entityName} with key '{key}'.", entityName, key);
 
         #endregion
 
@@ -128,7 +135,6 @@ namespace DigiTekShop.SharedKernel.Guards
 
             throw new DomainValidationException(new[] { message }, propertyName, value);
         }
-
 
         #endregion
     }

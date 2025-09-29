@@ -1,6 +1,4 @@
-﻿using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace DigiTekShop.SharedKernel.Exceptions.Validation;
+﻿namespace DigiTekShop.SharedKernel.Exceptions.Validation;
 public class DomainValidationException: DomainException
 {
     public IReadOnlyCollection<string> Errors { get; }
@@ -12,6 +10,7 @@ public class DomainValidationException: DomainException
     {
         Errors = errors.ToList().AsReadOnly();
     }
+
     public DomainValidationException(IEnumerable<string> errors, Exception innerException)
         : base("One or more validation errors occurred.", DomainErrorCodes.ValidationFailed, innerException)
     {
@@ -22,19 +21,6 @@ public class DomainValidationException: DomainException
 
     #region MetaData + InnerException
 
-
-    public DomainValidationException(IEnumerable<string> errors, string entityName, object id)
-        : base(
-            "One or more validation errors occurred.",
-            DomainErrorCodes.ValidationFailed,
-            new Dictionary<string, object>
-            {
-                { "EntityName", entityName },
-                { "Id", id }
-            })
-    {
-        Errors = errors.ToList().AsReadOnly();
-    }
 
     public DomainValidationException(IEnumerable<string> errors, string entityName, object id, Exception innerException)
         : base(
@@ -49,6 +35,31 @@ public class DomainValidationException: DomainException
     {
         Errors = errors.ToList().AsReadOnly();
     }
+
+    public DomainValidationException(IEnumerable<string> errors, string propertyName, object? currentValue)
+        : base(
+            "One or more validation errors occurred.",
+            DomainErrorCodes.ValidationFailed,
+            BuildPropertyMetadata(propertyName, currentValue))
+    {
+        Errors = errors.ToList().AsReadOnly();
+    }
+
+    private static Dictionary<string, object> BuildPropertyMetadata(string propertyName, object? currentValue)
+    {
+        var metadata = new Dictionary<string, object>
+        {
+            { "PropertyName", propertyName }
+        };
+
+        if (currentValue is not null)
+        {
+            metadata["CurrentValue"] = currentValue;
+        }
+
+        return metadata;
+    }
+
 
     #endregion
 }
