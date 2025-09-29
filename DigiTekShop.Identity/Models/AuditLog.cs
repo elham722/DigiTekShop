@@ -26,7 +26,6 @@ public class AuditLog
         string? errorMessage = null, AuditSeverity? severity = null)
     {
         Guard.AgainstEmpty(userId, nameof(userId));
-        Guard.AgainstEmpty(action, nameof(action));
         Guard.AgainstNullOrEmpty(entityName, nameof(entityName));
         Guard.AgainstNullOrEmpty(entityId, nameof(entityId));
         var finalSeverity = severity ?? (isSuccess ? AuditSeverity.Info : AuditSeverity.Warning);

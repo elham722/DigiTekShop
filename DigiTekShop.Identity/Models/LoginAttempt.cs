@@ -12,7 +12,6 @@
 
      public static LoginAttempt Create(Guid? userId,LoginStatus status, string? ipAddress = null, string? userAgent = null)
         {
-            Guard.AgainstEmpty(status,nameof(status));
             return new LoginAttempt
             {
                 UserId = userId,
