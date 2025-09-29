@@ -1,4 +1,6 @@
 ﻿using DigiTekShop.Contracts.DTOs.JwtSettings;
+using DigiTekShop.Contracts.Interfaces.Identity;
+using DigiTekShop.Identity.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -37,17 +39,13 @@ namespace DigiTekShop.Identity.DependencyInjection;
             .AddEntityFrameworkStores<DigiTekShopIdentityDbContext>()
             .AddDefaultTokenProviders();
 
-        // 3️⃣ Cookie / Authentication Settings
-        services.ConfigureApplicationCookie(options =>
-        {
-            options.LoginPath = "/Account/Login";
-            options.AccessDeniedPath = "/Account/AccessDenied";
-            options.SlidingExpiration = true;
-            options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
-            options.Cookie.HttpOnly = true;
-            options.Cookie.Name = "DigiTekShopAuth";
-        });
+        // Configure JWT Settings
+        services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
 
+        // Register JWT Services
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+        // JWT Authentication (for API)
         services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -65,10 +63,11 @@ namespace DigiTekShop.Identity.DependencyInjection;
                     ValidateAudience = true,
                     ValidAudience = cfg.Audience,
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.FromSeconds(30)
+                    ClockSkew = TimeSpan.FromSeconds(30),
+                    RequireExpirationTime = true,
+                    ValidateActor = false
                 };
             });
-
 
         return services;
         }

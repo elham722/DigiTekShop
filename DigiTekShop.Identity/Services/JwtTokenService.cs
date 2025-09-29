@@ -39,6 +39,9 @@ public class JwtTokenService : IJwtTokenService
 
     public async Task<Result<TokenResponseDto>> GenerateTokensAsync(string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null)
     {
+        if (!Guid.TryParse(userId, out var userGuid))
+            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
@@ -53,12 +56,9 @@ public class JwtTokenService : IJwtTokenService
         var refreshExpires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays);
         var refreshTokenHash = HashToken(refreshTokenRaw);
 
-        var refreshEntity = RefreshToken.Create(refreshTokenHash, refreshExpires, Guid.Parse(userId));
+        var refreshEntity = RefreshToken.Create(refreshTokenHash, refreshExpires, userGuid, deviceId, ipAddress, userAgent);
     
         _context.RefreshTokens.Add(refreshEntity);
-
-        // Optionally: store access token jti if you want to support immediate revoke (not implemented DB model by default)
-        // await StoreAccessJtiAsync(userId, jti, accessExpires, deviceId);
 
         await _context.SaveChangesAsync();
 
@@ -94,26 +94,26 @@ public class JwtTokenService : IJwtTokenService
         using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
-            // Revoke existing (mark)
-            existing.Revoke(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
+            // Mark existing token as rotated
+            existing.MarkAsRotated(refreshHash);
+            existing.Revoke("Token rotated");
             _context.RefreshTokens.Update(existing);
 
-            // create new refresh token
+            // Create new refresh token with parent relationship
             var newRefreshRaw = GenerateRefreshToken();
             var newRefreshHash = HashToken(newRefreshRaw);
-            var newRefresh = RefreshToken.Create(newRefreshHash, DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays)
-                , existing.UserId);
+            var newRefresh = RefreshToken.Create(newRefreshHash, DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
+                existing.UserId, deviceId, ipAddress, userAgent, existing.TokenHash);
  
             _context.RefreshTokens.Add(newRefresh);
 
-            // create new access token
+            // Create new access token
             var claims = await GetUserClaimsAsync(user);
             var accessExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
             var (accessToken, jti) = CreateJwtToken(claims, accessExpires);
 
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
-
 
             var dto = new TokenResponseDto(accessToken, (int)(accessExpires - DateTime.UtcNow).TotalSeconds, newRefreshRaw, newRefresh.ExpiresAt);
             return Result<TokenResponseDto>.Success(dto);
@@ -152,13 +152,15 @@ public class JwtTokenService : IJwtTokenService
     {
         if (string.IsNullOrWhiteSpace(userId)) return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
-        var userGuid = Guid.Parse(userId);
+        if (!Guid.TryParse(userId, out var userGuid))
+            return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+
         var tokens = await _context.RefreshTokens.Where(rt => rt.UserId == userGuid && !rt.IsRevoked).ToListAsync();
         if (!tokens.Any()) return Result.Success();
 
         foreach (var t in tokens)
         {
-            t.Revoke("RevokedAll");
+            t.Revoke(reason ?? "Revoked all user tokens");
         }
 
         _context.RefreshTokens.UpdateRange(tokens);
@@ -189,18 +191,22 @@ public class JwtTokenService : IJwtTokenService
                 ValidateAudience = true,
                 ValidAudience = _jwtSettings.Audience,
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.FromSeconds(30)
+                ClockSkew = TimeSpan.FromSeconds(30),
+                RequireExpirationTime = true,
+                ValidateActor = false,
+                ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 }
             };
 
             var principal = tokenHandler.ValidateToken(accessToken, validationParameters, out var validatedToken);
 
-            // Optionally check jti in DB for revocation — implement if you store jti
+            // Validate JTI claim exists
             var jti = principal.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
-            if (!string.IsNullOrEmpty(jti))
-            {
-                var revoked = await IsAccessTokenRevokedAsync(jti);
-                if (revoked) return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
-            }
+            if (string.IsNullOrEmpty(jti))
+                return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+
+            // Check if token is revoked (if JTI tracking is implemented)
+            var revoked = await IsAccessTokenRevokedAsync(jti);
+            if (revoked) return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
 
             return Result<ClaimsPrincipal>.Success(principal);
         }
@@ -208,9 +214,14 @@ public class JwtTokenService : IJwtTokenService
         {
             return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_EXPIRED));
         }
+        catch (SecurityTokenInvalidSignatureException)
+        {
+            _logger.LogWarning("Invalid token signature");
+            return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+        }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Token validation Failureed");
+            _logger.LogWarning(ex, "Token validation failed");
             return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
         }
     }
@@ -257,12 +268,13 @@ public class JwtTokenService : IJwtTokenService
 
     private string HashToken(string token)
     {
-        Guard.AgainstNullOrEmpty(token,nameof(token));
-        var secret = Encoding.UTF8.GetBytes(_jwtSettings.RefreshTokenHashSecret); // اضافه کن به JwtSettings
+        Guard.AgainstNullOrEmpty(token, nameof(token));
+        Guard.AgainstNullOrEmpty(_jwtSettings.RefreshTokenHashSecret, nameof(_jwtSettings.RefreshTokenHashSecret));
+        
+        var secret = Encoding.UTF8.GetBytes(_jwtSettings.RefreshTokenHashSecret);
         using var hmac = new HMACSHA256(secret);
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(token));
         return WebEncoders.Base64UrlEncode(hash);
-
     }
 
     private async Task<List<Claim>> GetUserClaimsAsync(User user)
