@@ -22,7 +22,7 @@ namespace DigiTekShop.Identity.Configurations;
                 .IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
             builder.Property(p => p.UpdatedAt)
-                .IsRequired(false).HasDefaultValueSql("GETUTCDATE()");
+                .IsRequired(false);
 
             // Configure relationships
             builder.HasMany(p => p.Roles)
