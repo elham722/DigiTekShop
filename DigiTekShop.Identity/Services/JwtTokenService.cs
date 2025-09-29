@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using DigiTekShop.Contracts.DTOs.JwtSettings;
 using DigiTekShop.Contracts.Interfaces.Identity;
+using DigiTekShop.Identity.Exceptions.Common;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.WebUtilities;
@@ -39,7 +40,7 @@ public class JwtTokenService : IJwtTokenService
     public async Task<Result<TokenResponseDto>> GenerateTokensAsync(string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null)
     {
         var user = await _userManager.FindByIdAsync(userId);
-        if (user == null) return Result<TokenResponseDto>.Fail("UserNotFound");
+        if (user == null) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
         var claims = await GetUserClaimsAsync(user);
         var accessExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
@@ -72,7 +73,7 @@ public class JwtTokenService : IJwtTokenService
     public async Task<Result<TokenResponseDto>> RefreshTokensAsync(string refreshToken, string? deviceId = null, string? ipAddress = null, string? userAgent = null)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
-            return Result<TokenResponseDto>.Fail("InvalidRefreshToken");
+            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
 
         var refreshHash = HashToken(refreshToken);
 
@@ -81,20 +82,20 @@ public class JwtTokenService : IJwtTokenService
             .Where(rt => rt.TokenHash == refreshHash)
             .FirstOrDefaultAsync();
 
-        if (existing == null) return Result<TokenResponseDto>.Fail("RefreshTokenNotFound");
-        if (existing.IsRevoked) return Result<TokenResponseDto>.Fail("RefreshTokenRevoked");
-        if (existing.ExpiresAt <= DateTime.UtcNow) return Result<TokenResponseDto>.Fail("RefreshTokenExpired");
+        if (existing == null) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_NOT_FOUND));
+        if (existing.IsRevoked) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_REVOKED));
+        if (existing.ExpiresAt <= DateTime.UtcNow) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_EXPIRED));
 
         // Load user
         var user = await _userManager.FindByIdAsync(existing.UserId.ToString());
-        if (user == null) return Result<TokenResponseDto>.Fail("UserNotFound");
+        if (user == null) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
         // Begin rotation transaction
         using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
             // Revoke existing (mark)
-            existing.Revoke("Rotated");
+            existing.Revoke(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
             _context.RefreshTokens.Update(existing);
 
             // create new refresh token
@@ -121,7 +122,7 @@ public class JwtTokenService : IJwtTokenService
         {
             await tx.RollbackAsync();
             _logger.LogError(ex, "Error rotating refresh token");
-            return Result<TokenResponseDto>.Fail("TokenRotationFailed");
+            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
         }
     }
 
@@ -132,13 +133,13 @@ public class JwtTokenService : IJwtTokenService
     public async Task<Result> RevokeRefreshTokenAsync(string refreshToken, string? reason = null)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
-            return Result.Fail("InvalidRefreshToken");
+            return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
 
         var refreshHash = HashToken(refreshToken);
         var existing = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == refreshHash);
-        if (existing == null) return Result.Fail("RefreshTokenNotFound");
+        if (existing == null) return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_NOT_FOUND));
 
-        if (existing.IsRevoked) return Result.Fail("AlreadyRevoked");
+        if (existing.IsRevoked) return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
 
         existing.Revoke("RevokedByUser");
         _context.RefreshTokens.Update(existing);
@@ -149,7 +150,7 @@ public class JwtTokenService : IJwtTokenService
 
     public async Task<Result> RevokeAllUserTokensAsync(string userId, string? reason = null)
     {
-        if (string.IsNullOrWhiteSpace(userId)) return Result.Fail("InvalidUserId");
+        if (string.IsNullOrWhiteSpace(userId)) return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
         var userGuid = Guid.Parse(userId);
         var tokens = await _context.RefreshTokens.Where(rt => rt.UserId == userGuid && !rt.IsRevoked).ToListAsync();
@@ -172,7 +173,7 @@ public class JwtTokenService : IJwtTokenService
 
     public async Task<Result<ClaimsPrincipal>> ValidateAccessTokenAsync(string accessToken)
     {
-        if (string.IsNullOrWhiteSpace(accessToken)) return Result<ClaimsPrincipal>.Fail("InvalidToken");
+        if (string.IsNullOrWhiteSpace(accessToken)) return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
 
         try
         {
@@ -198,19 +199,19 @@ public class JwtTokenService : IJwtTokenService
             if (!string.IsNullOrEmpty(jti))
             {
                 var revoked = await IsAccessTokenRevokedAsync(jti);
-                if (revoked) return Result<ClaimsPrincipal>.Fail("TokenRevoked");
+                if (revoked) return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
             }
 
             return Result<ClaimsPrincipal>.Success(principal);
         }
         catch (SecurityTokenExpiredException)
         {
-            return Result<ClaimsPrincipal>.Fail("TokenExpired");
+            return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_EXPIRED));
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Token validation failed");
-            return Result<ClaimsPrincipal>.Fail("InvalidToken");
+            _logger.LogWarning(ex, "Token validation Failureed");
+            return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
         }
     }
 
