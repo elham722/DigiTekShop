@@ -1,23 +1,56 @@
+﻿using DigiTekShop.Contracts.DTOs.JwtSettings;
 using DigiTekShop.Identity.DependencyInjection;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 builder.Services.ConfigureIdentityServices(builder.Configuration);
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "MyShop API",
+        Version = "v1.0",
+        Description = "MyShop E-commerce API v1.0",
+        Contact = new OpenApiContact
+        {
+            Name = "MyShop Team",
+            Email = "support@myshop.com"
+        }
+    });
+});
+
+// 🔑 تنظیم ریدایرکت به HTTPS
+builder.Services.AddHttpsRedirection(options =>
+{
+    options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
+    options.HttpsPort = 7055; // دقیقاً همونی که در launchSettings نوشتی
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// فقط در Production
+if (app.Environment.IsProduction())
 {
-    app.MapOpenApi();
+    app.UseHsts();
 }
 
+// ⬅️ خیلی مهم: قبل از Swagger
 app.UseHttpsRedirection();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyShop API V1");
+        c.RoutePrefix = string.Empty; // Swagger UI در root
+    });
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
