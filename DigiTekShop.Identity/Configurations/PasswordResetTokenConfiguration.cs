@@ -8,16 +8,13 @@ namespace DigiTekShop.Identity.Configurations
     {
         public void Configure(EntityTypeBuilder<PasswordResetToken> builder)
         {
-            // جدول
             builder.ToTable("PasswordResetTokens");
 
-            // کلید اصلی
             builder.HasKey(x => x.Id);
 
-            // فیلدها
             builder.Property(x => x.TokenHash)
                 .IsRequired()
-                .HasMaxLength(256); // چون SHA256 Base64 حدود 44 کاراکتر میشه
+                .HasMaxLength(256); 
 
             builder.Property(x => x.IpAddress)
                 .HasMaxLength(64);
@@ -31,15 +28,14 @@ namespace DigiTekShop.Identity.Configurations
             builder.Property(x => x.ExpiresAt)
                 .IsRequired();
 
-            // ایندکس‌ها
             builder.HasIndex(x => new { x.UserId, x.ExpiresAt });
             builder.HasIndex(x => x.TokenHash).IsUnique();
 
-            // رابطه با User
             builder.HasOne(x => x.User)
-                .WithMany() // یا اگر خواستی تو User یه ICollection<PasswordResetToken> بزاری
+                .WithMany(u => u.PasswordResetTokens) 
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
         }
     }
 }

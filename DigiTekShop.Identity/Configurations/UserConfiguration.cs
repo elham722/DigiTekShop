@@ -51,8 +51,14 @@
                 .HasForeignKey(up => up.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure indexes
-            builder.HasIndex(u => u.CustomerId)
+            builder.HasMany(u => u.PasswordResetTokens)
+                .WithOne(prt => prt.User)
+                .HasForeignKey(prt => prt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
+        // Configure indexes
+        builder.HasIndex(u => u.CustomerId)
                 .HasDatabaseName("IX_Users_CustomerId");
 
             builder.HasIndex(u => u.GoogleId)
