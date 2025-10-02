@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DigiTekShop.Application\DigiTekShop.Application.csproj" />
+    <ProjectReference Include="..\DigiTekShop.ExternalServices\DigiTekShop.ExternalServices.csproj" />
     <ProjectReference Include="..\DigiTekShop.Identity\DigiTekShop.Identity.csproj" />
   </ItemGroup>
 

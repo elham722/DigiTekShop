@@ -1,4 +1,8 @@
-﻿using DigiTekShop.Contracts.DTOs.JwtSettings;
+﻿using DigiTekShop.Contracts.DTOs.EmailConfirmation;
+using DigiTekShop.Contracts.DTOs.EmailSender;
+using DigiTekShop.Contracts.DTOs.JwtSettings;
+using DigiTekShop.Contracts.DTOs.PhoneVerification;
+using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
 using DigiTekShop.Contracts.Interfaces.Identity;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Identity.Services;
@@ -9,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 
@@ -16,20 +21,23 @@ public static class IdentityServicesRegistration
 {
     public static IServiceCollection ConfigureIdentityCore(this IServiceCollection services, IConfiguration configuration)
     {
-        // DbContext
+        #region DbContext
+
         services.AddDbContext<DigiTekShopIdentityDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("IdentityDBConnection")));
 
-        // ASP.NET Identity
+        #endregion
+
+        #region Identity
+
         services.AddIdentity<User, Role>(options =>
         {
-            // Password settings (پایه - validator اصلی کار دقیق رو انجام میده)
-            options.Password.RequireDigit = false;          // StrongPasswordValidator چک می‌کنه
-            options.Password.RequireLowercase = false;      // StrongPasswordValidator چک می‌کنه
-            options.Password.RequireUppercase = false;       // StrongPasswordValidator چک می‌کنه
-            options.Password.RequireNonAlphanumeric = false; // StrongPasswordValidator چک می‌کنه
-            options.Password.RequiredLength = 8;             // حداقل؛ StrongPasswordValidator >=12 enforce می‌کنه
-            options.Password.RequiredUniqueChars = 1;       // پایه
+            options.Password.RequireDigit = false;
+            options.Password.RequireLowercase = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequiredLength = 8;
+            options.Password.RequiredUniqueChars = 1;
 
             // Lockout settings
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
@@ -40,21 +48,24 @@ public static class IdentityServicesRegistration
             options.User.RequireUniqueEmail = true;
 
             // SignIn settings
-            options.SignIn.RequireConfirmedEmail = false; // در Production بهتره true باشه
+            options.SignIn.RequireConfirmedEmail = true;
             options.SignIn.RequireConfirmedPhoneNumber = false;
         })
         .AddEntityFrameworkStores<DigiTekShopIdentityDbContext>()
         .AddDefaultTokenProviders();
 
-        // JwtSettings به صورت Strongly Typed
+        #endregion
+
+        #region JwtSettings
         services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
         services.AddSingleton(resolver =>
             resolver.GetRequiredService<IOptions<JwtSettings>>().Value);
 
-        // JWT Service
         services.AddScoped<IJwtTokenService, JwtTokenService>();
 
-        // Password Policy Configuration
+        #endregion
+
+        #region Password Policy
         services.AddOptions<PasswordPolicyOptions>()
             .Bind(configuration.GetSection("PasswordPolicy"))
             .ValidateDataAnnotations()
@@ -65,6 +76,16 @@ public static class IdentityServicesRegistration
 
         // Password History Service
         services.AddScoped<PasswordHistoryService>();
+
+        #endregion
+
+        // Email Confirmation settings + service
+        services.Configure<EmailConfirmationSettings>(configuration.GetSection("EmailConfirmation"));
+        services.AddScoped<EmailConfirmationService>();
+
+        // Phone Verification settings + service
+        services.Configure<PhoneVerificationSettings>(configuration.GetSection("PhoneVerification"));
+        services.AddScoped<PhoneVerificationService>();
 
         return services;
     }

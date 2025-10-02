@@ -1,4 +1,5 @@
 ﻿using DigiTekShop.Contracts.DTOs.JwtSettings;
+using DigiTekShop.ExternalServices.DependencyInjection;
 using DigiTekShop.Identity.DependencyInjection;
 using Microsoft.OpenApi.Models;
 
@@ -6,8 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.ConfigureIdentityCore(builder.Configuration);
-builder.Services.ConfigureJwtAuthentication(builder.Configuration);
+builder.Services.ConfigureIdentityCore(builder.Configuration).ConfigureJwtAuthentication(builder.Configuration);
+builder.Services.AddExternalServices(builder.Configuration);
+
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
