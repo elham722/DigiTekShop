@@ -17,6 +17,7 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
     public DbSet<PhoneVerification> PhoneVerifications => Set<PhoneVerification>();
     public DbSet<PasswordHistory> PasswordHistories => Set<PasswordHistory>();
     public DbSet<UserMfa> UserMfa => Set<UserMfa>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -35,6 +36,7 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
         builder.ApplyConfiguration(new PhoneVerificationConfiguration());
         builder.ApplyConfiguration(new PasswordHistoryConfiguration());
         builder.ApplyConfiguration(new UserMfaConfiguration());
+        builder.ApplyConfiguration(new PasswordResetTokenConfiguration());
 
         // Configure Identity table names (optional - for custom naming)
         builder.Entity<User>().ToTable("Users");

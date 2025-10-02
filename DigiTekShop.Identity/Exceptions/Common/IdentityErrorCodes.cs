@@ -63,11 +63,41 @@ namespace DigiTekShop.Identity.Exceptions.Common
         public const string INVALID_PASSWORD = "INVALID_PASSWORD";
         public const string PASSWORD_TOO_WEAK = "PASSWORD_TOO_WEAK";
 
+        // Password Reset
+        public const string PASSWORD_RESET_DISABLED = "PASSWORD_RESET_DISABLED";
+        public const string PASSWORD_RESET_COOLDOWN_ACTIVE = "PASSWORD_RESET_COOLDOWN_ACTIVE";
+        public const string PASSWORD_RESET_DAILY_LIMIT_EXCEEDED = "PASSWORD_RESET_DAILY_LIMIT_EXCEEDED";
+        public const string PASSWORDS_DO_NOT_MATCH = "PASSWORDS_DO_NOT_MATCH";
+        public const string INVALID_RESET_TOKEN = "INVALID_RESET_TOKEN";
+        public const string RESET_TOKEN_EXPIRED = "RESET_TOKEN_EXPIRED";
+        public const string PASSWORD_RESET_FAILED = "PASSWORD_RESET_FAILED";
+        public const string INVALID_USER_FOR_PASSWORD_RESET = "INVALID_USER_FOR_PASSWORD_RESET";
+
+        // Email Confirmation
+        public const string EMAIL_CONFIRMATION_DISABLED = "EMAIL_CONFIRMATION_DISABLED";
+        public const string EMAIL_CONFIRMATION_REQUIRED = "EMAIL_CONFIRMATION_REQUIRED";
+        public const string EMAIL_NOT_CONFIRMED = "EMAIL_NOT_CONFIRMED";
+        public const string INVALID_CONFIRMATION_TOKEN = "INVALID_CONFIRMATION_TOKEN";
+        public const string CONFIRMATION_TOKEN_EXPIRED = "CONFIRMATION_TOKEN_EXPIRED";
+        public const string EMAIL_CONFIRMATION_FAILED = "EMAIL_CONFIRMATION_FAILED";
+        public const string EMAIL_CONFIRMATION_COOLDOWN = "EMAIL_CONFIRMATION_COOLDOWN";
+
+        // Authorization & Access Control
+        public const string FORBIDDEN = "FORBIDDEN";
+        public const string UNAUTHORIZED = "UNAUTHORIZED";
+        public const string INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS";
+        public const string ACCESS_DENIED = "ACCESS_DENIED";
+
+        // Authentication
+        public const string AUTHENTICATION_FAILED = "AUTHENTICATION_FAILED";
+        public const string INVALID_AUTHENTICATION_HEADERS = "INVALID_AUTHENTICATION_HEADERS";
+        public const string MULTI_FACTOR_REQUIRED = "MULTI_FACTOR_REQUIRED";
+        public const string ACCOUNT_DISABLED = "ACCOUNT_DISABLED";
+        public const string ACCOUNT_SUSPENDED = "ACCOUNT_SUSPENDED";
+
         // General
         public const string IDENTITY_ERROR = "IDENTITY_ERROR";
         public const string OPERATION_FAILED = "OPERATION_FAILED";
-        public const string UNAUTHORIZED = "UNAUTHORIZED";
-        public const string FORBIDDEN = "FORBIDDEN";
         public const string CONCURRENCY_CONFLICT = "CONCURRENCY_CONFLICT";
     }
 }

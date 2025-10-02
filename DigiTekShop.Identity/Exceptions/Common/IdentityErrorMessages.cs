@@ -61,11 +61,41 @@ namespace DigiTekShop.Identity.Exceptions.Common
             { IdentityErrorCodes.INVALID_PASSWORD, "Invalid password." },
             { IdentityErrorCodes.PASSWORD_TOO_WEAK, "Password is too weak." },
 
+            // Password Reset
+            { IdentityErrorCodes.PASSWORD_RESET_DISABLED, "Password reset is currently disabled." },
+            { IdentityErrorCodes.PASSWORD_RESET_COOLDOWN_ACTIVE, "Please wait before requesting another password reset." },
+            { IdentityErrorCodes.PASSWORD_RESET_DAILY_LIMIT_EXCEEDED, "You have exceeded the daily password reset limit." },
+            { IdentityErrorCodes.PASSWORDS_DO_NOT_MATCH, "The passwords do not match." },
+            { IdentityErrorCodes.INVALID_RESET_TOKEN, "The reset token is invalid." },
+            { IdentityErrorCodes.RESET_TOKEN_EXPIRED, "The reset token has expired." },
+            { IdentityErrorCodes.PASSWORD_RESET_FAILED, "Password reset failed." },
+            { IdentityErrorCodes.INVALID_USER_FOR_PASSWORD_RESET, "Invalid user for password reset." },
+
+            // Email Confirmation
+            { IdentityErrorCodes.EMAIL_CONFIRMATION_DISABLED, "Email confirmation is currently disabled." },
+            { IdentityErrorCodes.EMAIL_CONFIRMATION_REQUIRED, "Email confirmation is required." },
+            { IdentityErrorCodes.EMAIL_NOT_CONFIRMED, "Email address is not confirmed." },
+            { IdentityErrorCodes.INVALID_CONFIRMATION_TOKEN, "The confirmation token is invalid." },
+            { IdentityErrorCodes.CONFIRMATION_TOKEN_EXPIRED, "The confirmation token has expired." },
+            { IdentityErrorCodes.EMAIL_CONFIRMATION_FAILED, "Email confirmation failed." },
+            { IdentityErrorCodes.EMAIL_CONFIRMATION_COOLDOWN, "Please wait before requesting another email confirmation." },
+
+            // Authorization & Access Control
+            { IdentityErrorCodes.FORBIDDEN, "Access to this resource is forbidden." },
+            { IdentityErrorCodes.UNAUTHORIZED, "You are not authorized to perform this action." },
+            { IdentityErrorCodes.INSUFFICIENT_PERMISSIONS, "You have insufficient permissions for this action." },
+            { IdentityErrorCodes.ACCESS_DENIED, "Access denied." },
+
+            // Authentication
+            { IdentityErrorCodes.AUTHENTICATION_FAILED, "Authentication failed." },
+            { IdentityErrorCodes.INVALID_AUTHENTICATION_HEADERS, "Invalid authentication headers." },
+            { IdentityErrorCodes.MULTI_FACTOR_REQUIRED, "Multi-factor authentication is required." },
+            { IdentityErrorCodes.ACCOUNT_DISABLED, "Your account has been disabled." },
+            { IdentityErrorCodes.ACCOUNT_SUSPENDED, "Your account has been suspended." },
+
             // General
             { IdentityErrorCodes.IDENTITY_ERROR, "An identity error occurred." },
             { IdentityErrorCodes.OPERATION_FAILED, "Operation failed." },
-            { IdentityErrorCodes.UNAUTHORIZED, "You are not authorized to perform this action." },
-            { IdentityErrorCodes.FORBIDDEN, "Access to this resource is forbidden." },
             { IdentityErrorCodes.CONCURRENCY_CONFLICT, "A concurrency conflict occurred." }
         };
 

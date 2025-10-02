@@ -9,9 +9,10 @@
             { DomainErrorCodes.EntityAlreadyExists, "The entity already exists." },
             { DomainErrorCodes.ValidationFailed, "Validation failed." },
             { DomainErrorCodes.ConcurrencyConflict, "Concurrency conflict occurred." },
-            { DomainErrorCodes.Forbidden, "Access is forbidden." },
+            { DomainErrorCodes.Forbidden, "Access to this resource is forbidden." },
+            { DomainErrorCodes.AuthenticationFailed, "Authentication failed." },
             { DomainErrorCodes.Timeout, "The operation timed out." },
-            { DomainErrorCodes.VerificationMaxAttemptsExceeded, "Maximum verification attempts exceeded." }
+            { DomainErrorCodes.SystemError, "A system error occurred." }
         };
 
     public static string GetMessage(string errorCode)

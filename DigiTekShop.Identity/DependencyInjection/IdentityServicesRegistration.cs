@@ -2,6 +2,7 @@
 using DigiTekShop.Contracts.DTOs.EmailSender;
 using DigiTekShop.Contracts.DTOs.JwtSettings;
 using DigiTekShop.Contracts.DTOs.PhoneVerification;
+using DigiTekShop.Contracts.DTOs.Auth;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
 using DigiTekShop.Contracts.Interfaces.Identity;
 using DigiTekShop.Identity.Options;
@@ -86,6 +87,10 @@ public static class IdentityServicesRegistration
         // Phone Verification settings + service
         services.Configure<PhoneVerificationSettings>(configuration.GetSection("PhoneVerification"));
         services.AddScoped<PhoneVerificationService>();
+
+        // Password Reset settings + service
+        services.Configure<PasswordResetSettings>(configuration.GetSection("PasswordReset"));
+        services.AddScoped<PasswordResetService>();
 
         return services;
     }
