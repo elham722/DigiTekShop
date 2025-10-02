@@ -26,6 +26,7 @@ namespace DigiTekShop.Identity.Migrations
                     IsSuccess = table.Column<bool>(type: "bit", nullable: false),
                     ErrorMessage = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     Severity = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    DeviceId = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: true),
                     UserAgent = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true)
                 },
@@ -43,7 +44,7 @@ namespace DigiTekShop.Identity.Migrations
                     Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETUTCDATE()")
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -56,7 +57,7 @@ namespace DigiTekShop.Identity.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETUTCDATE()"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -78,7 +79,7 @@ namespace DigiTekShop.Identity.Migrations
                     TotpEnabled = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETUTCDATE()"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     LastPasswordChangeAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     LastLoginAt = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -197,12 +198,21 @@ namespace DigiTekShop.Identity.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Token = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
+                    TokenHash = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
                     ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsRevoked = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
                     RevokedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     RevokedReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    ReplacedByTokenHash = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    IsRotated = table.Column<bool>(type: "bit", nullable: false),
+                    RotatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ParentTokenHash = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    UsageCount = table.Column<int>(type: "int", nullable: false),
+                    LastUsedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
+                    CreatedByIp = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    DeviceId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UserAgent = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
@@ -246,6 +256,11 @@ namespace DigiTekShop.Identity.Migrations
                     IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: false),
                     LastLoginAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    DeviceFingerprint = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    BrowserInfo = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    OperatingSystem = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsTrusted = table.Column<bool>(type: "bit", nullable: false),
+                    TrustedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
@@ -456,6 +471,12 @@ namespace DigiTekShop.Identity.Migrations
                 columns: new[] { "UserId", "ExpiresAt" });
 
             migrationBuilder.CreateIndex(
+                name: "UX_PhoneVerifications_User_Code_ExpiresAt",
+                table: "PhoneVerifications",
+                columns: new[] { "UserId", "CodeHash", "ExpiresAt" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_CreatedAt",
                 table: "RefreshTokens",
                 column: "CreatedAt");
@@ -471,9 +492,19 @@ namespace DigiTekShop.Identity.Migrations
                 column: "IsRevoked");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_ParentTokenHash",
+                table: "RefreshTokens",
+                column: "ParentTokenHash");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_ReplacedByTokenHash",
+                table: "RefreshTokens",
+                column: "ReplacedByTokenHash");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_Token",
                 table: "RefreshTokens",
-                column: "Token",
+                column: "TokenHash",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -532,6 +563,13 @@ namespace DigiTekShop.Identity.Migrations
                 name: "IX_UserDevices_UserId",
                 table: "UserDevices",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "UX_UserDevices_User_DeviceFingerprint",
+                table: "UserDevices",
+                columns: new[] { "UserId", "DeviceFingerprint" },
+                unique: true,
+                filter: "[DeviceFingerprint] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserLogins_UserId",
