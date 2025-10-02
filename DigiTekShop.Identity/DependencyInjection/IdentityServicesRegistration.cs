@@ -1,7 +1,9 @@
 ﻿using DigiTekShop.Contracts.DTOs.JwtSettings;
 using DigiTekShop.Contracts.Interfaces.Identity;
+using DigiTekShop.Identity.Options;
 using DigiTekShop.Identity.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -21,13 +23,13 @@ public static class IdentityServicesRegistration
         // ASP.NET Identity
         services.AddIdentity<User, Role>(options =>
         {
-            // Password settings
-            options.Password.RequireDigit = true;
-            options.Password.RequireLowercase = true;
-            options.Password.RequireUppercase = true;
-            options.Password.RequireNonAlphanumeric = false;
-            options.Password.RequiredLength = 8;
-            options.Password.RequiredUniqueChars = 1;
+            // Password settings (پایه - validator اصلی کار دقیق رو انجام میده)
+            options.Password.RequireDigit = false;          // StrongPasswordValidator چک می‌کنه
+            options.Password.RequireLowercase = false;      // StrongPasswordValidator چک می‌کنه
+            options.Password.RequireUppercase = false;       // StrongPasswordValidator چک می‌کنه
+            options.Password.RequireNonAlphanumeric = false; // StrongPasswordValidator چک می‌کنه
+            options.Password.RequiredLength = 8;             // حداقل؛ StrongPasswordValidator >=12 enforce می‌کنه
+            options.Password.RequiredUniqueChars = 1;       // پایه
 
             // Lockout settings
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
@@ -51,6 +53,18 @@ public static class IdentityServicesRegistration
 
         // JWT Service
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+        // Password Policy Configuration
+        services.AddOptions<PasswordPolicyOptions>()
+            .Bind(configuration.GetSection("PasswordPolicy"))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Strong Password Validator
+        services.AddTransient<IPasswordValidator<User>, StrongPasswordValidator>();
+
+        // Password History Service
+        services.AddScoped<PasswordHistoryService>();
 
         return services;
     }
