@@ -11,7 +11,7 @@ namespace DigiTekShop.Identity.Services
     {
         private readonly DigiTekShopIdentityDbContext _context;
         private readonly UserManager<User> _userManager;
-        private readonly IDataProtector _protector;
+        private readonly IEncryptionService _encryptionService;
         private readonly ILogger<MfaService> _logger;
 
         private const int MaxAttempts = 5;
@@ -19,12 +19,12 @@ namespace DigiTekShop.Identity.Services
         public MfaService(
             DigiTekShopIdentityDbContext context,
             UserManager<User> userManager,
-            IDataProtectionProvider protectionProvider,
+            IEncryptionService encryptionService,
             ILogger<MfaService> logger)
         {
             _context = context;
             _userManager = userManager;
-            _protector = protectionProvider.CreateProtector("MfaSecretKey");
+            _encryptionService = encryptionService;
             _logger = logger;
         }
 
@@ -33,9 +33,11 @@ namespace DigiTekShop.Identity.Services
             Guard.AgainstNull(user, nameof(user));
 
             var secretKey = Base32Encoding.ToString(KeyGeneration.GenerateRandomKey(20));
-            var encryptedKey = _protector.Protect(secretKey);
+            var encryptedKey = _encryptionService.Encrypt(secretKey);
 
-            var otpauthUrl = $"otpauth://totp/DigiTekShop:{user.Email}?secret={secretKey}&issuer=DigiTekShop";
+            var issuer = Uri.EscapeDataString("DigiTekShop");
+            var label = Uri.EscapeDataString(user.Email);
+            var otpauthUrl = $"otpauth://totp/{issuer}:{label}?secret={secretKey}&issuer={issuer}&algorithm=SHA1&digits=6&period=30";
 
             var qrGenerator = new QRCodeGenerator();
             var qrCodeData = qrGenerator.CreateQrCode(otpauthUrl, QRCodeGenerator.ECCLevel.Q);
@@ -49,7 +51,8 @@ namespace DigiTekShop.Identity.Services
             }
             else
             {
-                _context.UserMfa.Add(UserMfa.Create(user.Id, encryptedKey));
+                var userMfa = UserMfa.Create(user.Id, encryptedKey);
+                _context.UserMfa.Add(userMfa);
             }
 
             await _context.SaveChangesAsync();
@@ -73,7 +76,7 @@ namespace DigiTekShop.Identity.Services
 
             record.IncrementAttempts(MaxAttempts);
 
-            var secretKey = _protector.Unprotect(record.SecretKeyEncrypted);
+            var secretKey = _encryptionService.Decrypt(record.SecretKeyEncrypted);
             var totp = new Totp(Base32Encoding.ToBytes(secretKey));
             var isValid = totp.VerifyTotp(code, out _, new VerificationWindow(1, 1));
 
@@ -105,8 +108,9 @@ namespace DigiTekShop.Identity.Services
 
         public async Task<MfaStatusDto> GetStatusAsync(User user)
         {
-            var record = await _context.UserMfa.FirstOrDefaultAsync(x => x.UserId == user.Id);
-            return new MfaStatusDto(record?.IsEnabled ?? false);
+            // Load MFA relationship
+            await _context.Entry(user).Reference(u => u.Mfa).LoadAsync();
+            return new MfaStatusDto(user.Mfa?.IsEnabled ?? false);
         }
     }
 

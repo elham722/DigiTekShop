@@ -5,8 +5,6 @@ public class User : IdentityUser<Guid>
     public string? GoogleId { get; private set; }
     public string? MicrosoftId { get; private set; }
 
-    public string? TotpSecretKey { get; private set; }
-    public bool TotpEnabled { get; private set; }
 
     public bool IsDeleted { get; private set; }
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
@@ -19,6 +17,9 @@ public class User : IdentityUser<Guid>
     public ICollection<RefreshToken> RefreshTokens { get; private set; } = new List<RefreshToken>();
     public ICollection<UserPermission> UserPermissions { get; private set; } = new List<UserPermission>();
     public ICollection<PasswordResetToken> PasswordResetTokens { get; private set; } = new List<PasswordResetToken>();
+    
+    // MFA relationship
+    public UserMfa? Mfa { get; private set; }
 
 
     private User() : base() { }
@@ -43,17 +44,6 @@ public class User : IdentityUser<Guid>
         Touch();
     }
 
-    public void SetTotpSecretKey(string? secretKey)
-    {
-        TotpSecretKey = secretKey;
-        Touch();
-    }
-
-    public void SetTotpEnabled(bool enabled)
-    {
-        TotpEnabled = enabled;
-        Touch();
-    }
 
     public void Deactivate()
     {

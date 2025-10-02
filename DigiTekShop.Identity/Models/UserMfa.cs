@@ -4,6 +4,7 @@
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
         public Guid UserId { get; private set; }
+        public User User { get; private set; } = default!;
         public string SecretKeyEncrypted { get; private set; } = string.Empty;
         public bool IsEnabled { get; private set; } = false;
         public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;

@@ -92,6 +92,12 @@ public static class IdentityServicesRegistration
         services.Configure<PasswordResetSettings>(configuration.GetSection("PasswordReset"));
         services.AddScoped<PasswordResetService>();
 
+        // Encryption Service for TOTP secrets
+        services.AddScoped<IEncryptionService, EncryptionService>();
+
+        // MFA Service
+        services.AddScoped<MfaService>();
+
         return services;
     }
 

@@ -12,14 +12,11 @@ namespace DigiTekShop.Identity.Configurations
 
             builder.HasKey(x => x.Id);
 
-            builder.HasIndex(x => x.UserId).IsUnique();
-
             builder.Property(x => x.UserId)
                 .IsRequired();
 
             builder.Property(x => x.SecretKeyEncrypted)
-                .IsRequired()
-                .HasMaxLength(512);  // ✅ افزایش طول کلید رمزنگاری‌شده
+                .IsRequired();  
 
             builder.Property(x => x.IsEnabled)
                 .HasDefaultValue(false);
@@ -30,10 +27,10 @@ namespace DigiTekShop.Identity.Configurations
             builder.Property(x => x.LastVerifiedAt)
                 .IsRequired(false);
 
-            builder.HasOne<User>()
-                .WithOne()
-                .HasForeignKey<UserMfa>(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasIndex(x => x.UserId).IsUnique().HasDatabaseName("UX_UserMfa_UserId");
+            builder.HasIndex(x => x.IsEnabled).HasDatabaseName("IX_UserMfa_IsEnabled");
+
         }
     }
 }

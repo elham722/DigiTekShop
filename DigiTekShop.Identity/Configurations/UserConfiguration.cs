@@ -14,12 +14,6 @@
                 .HasMaxLength(256)
                 .IsRequired(false);
 
-            builder.Property(u => u.TotpSecretKey)
-                .HasMaxLength(256)
-                .IsRequired(false);
-
-            builder.Property(u => u.TotpEnabled)
-                .HasDefaultValue(false);
 
             builder.Property(u => u.IsDeleted)
                 .HasDefaultValue(false);
@@ -56,6 +50,12 @@
                 .HasForeignKey(prt => prt.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(u => u.Mfa)
+            .WithOne(um => um.User)            
+            .HasForeignKey<UserMfa>(um => um.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasQueryFilter(u => !u.IsDeleted);
 
         // Configure indexes
         builder.HasIndex(u => u.CustomerId)
@@ -69,5 +69,17 @@
 
             builder.HasIndex(u => u.IsDeleted)
                 .HasDatabaseName("IX_Users_IsDeleted");
-        }
+
+            builder.HasIndex(u => u.NormalizedEmail)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0")
+                .HasDatabaseName("UX_Users_NormalizedEmail_Active");
+
+            builder.HasIndex(u => u.NormalizedUserName)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0")
+                .HasDatabaseName("UX_Users_NormalizedUserName_Active");
+
     }
+
+}
