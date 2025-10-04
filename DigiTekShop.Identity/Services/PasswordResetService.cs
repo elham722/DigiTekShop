@@ -1,4 +1,3 @@
-using DigiTekShop.Contracts.DTOs.Auth;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Helpers.EmailTemplates;
@@ -13,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using System.Text;
+using DigiTekShop.Contracts.DTOs.ResetPassword;
 
 namespace DigiTekShop.Identity.Services;
 

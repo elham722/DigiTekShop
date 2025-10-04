@@ -1,4 +1,3 @@
-using DigiTekShop.Contracts.DTOs.Auth;
 
 namespace DigiTekShop.Identity.Helpers.EmailTemplates;
 

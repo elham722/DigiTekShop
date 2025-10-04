@@ -1,4 +1,4 @@
-namespace DigiTekShop.Contracts.DTOs.Auth;
+namespace DigiTekShop.Contracts.DTOs.ResetPassword;
 
 /// <summary>
 /// DTO for password reset request
