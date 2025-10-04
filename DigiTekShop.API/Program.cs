@@ -1,12 +1,17 @@
-﻿using DigiTekShop.Contracts.DTOs.JwtSettings;
-using DigiTekShop.ExternalServices.DependencyInjection;
+﻿using DigiTekShop.ExternalServices.DependencyInjection;
 using DigiTekShop.Identity.DependencyInjection;
+using DigiTekShop.Infrastructure.DependencyInjection;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Infrastructure services (Redis, Caching, DataProtection)
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// Identity and External services
 builder.Services.ConfigureIdentityCore(builder.Configuration).ConfigureJwtAuthentication(builder.Configuration);
 builder.Services.AddExternalServices(builder.Configuration);
 
@@ -59,5 +64,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Health checks endpoint
+app.MapHealthChecks("/health");
 
 app.Run();

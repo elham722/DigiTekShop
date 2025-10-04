@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using DigiTekShop.Contracts.Interfaces.Caching;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -16,6 +17,7 @@ public class PhoneVerificationService
     private readonly IPhoneSender _phoneSender;
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly PhoneVerificationSettings _settings;
+    private readonly IRateLimiter _rateLimiter;
     private readonly ILogger<PhoneVerificationService> _logger;
 
     public PhoneVerificationService(
@@ -23,12 +25,14 @@ public class PhoneVerificationService
         IPhoneSender phoneSender,
         DigiTekShopIdentityDbContext context,
         IOptions<PhoneVerificationSettings> settings,
+        IRateLimiter rateLimiter,
         ILogger<PhoneVerificationService> logger)
     {
         _userManager = userManager;
         _phoneSender = phoneSender;
         _context = context;
         _settings = settings.Value;
+        _rateLimiter = rateLimiter;
         _logger = logger;
     }
 
@@ -38,6 +42,19 @@ public class PhoneVerificationService
             return Result.Success();
 
         Guard.AgainstInvalidFormat(phoneNumber, _settings.Security.AllowedPhonePattern, nameof(phoneNumber));
+
+        // Rate limiting check
+        var rateLimitKey = $"phone_verification:{user.Id}";
+        var isAllowed = await _rateLimiter.ShouldAllowAsync(
+            rateLimitKey, 
+            _settings.Security.MaxRequestsPerHour, 
+            TimeSpan.FromHours(1));
+
+        if (!isAllowed)
+        {
+            _logger.LogWarning("Rate limit exceeded for phone verification user {UserId}", user.Id);
+            return Result.Failure("Too many verification requests. Please try again later.");
+        }
 
         if (_settings.AllowResendCode && !await CanResendCodeAsync(user.Id))
             return Result.Failure($"Please wait {_settings.ResendCooldownMinutes} minutes before resend.");

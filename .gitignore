@@ -359,5 +359,18 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 
+# Redis data files
+dump.rdb
+appendonly.aof
+redis.log
+
+# Docker volumes
+docker-volumes/
+
+# Environment specific configuration
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
