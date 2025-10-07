@@ -102,14 +102,6 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityRequirement(new OpenApiSecurityRequirement { { jwt, Array.Empty<string>() } });
 
 
-    c.AddSecurityDefinition("Bearer", jwt);
-    
-    // Apply security to all endpoints
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        { jwt, Array.Empty<string>() }
-    });
-
     // Include XML comments if available
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);

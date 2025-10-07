@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Identity.Migrations
 {
     [DbContext(typeof(DigiTekShopIdentityDbContext))]
-    [Migration("20251002105145_migforusermfa")]
-    partial class migforusermfa
+    [Migration("20251007161705_firstmigrationidentity")]
+    partial class firstmigrationidentity
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -180,6 +180,50 @@ namespace DigiTekShop.Identity.Migrations
                         .HasDatabaseName("IX_PasswordHistory_User_ChangedAt");
 
                     b.ToTable("PasswordHistories");
+                });
+
+            modelBuilder.Entity("DigiTekShop.Identity.Models.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "ExpiresAt");
+
+                    b.ToTable("PasswordResetTokens", (string)null);
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.Permission", b =>
@@ -451,15 +495,6 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("TotpEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("TotpSecretKey")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
 
@@ -485,12 +520,14 @@ namespace DigiTekShop.Identity.Migrations
                         .HasDatabaseName("IX_Users_MicrosoftId");
 
                     b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
+                        .IsUnique()
+                        .HasDatabaseName("UX_Users_NormalizedEmail_Active")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+                        .HasDatabaseName("UX_Users_NormalizedUserName_Active")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Users", (string)null);
                 });
@@ -565,26 +602,35 @@ namespace DigiTekShop.Identity.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsEnabled")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasDefaultValue(false);
 
-                    b.Property<string>("SecretKey")
+                    b.Property<DateTime?>("LastVerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SecretKeyEncrypted")
                         .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsEnabled")
+                        .HasDatabaseName("IX_UserMfa_IsEnabled");
+
                     b.HasIndex("UserId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("UX_UserMfa_UserId");
 
                     b.ToTable("UserMfa", (string)null);
                 });
@@ -794,6 +840,17 @@ namespace DigiTekShop.Identity.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DigiTekShop.Identity.Models.PasswordResetToken", b =>
+                {
+                    b.HasOne("DigiTekShop.Identity.Models.User", "User")
+                        .WithMany("PasswordResetTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DigiTekShop.Identity.Models.RefreshToken", b =>
                 {
                     b.HasOne("DigiTekShop.Identity.Models.User", "User")
@@ -837,11 +894,13 @@ namespace DigiTekShop.Identity.Migrations
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.UserMfa", b =>
                 {
-                    b.HasOne("DigiTekShop.Identity.Models.User", null)
-                        .WithOne()
+                    b.HasOne("DigiTekShop.Identity.Models.User", "User")
+                        .WithOne("Mfa")
                         .HasForeignKey("DigiTekShop.Identity.Models.UserMfa", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.UserPermission", b =>
@@ -938,6 +997,10 @@ namespace DigiTekShop.Identity.Migrations
             modelBuilder.Entity("DigiTekShop.Identity.Models.User", b =>
                 {
                     b.Navigation("Devices");
+
+                    b.Navigation("Mfa");
+
+                    b.Navigation("PasswordResetTokens");
 
                     b.Navigation("RefreshTokens");
 

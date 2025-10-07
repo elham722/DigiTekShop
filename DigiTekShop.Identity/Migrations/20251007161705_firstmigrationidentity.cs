@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DigiTekShop.Identity.Migrations
 {
     /// <inheritdoc />
-    public partial class firstmig : Migration
+    public partial class firstmigrationidentity : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -75,8 +75,6 @@ namespace DigiTekShop.Identity.Migrations
                     CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     GoogleId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     MicrosoftId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    TotpSecretKey = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    TotpEnabled = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -169,6 +167,51 @@ namespace DigiTekShop.Identity.Migrations
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PasswordHistories",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PasswordHash = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
+                    ChangedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PasswordHistories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PasswordHistories_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PasswordResetTokens",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TokenHash = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsUsed = table.Column<bool>(type: "bit", nullable: false),
+                    UsedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IpAddress = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    UserAgent = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PasswordResetTokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PasswordResetTokens_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -288,6 +331,29 @@ namespace DigiTekShop.Identity.Migrations
                     table.PrimaryKey("PK_UserLogins", x => new { x.LoginProvider, x.ProviderKey });
                     table.ForeignKey(
                         name: "FK_UserLogins_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserMfa",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SecretKeyEncrypted = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsEnabled = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Attempts = table.Column<int>(type: "int", nullable: false),
+                    LastVerifiedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserMfa", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserMfa_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -435,6 +501,22 @@ namespace DigiTekShop.Identity.Migrations
                 columns: new[] { "UserId", "AttemptedAt" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_PasswordHistory_User_ChangedAt",
+                table: "PasswordHistories",
+                columns: new[] { "UserId", "ChangedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PasswordResetTokens_TokenHash",
+                table: "PasswordResetTokens",
+                column: "TokenHash",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PasswordResetTokens_UserId_ExpiresAt",
+                table: "PasswordResetTokens",
+                columns: new[] { "UserId", "ExpiresAt" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Permissions_CreatedAt",
                 table: "Permissions",
                 column: "CreatedAt");
@@ -577,6 +659,17 @@ namespace DigiTekShop.Identity.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserMfa_IsEnabled",
+                table: "UserMfa",
+                column: "IsEnabled");
+
+            migrationBuilder.CreateIndex(
+                name: "UX_UserMfa_UserId",
+                table: "UserMfa",
+                column: "UserId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserPermissions_IsGranted",
                 table: "UserPermissions",
                 column: "IsGranted");
@@ -603,11 +696,6 @@ namespace DigiTekShop.Identity.Migrations
                 column: "RoleId");
 
             migrationBuilder.CreateIndex(
-                name: "EmailIndex",
-                table: "Users",
-                column: "NormalizedEmail");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Users_CustomerId",
                 table: "Users",
                 column: "CustomerId");
@@ -628,11 +716,18 @@ namespace DigiTekShop.Identity.Migrations
                 column: "MicrosoftId");
 
             migrationBuilder.CreateIndex(
-                name: "UserNameIndex",
+                name: "UX_Users_NormalizedEmail_Active",
+                table: "Users",
+                column: "NormalizedEmail",
+                unique: true,
+                filter: "[IsDeleted] = 0");
+
+            migrationBuilder.CreateIndex(
+                name: "UX_Users_NormalizedUserName_Active",
                 table: "Users",
                 column: "NormalizedUserName",
                 unique: true,
-                filter: "[NormalizedUserName] IS NOT NULL");
+                filter: "[IsDeleted] = 0");
         }
 
         /// <inheritdoc />
@@ -643,6 +738,12 @@ namespace DigiTekShop.Identity.Migrations
 
             migrationBuilder.DropTable(
                 name: "LoginAttempts");
+
+            migrationBuilder.DropTable(
+                name: "PasswordHistories");
+
+            migrationBuilder.DropTable(
+                name: "PasswordResetTokens");
 
             migrationBuilder.DropTable(
                 name: "PhoneVerifications");
@@ -664,6 +765,9 @@ namespace DigiTekShop.Identity.Migrations
 
             migrationBuilder.DropTable(
                 name: "UserLogins");
+
+            migrationBuilder.DropTable(
+                name: "UserMfa");
 
             migrationBuilder.DropTable(
                 name: "UserPermissions");
