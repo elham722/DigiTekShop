@@ -1,4 +1,8 @@
-﻿namespace DigiTekShop.Identity.Models;
+﻿using DigiTekShop.Identity.Exceptions.Common;
+using DigiTekShop.SharedKernel.Exceptions.NotFound;
+using DigiTekShop.SharedKernel.Exceptions.Validation;
+
+namespace DigiTekShop.Identity.Models;
 public class User : IdentityUser<Guid>
 {
     public Guid? CustomerId { get; private set; }
@@ -78,10 +82,34 @@ public class User : IdentityUser<Guid>
     }
 
     // Devices
-    public void AddDevice(UserDevice device)
+    public void AddDevice(UserDevice device, int maxActiveDevices = 5, int maxTrustedDevices = 3)
     {
-       Guard.AgainstNull(device,nameof(device));
-        if (Devices.Any(d => d.Id == device.Id)) return; 
+        Guard.AgainstNull(device, nameof(device));
+        
+        if (Devices.Any(d => d.Id == device.Id)) 
+            return; 
+        
+      
+        var activeDevices = Devices.Count(d => d.IsActive);
+        if (activeDevices >= maxActiveDevices)
+        {
+            throw new InvalidDomainOperationException(
+                $"Maximum active devices limit ({maxActiveDevices}) exceeded",
+                IdentityErrorCodes.MaxActiveDevicesExceeded);
+        }
+        
+       
+        if (device.IsTrusted)
+        {
+            var trustedDevices = Devices.Count(d => d.IsTrusted);
+            if (trustedDevices >= maxTrustedDevices)
+            {
+                throw new InvalidDomainOperationException(
+                    $"Maximum trusted devices limit ({maxTrustedDevices}) exceeded",
+                    IdentityErrorCodes.MaxTrustedDevicesExceeded);
+            }
+        }
+        
         Devices.Add(device);
         Touch();
     }
@@ -94,6 +122,88 @@ public class User : IdentityUser<Guid>
             Devices.Remove(device);
             Touch();
         }
+    }
+
+   
+    public void DeactivateInactiveDevices(TimeSpan inactivityThreshold)
+    {
+        var cutoffDate = DateTime.UtcNow - inactivityThreshold;
+        var inactiveDevices = Devices.Where(d => d.IsActive && d.LastLoginAt < cutoffDate).ToList();
+        
+        foreach (var device in inactiveDevices)
+        {
+            device.Deactivate();
+        }
+        
+        if (inactiveDevices.Any())
+            Touch();
+    }
+
+   
+    public void RemoveOldInactiveDevices(TimeSpan removalThreshold)
+    {
+        var cutoffDate = DateTime.UtcNow - removalThreshold;
+        var oldDevices = Devices.Where(d => !d.IsActive && d.LastLoginAt < cutoffDate).ToList();
+        
+        foreach (var device in oldDevices)
+        {
+            Devices.Remove(device);
+        }
+        
+        if (oldDevices.Any())
+            Touch();
+    }
+
+ 
+    public void TrustDevice(Guid deviceId, int maxTrustedDevices = 3)
+    {
+        var device = Devices.FirstOrDefault(d => d.Id == deviceId);
+        if (device == null)
+            throw new NotFoundException("Device not found", IdentityErrorCodes.DeviceNotFound);
+
+        if (!device.IsActive)
+            throw new InvalidDomainOperationException("Cannot trust inactive device", IdentityErrorCodes.DeviceInactive);
+
+       
+        var trustedDevices = Devices.Count(d => d.IsTrusted);
+        if (trustedDevices >= maxTrustedDevices)
+        {
+            throw new InvalidDomainOperationException(
+                $"Maximum trusted devices limit ({maxTrustedDevices}) exceeded",
+                IdentityErrorCodes.MaxTrustedDevicesExceeded);
+        }
+
+        device.MarkAsTrusted();
+        Touch();
+    }
+
+  
+    public void UntrustDevice(Guid deviceId)
+    {
+        var device = Devices.FirstOrDefault(d => d.Id == deviceId);
+        if (device == null)
+            throw new NotFoundException("Device not found", IdentityErrorCodes.DeviceNotFound);
+
+        device.MarkAsUntrusted();
+        Touch();
+    }
+
+   
+    public int GetActiveDeviceCount() => Devices.Count(d => d.IsActive);
+
+  
+    public int GetTrustedDeviceCount() => Devices.Count(d => d.IsTrusted);
+
+   
+    public UserDevice? GetDeviceByFingerprint(string fingerprint)
+    {
+        return Devices.FirstOrDefault(d => d.DeviceFingerprint == fingerprint);
+    }
+
+
+    public bool HasDeviceWithFingerprint(string fingerprint)
+    {
+        return Devices.Any(d => d.DeviceFingerprint == fingerprint);
     }
 
     // RefreshTokens

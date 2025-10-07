@@ -37,11 +37,14 @@ namespace DigiTekShop.Identity.Exceptions.Common
         public const string PERMISSION_ALREADY_GRANTED = "PERMISSION_ALREADY_GRANTED";
         public const string PERMISSION_NOT_GRANTED = "PERMISSION_NOT_GRANTED";
 
-        // Device Management
-        public const string DEVICE_NOT_FOUND = "DEVICE_NOT_FOUND";
-        public const string DEVICE_ALREADY_EXISTS = "DEVICE_ALREADY_EXISTS";
-        public const string DEVICE_ALREADY_TRUSTED = "DEVICE_ALREADY_TRUSTED";
-        public const string DEVICE_NOT_TRUSTED = "DEVICE_NOT_TRUSTED";
+        // Device Management Errors
+        public const string MaxActiveDevicesExceeded = "MAX_ACTIVE_DEVICES_EXCEEDED";
+        public const string MaxTrustedDevicesExceeded = "MAX_TRUSTED_DEVICES_EXCEEDED";
+        public const string DeviceNotFound = "DEVICE_NOT_FOUND";
+        public const string DeviceAlreadyExists = "DEVICE_ALREADY_EXISTS";
+        public const string DeviceInactive = "DEVICE_INACTIVE";
+        public const string DeviceNotTrusted = "DEVICE_NOT_TRUSTED";
+
 
         // Token Management
         public const string TOKEN_NOT_FOUND = "TOKEN_NOT_FOUND";

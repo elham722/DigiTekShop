@@ -8,6 +8,8 @@ using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Exceptions.Common;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Options;
+using DigiTekShop.SharedKernel.Exceptions.Common;
+using DigiTekShop.SharedKernel.Exceptions.Validation;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
@@ -21,6 +23,7 @@ public class JwtTokenService : IJwtTokenService
     private readonly UserManager<User> _userManager;
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly JwtSettings _jwtSettings;
+    private readonly DeviceLimitsSettings _deviceLimits;
     private readonly ILogger<JwtTokenService> _logger;
 
 
@@ -28,11 +31,13 @@ public class JwtTokenService : IJwtTokenService
         UserManager<User> userManager,
         DigiTekShopIdentityDbContext context,
         IOptions<JwtSettings> jwtOptions,
+        IOptions<DeviceLimitsSettings> deviceLimitsOptions,
         ILogger<JwtTokenService> logger)
     {
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _jwtSettings = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
+        _deviceLimits = deviceLimitsOptions?.Value ?? throw new ArgumentNullException(nameof(deviceLimitsOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -47,6 +52,9 @@ public class JwtTokenService : IJwtTokenService
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+
+        // مدیریت دستگاه‌ها
+        await ManageUserDeviceAsync(user, deviceId, ipAddress, userAgent, ct);
 
         var claims = await GetUserClaimsAsync(user);
 
@@ -76,6 +84,140 @@ public class JwtTokenService : IJwtTokenService
         return Result<TokenResponseDto>.Success(dto);
     }
 
+
+    #endregion
+
+    #region Device Management
+
+   
+    private async Task ManageUserDeviceAsync(User user, string? deviceId, string? ipAddress, string? userAgent, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(deviceId))
+            return;
+
+        if (_deviceLimits.AutoDeactivateInactiveDevices)
+        {
+            user.DeactivateInactiveDevices(_deviceLimits.DeviceInactivityThreshold);
+        }
+
+        var existingDevice = user.GetDeviceByFingerprint(deviceId);
+        
+        if (existingDevice != null)
+        {
+            existingDevice.UpdateLogin(DateTime.UtcNow);
+            existingDevice.UpdateDeviceInfo(deviceName: userAgent);
+        }
+        else
+        {
+            var deviceName = ExtractDeviceNameFromUserAgent(userAgent);
+            var newDevice = UserDevice.Create(
+                userId: user.Id,
+                deviceName: deviceName,
+                ipAddress: ipAddress ?? "Unknown",
+                fingerprint: deviceId,
+                browser: ExtractBrowserFromUserAgent(userAgent),
+                os: ExtractOSFromUserAgent(userAgent)
+            );
+
+          
+            if (_deviceLimits.DefaultTrustNewDevices)
+            {
+                newDevice.MarkAsTrusted();
+            }
+
+            try
+            {
+                user.AddDevice(newDevice, _deviceLimits.MaxActiveDevicesPerUser, _deviceLimits.MaxTrustedDevicesPerUser);
+                _context.UserDevices.Add(newDevice);
+            }
+            catch (InvalidDomainOperationException ex) when (ex.ErrorCode == IdentityErrorCodes.MaxActiveDevicesExceeded)
+            {
+                var oldestDevice = user.Devices
+                    .Where(d => d.IsActive)
+                    .OrderBy(d => d.LastLoginAt)
+                    .FirstOrDefault();
+
+                if (oldestDevice != null)
+                {
+                    oldestDevice.Deactivate();
+                    user.AddDevice(newDevice, _deviceLimits.MaxActiveDevicesPerUser, _deviceLimits.MaxTrustedDevicesPerUser);
+                    _context.UserDevices.Add(newDevice);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync(ct);
+    }
+
+  
+    private string ExtractDeviceNameFromUserAgent(string? userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent))
+            return "Unknown Device";
+
+        if (userAgent.Contains("Mobile") || userAgent.Contains("Android") || userAgent.Contains("iPhone"))
+            return "Mobile Device";
+        
+        if (userAgent.Contains("Windows"))
+            return "Windows Device";
+        
+        if (userAgent.Contains("Mac"))
+            return "Mac Device";
+        
+        if (userAgent.Contains("Linux"))
+            return "Linux Device";
+
+        return "Unknown Device";
+    }
+
+  
+    private string? ExtractBrowserFromUserAgent(string? userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent))
+            return null;
+
+        if (userAgent.Contains("Chrome"))
+            return "Chrome";
+        
+        if (userAgent.Contains("Firefox"))
+            return "Firefox";
+        
+        if (userAgent.Contains("Safari"))
+            return "Safari";
+        
+        if (userAgent.Contains("Edge"))
+            return "Edge";
+
+        return "Unknown Browser";
+    }
+
+ 
+    private string? ExtractOSFromUserAgent(string? userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent))
+            return null;
+
+        if (userAgent.Contains("Windows"))
+            return "Windows";
+        
+        if (userAgent.Contains("Mac"))
+            return "macOS";
+        
+        if (userAgent.Contains("Linux"))
+            return "Linux";
+        
+        if (userAgent.Contains("Android"))
+            return "Android";
+        
+        if (userAgent.Contains("iPhone") || userAgent.Contains("iPad"))
+            return "iOS";
+
+        return "Unknown OS";
+    }
 
     #endregion
 
@@ -143,7 +285,7 @@ public class JwtTokenService : IJwtTokenService
                 TokenType: "Bearer",
                 AccessToken: accessToken,
                 ExpiresIn: (int)(accessExpiresAt - now).TotalSeconds,
-                RefreshToken: newRefreshRaw,            // ✅ raw جدید
+                RefreshToken: newRefreshRaw,          
                 RefreshTokenExpiresAt: newRefreshExpiresAt
             );
 
@@ -168,7 +310,7 @@ public class JwtTokenService : IJwtTokenService
 
         var refreshHash = HashToken(refreshToken);
         var existing = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == refreshHash, ct);
-        if (existing == null) return Result.Success(); // idempotent: ناشناخته هم اوکی
+        if (existing == null) return Result.Success(); 
 
         if (!existing.IsRevoked)
         {
@@ -325,7 +467,7 @@ public class JwtTokenService : IJwtTokenService
         var roles = await _userManager.GetRolesAsync(user);
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
-        var uid = Guid.Parse(user.Id.ToString()); // اگر User.Id از جنس Guid است، Parse لازم نیست.
+        var uid = Guid.Parse(user.Id.ToString());
         var permissions = await _context.UserPermissions
             .Where(up => up.UserId == uid && up.IsGranted)
             .Select(up => up.Permission.Name)

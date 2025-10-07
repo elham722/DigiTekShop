@@ -65,6 +65,12 @@ public static class IdentityServicesRegistration
 
         #endregion
 
+        #region Device Limits Settings
+        services.Configure<DeviceLimitsSettings>(configuration.GetSection("DeviceLimits"));
+        services.AddSingleton(resolver =>
+            resolver.GetRequiredService<IOptions<DeviceLimitsSettings>>().Value);
+        #endregion
+
         #region Password Policy
         services.AddOptions<PasswordPolicyOptions>()
             .Bind(configuration.GetSection("PasswordPolicy"))
@@ -107,6 +113,9 @@ public static class IdentityServicesRegistration
 
         // Encryption Service for TOTP secrets
         services.AddScoped<IEncryptionService, EncryptionService>();
+
+        // Device Management Service
+        services.AddScoped<IDeviceManagementService, DeviceManagementService>();
 
         #endregion
 

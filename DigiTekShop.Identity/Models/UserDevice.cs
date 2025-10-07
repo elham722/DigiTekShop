@@ -64,5 +64,33 @@
             IsTrusted = false;
             TrustedAt = null;
         }
+
+       
+        public bool RequiresReVerification(TimeSpan trustExpirationThreshold)
+        {
+            if (!IsTrusted || !TrustedAt.HasValue)
+                return true;
+
+            return DateTime.UtcNow - TrustedAt.Value > trustExpirationThreshold;
+        }
+
+       
+        public bool IsInactive(TimeSpan inactivityThreshold)
+        {
+            return !IsActive || DateTime.UtcNow - LastLoginAt > inactivityThreshold;
+        }
+
+      
+        public void UpdateDeviceInfo(string? deviceName = null, string? browserInfo = null, string? operatingSystem = null)
+        {
+            if (!string.IsNullOrWhiteSpace(deviceName))
+                DeviceName = deviceName;
+            
+            if (!string.IsNullOrWhiteSpace(browserInfo))
+                BrowserInfo = browserInfo;
+            
+            if (!string.IsNullOrWhiteSpace(operatingSystem))
+                OperatingSystem = operatingSystem;
+        }
     }
 }

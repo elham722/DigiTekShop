@@ -35,10 +35,12 @@ namespace DigiTekShop.Identity.Exceptions.Common
             { IdentityErrorCodes.PERMISSION_NOT_GRANTED, "Permission is not granted." },
 
             // Device Management
-            { IdentityErrorCodes.DEVICE_NOT_FOUND, "Device not found." },
-            { IdentityErrorCodes.DEVICE_ALREADY_EXISTS, "Device already exists." },
-            { IdentityErrorCodes.DEVICE_ALREADY_TRUSTED, "Device is already trusted." },
-            { IdentityErrorCodes.DEVICE_NOT_TRUSTED, "Device is not trusted." },
+            { IdentityErrorCodes.DeviceNotFound, "Device not found." },
+            { IdentityErrorCodes.DeviceAlreadyExists, "Device already exists." },
+            { IdentityErrorCodes.DeviceInactive, "Device Inactive." },
+            { IdentityErrorCodes.DeviceNotTrusted, "Device is not trusted." },
+            { IdentityErrorCodes.MaxActiveDevicesExceeded, "Max Active Device exceeded." },
+            { IdentityErrorCodes.MaxTrustedDevicesExceeded, "Max trusted Device exceeded." },
 
             // Token Management
             { IdentityErrorCodes.TOKEN_NOT_FOUND, "Token not found." },
