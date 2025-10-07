@@ -38,85 +38,113 @@ public class JwtTokenService : IJwtTokenService
 
     #region Generate / Create tokens
 
-    public async Task<Result<TokenResponseDto>> GenerateTokensAsync(string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null)
+    public async Task<Result<TokenResponseDto>> GenerateTokensAsync(
+        string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default)
     {
         if (!Guid.TryParse(userId, out var userGuid))
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
         var user = await _userManager.FindByIdAsync(userId);
-        if (user == null) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+        if (user == null)
+            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
         var claims = await GetUserClaimsAsync(user);
-        var accessExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
-        // Create access token (with jti)
-        var (accessToken, jti) = CreateJwtToken(claims, accessExpires);
+        var now = DateTimeOffset.UtcNow;
+        var accessExpiresAt = now.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+        var (accessToken, jti) = CreateJwtToken(claims, accessExpiresAt.UtcDateTime);
 
-        // Create secure refresh token (raw)
+        // refresh (raw + hash)
         var refreshTokenRaw = GenerateRefreshToken();
-        var refreshExpires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays);
+        var refreshExpiresAt = now.AddDays(_jwtSettings.RefreshTokenExpirationDays);
         var refreshTokenHash = HashToken(refreshTokenRaw);
 
-        var refreshEntity = RefreshToken.Create(refreshTokenHash, refreshExpires, userGuid, deviceId, ipAddress, userAgent);
-    
+        var refreshEntity = RefreshToken.Create(refreshTokenHash, refreshExpiresAt.UtcDateTime, userGuid, deviceId, ipAddress, userAgent);
         _context.RefreshTokens.Add(refreshEntity);
-
         await _context.SaveChangesAsync();
 
-        var dto = new TokenResponseDto(accessToken, refreshTokenRaw,(int)(accessExpires - DateTime.UtcNow).TotalSeconds, refreshTokenHash, refreshExpires);
+        var dto = new TokenResponseDto(
+            TokenType: "Bearer",
+            AccessToken: accessToken,
+            ExpiresIn: (int)(accessExpiresAt - now).TotalSeconds,
+            RefreshToken: refreshTokenRaw,
+            RefreshTokenExpiresAt: refreshExpiresAt
+        );
+
         return Result<TokenResponseDto>.Success(dto);
     }
+
 
     #endregion
 
     #region Refresh / Rotation
 
-    public async Task<Result<TokenResponseDto>> RefreshTokensAsync(string refreshToken, string? deviceId = null, string? ipAddress = null, string? userAgent = null)
+    public async Task<Result<TokenResponseDto>> RefreshTokensAsync(
+      string refreshToken, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
 
         var refreshHash = HashToken(refreshToken);
 
-        // Find existing refresh token entry by hash
         var existing = await _context.RefreshTokens
-            .Where(rt => rt.TokenHash == refreshHash)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(rt => rt.TokenHash == refreshHash);
 
-        if (existing == null) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_NOT_FOUND));
-        if (existing.IsRevoked) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_REVOKED));
-        if (existing.ExpiresAt <= DateTime.UtcNow) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_EXPIRED));
+        if (existing == null)
+            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_NOT_FOUND));
+        if (existing.IsRevoked)
+            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_REVOKED));
+        if (existing.ExpiresAt <= DateTime.UtcNow)
+            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_EXPIRED));
 
-        // Load user
         var user = await _userManager.FindByIdAsync(existing.UserId.ToString());
-        if (user == null) return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+        if (user == null)
+            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
-        // Begin rotation transaction
-        using var tx = await _context.Database.BeginTransactionAsync();
+        await using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
-            // Mark existing token as rotated
-            existing.MarkAsRotated(refreshHash);
+            // revoke قدیمی + زنجیر کردن به جدید
             existing.Revoke("Token rotated");
-            _context.RefreshTokens.Update(existing);
 
-            // Create new refresh token with parent relationship
+            var now = DateTimeOffset.UtcNow;
+
+            // ایجاد refresh جدید (raw + hash)
             var newRefreshRaw = GenerateRefreshToken();
             var newRefreshHash = HashToken(newRefreshRaw);
-            var newRefresh = RefreshToken.Create(newRefreshHash, DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
-                existing.UserId, deviceId, ipAddress, userAgent, existing.TokenHash);
- 
+            var newRefreshExpiresAt = now.AddDays(_jwtSettings.RefreshTokenExpirationDays);
+
+            var newRefresh = RefreshToken.Create(
+                tokenHash: newRefreshHash,
+                expiresAt: newRefreshExpiresAt.UtcDateTime,
+                userId: existing.UserId,
+                deviceId: deviceId,
+                ip: ipAddress,
+                userAgent: userAgent,
+                parentTokenHash: existing.TokenHash 
+            );
+
+            existing.MarkAsRotated(newRefreshHash);
+
+            _context.RefreshTokens.Update(existing);
             _context.RefreshTokens.Add(newRefresh);
 
-            // Create new access token
+            // access جدید
             var claims = await GetUserClaimsAsync(user);
-            var accessExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
-            var (accessToken, jti) = CreateJwtToken(claims, accessExpires);
+            var accessExpiresAt = now.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+            var (accessToken, jti) = CreateJwtToken(claims, accessExpiresAt.UtcDateTime);
 
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
 
-            var dto = new TokenResponseDto(accessToken, accessToken, (int)(accessExpires - DateTime.UtcNow).TotalSeconds, newRefreshHash, accessExpires);
+            var dto = new TokenResponseDto(
+                TokenType: "Bearer",
+                AccessToken: accessToken,
+                ExpiresIn: (int)(accessExpiresAt - now).TotalSeconds,
+                RefreshToken: newRefreshRaw,            // ✅ raw جدید
+                RefreshTokenExpiresAt: newRefreshExpiresAt
+            );
+
             return Result<TokenResponseDto>.Success(dto);
         }
         catch (Exception ex)
@@ -131,25 +159,27 @@ public class JwtTokenService : IJwtTokenService
 
     #region Revoke
 
-    public async Task<Result> RevokeRefreshTokenAsync(string refreshToken, string? reason = null)
+    public async Task<Result> RevokeRefreshTokenAsync(string refreshToken, string? reason = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
             return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
 
         var refreshHash = HashToken(refreshToken);
         var existing = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == refreshHash);
-        if (existing == null) return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_NOT_FOUND));
+        if (existing == null) return Result.Success(); // idempotent: ناشناخته هم اوکی
 
-        if (existing.IsRevoked) return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
-
-        existing.Revoke("RevokedByUser");
-        _context.RefreshTokens.Update(existing);
-        await _context.SaveChangesAsync();
+        if (!existing.IsRevoked)
+        {
+            existing.Revoke(reason ?? "RevokedByUser");
+            _context.RefreshTokens.Update(existing);
+            await _context.SaveChangesAsync();
+        }
 
         return Result.Success();
     }
 
-    public async Task<Result> RevokeAllUserTokensAsync(string userId, string? reason = null)
+
+    public async Task<Result> RevokeAllUserTokensAsync(string userId, string? reason = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(userId)) return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
@@ -174,7 +204,7 @@ public class JwtTokenService : IJwtTokenService
 
     #region Validate Access Token
 
-    public async Task<Result<ClaimsPrincipal>> ValidateAccessTokenAsync(string accessToken)
+    public async Task<Result<ClaimsPrincipal>> ValidateAccessTokenAsync(string accessToken, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(accessToken)) return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
 
@@ -227,7 +257,7 @@ public class JwtTokenService : IJwtTokenService
         }
     }
 
-    private Task<bool> IsAccessTokenRevokedAsync(string jti)
+    private Task<bool> IsAccessTokenRevokedAsync(string jti, CancellationToken ct = default)
     {
         // Placeholder:
         // If you implement storing access-jti in DB, check it here (and check revoked flag).
@@ -282,31 +312,30 @@ public class JwtTokenService : IJwtTokenService
     {
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
-            new Claim(ClaimTypes.Email, user.Email ?? string.Empty)
+            new(JwtRegisteredClaimNames.Sub,            user.Id.ToString()),
+            new(JwtRegisteredClaimNames.UniqueName,     user.UserName ?? user.Email ?? string.Empty),
+            new(JwtRegisteredClaimNames.Email,          user.Email ?? string.Empty),
+            new(ClaimTypes.NameIdentifier,              user.Id.ToString()),
+            new(ClaimTypes.Name,                        user.UserName ?? string.Empty),
+            new(ClaimTypes.Email,                       user.Email ?? string.Empty)
         };
 
-        // Add roles
         var roles = await _userManager.GetRolesAsync(user);
-        foreach (var role in roles) claims.Add(new Claim(ClaimTypes.Role, role));
+        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
-        // Add permissions from your domain model if any (example)
+        var uid = Guid.Parse(user.Id.ToString()); // اگر User.Id از جنس Guid است، Parse لازم نیست.
         var permissions = await _context.UserPermissions
-            .Where(up => up.UserId == Guid.Parse(user.Id.ToString()) && up.IsGranted)
-            .Select(up => up.Permission)
-            .Select(p => p.Name)
+            .Where(up => up.UserId == uid && up.IsGranted)
+            .Select(up => up.Permission.Name)
             .ToListAsync();
 
         foreach (var p in permissions)
-        {
             claims.Add(new Claim("permission", p));
-        }
 
         return claims;
     }
 
-    public async Task<IEnumerable<UserTokenDto>> GetUserTokensAsync(string userId)
+    public async Task<IEnumerable<UserTokenDto>> GetUserTokensAsync(string userId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(userId)) return Enumerable.Empty<UserTokenDto>();
 
@@ -325,7 +354,7 @@ public class JwtTokenService : IJwtTokenService
             IpAddress: null));
     }
 
-    public async Task CleanupExpiredTokensAsync()
+    public async Task CleanupExpiredTokensAsync(CancellationToken ct = default)
     {
         var expired = await _context.RefreshTokens.Where(rt => rt.ExpiresAt <= DateTime.UtcNow).ToListAsync();
         if (!expired.Any()) return;
