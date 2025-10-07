@@ -16,6 +16,7 @@ namespace DigiTekShop.Identity.Exceptions.Common
         public const string USER_ALREADY_DELETED = "USER_ALREADY_DELETED";
         public const string USER_ALREADY_LINKED_TO_CUSTOMER = "USER_ALREADY_LINKED_TO_CUSTOMER";
         public const string USER_NOT_LINKED_TO_CUSTOMER = "USER_NOT_LINKED_TO_CUSTOMER";
+       
 
         // Authentication
         public const string INVALID_CREDENTIALS = "INVALID_CREDENTIALS";
