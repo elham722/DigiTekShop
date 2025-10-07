@@ -8,13 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.5" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.5" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.6" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.6" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DigiTekShop.Application\DigiTekShop.Application.csproj" />
+    <ProjectReference Include="..\DigiTekShop.Contracts\DigiTekShop.Contracts.csproj" />
     <ProjectReference Include="..\DigiTekShop.ExternalServices\DigiTekShop.ExternalServices.csproj" />
     <ProjectReference Include="..\DigiTekShop.Identity\DigiTekShop.Identity.csproj" />
     <ProjectReference Include="..\DigiTekShop.Infrastructure\DigiTekShop.Infrastructure.csproj" />
