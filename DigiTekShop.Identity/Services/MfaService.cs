@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Mfa;
+﻿using DigiTekShop.Contracts.DTOs.Auth.Mfa;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;

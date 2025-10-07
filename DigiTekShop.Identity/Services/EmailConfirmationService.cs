@@ -1,4 +1,3 @@
-using DigiTekShop.Contracts.DTOs.EmailConfirmation;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.SharedKernel.Results;
@@ -9,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text;
+using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 
 namespace DigiTekShop.Identity.Services;
 

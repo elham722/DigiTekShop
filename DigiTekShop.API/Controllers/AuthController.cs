@@ -1,10 +1,9 @@
-
-using DigiTekShop.Contracts.DTOs.Register;
 using DigiTekShop.Identity.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using DigiTekShop.Contracts.DTOs.PhoneVerification;
-using DigiTekShop.Identity.Options; // PasswordPolicyOptions
+using DigiTekShop.Identity.Options;
+using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
+using DigiTekShop.Contracts.DTOs.Auth.Register; // PasswordPolicyOptions
 
 namespace DigiTekShop.API.Controllers;
 
@@ -41,10 +40,10 @@ public class AuthController : ControllerBase
     /// <response code="400">Invalid request or validation failed</response>
     /// <response code="429">Rate limit exceeded</response>
     [HttpPost("register")]
-    [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
     {
         try
         {

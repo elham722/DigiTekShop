@@ -1,5 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.PhoneVerification;
-using DigiTekShop.Contracts.Interfaces.Caching;
+﻿using DigiTekShop.Contracts.Interfaces.Caching;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.SharedKernel.Results;
 using DigiTekShop.SharedKernel.Guards;
@@ -7,8 +6,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text.RegularExpressions;
-using DigiTekShop.Contracts.DTOs.Register;
-using Microsoft.EntityFrameworkCore; 
+using Microsoft.EntityFrameworkCore;
+using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
+using DigiTekShop.Contracts.DTOs.Auth.Register;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -42,14 +42,14 @@ public class RegistrationService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<Result<RegisterResponse>> RegisterAsync(RegisterRequest request, string? ipAddress = null)
+    public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, string? ipAddress = null)
     {
         try
         {
             // 1) Validate (بدون Exception)
             var validationResult = ValidateRegistrationRequest(request);
             if (validationResult.IsFailure)
-                return Result<RegisterResponse>.Failure(validationResult.Errors);
+                return Result<RegisterResponseDto>.Failure(validationResult.Errors);
 
             var normalizedEmail = request.Email.Trim().ToLowerInvariant();
             var normalizedEmailUpper = normalizedEmail.ToUpperInvariant();
@@ -57,7 +57,7 @@ public class RegistrationService
             // 2) Rate limit (با تگ ثابت)
             var rateLimitResult = await CheckRateLimitsAsync(normalizedEmail, ipAddress);
             if (rateLimitResult.IsFailure)
-                return Result<RegisterResponse>.Failure(rateLimitResult.Errors);
+                return Result<RegisterResponseDto>.Failure(rateLimitResult.Errors);
 
             // 3) جلوگیری از ثبت‌نام حتی اگر کاربر Soft-Deleted باشد
             var existsAny = await _context.Users
@@ -67,7 +67,7 @@ public class RegistrationService
             if (existsAny)
             {
                 _logger.LogWarning("Registration attempt with existing (any-state) email: {Email}", normalizedEmail);
-                return Result<RegisterResponse>.Failure("Email already registered.");
+                return Result<RegisterResponseDto>.Failure("Email already registered.");
             }
 
             // 4) Create user
@@ -82,7 +82,7 @@ public class RegistrationService
                 var errors = createResult.Errors.Select(e => e.Description);
                 _logger.LogWarning("User creation failed for email {Email}. Errors: {Errors}",
                     normalizedEmail, string.Join(", ", errors));
-                return Result<RegisterResponse>.Failure($"Registration failed: {string.Join(", ", errors)}");
+                return Result<RegisterResponseDto>.Failure($"Registration failed: {string.Join(", ", errors)}");
             }
 
             // 5) Email confirmation
@@ -120,7 +120,7 @@ public class RegistrationService
                 }
             }
 
-            var response = new RegisterResponse(
+            var response = new RegisterResponseDto(
                 UserId: user.Id,
                 RequireEmailConfirmation: true,
                 EmailSent: emailSent,
@@ -131,18 +131,18 @@ public class RegistrationService
             _logger.LogInformation("User {UserId} registered. EmailSent={EmailSent}, PhoneCodeSent={PhoneCodeSent}",
                 user.Id, emailSent, phoneCodeSent);
 
-            return Result<RegisterResponse>.Success(response);
+            return Result<RegisterResponseDto>.Success(response);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error during registration for email {Email}", request.Email);
-            return Result<RegisterResponse>.Failure("An unexpected error occurred during registration.");
+            return Result<RegisterResponseDto>.Failure("An unexpected error occurred during registration.");
         }
     }
 
     #region Private Helpers
 
-    private Result ValidateRegistrationRequest(RegisterRequest request)
+    private Result ValidateRegistrationRequest(RegisterRequestDto request)
     {
         var errors = new List<string>();
 

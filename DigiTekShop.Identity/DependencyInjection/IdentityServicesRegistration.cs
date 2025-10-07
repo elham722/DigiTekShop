@@ -1,7 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.EmailConfirmation;
-using DigiTekShop.Contracts.DTOs.EmailSender;
-using DigiTekShop.Contracts.DTOs.JwtSettings;
-using DigiTekShop.Contracts.DTOs.PhoneVerification;
+﻿
 using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
 using DigiTekShop.Contracts.Interfaces.Identity;
 using DigiTekShop.Identity.Options;
@@ -14,7 +11,10 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
-using DigiTekShop.Contracts.DTOs.ResetPassword;
+using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+using DigiTekShop.Contracts.DTOs.Auth.JwtSettings;
+using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
+using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 

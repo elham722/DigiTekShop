@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using System.Text;
-using DigiTekShop.Contracts.DTOs.ResetPassword;
+using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
 
 namespace DigiTekShop.Identity.Services;
 

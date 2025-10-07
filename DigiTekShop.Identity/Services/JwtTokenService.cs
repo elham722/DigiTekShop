@@ -3,7 +3,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using DigiTekShop.Contracts.DTOs.JwtSettings;
+using DigiTekShop.Contracts.DTOs.Auth.JwtSettings;
+using DigiTekShop.Contracts.DTOs.Auth.Token;
 using DigiTekShop.Contracts.Interfaces.Identity;
 using DigiTekShop.Identity.Exceptions.Common;
 using DigiTekShop.Identity.Models;
@@ -62,7 +63,7 @@ public class JwtTokenService : IJwtTokenService
 
         await _context.SaveChangesAsync();
 
-        var dto = new TokenResponseDto(accessToken, (int)(accessExpires - DateTime.UtcNow).TotalSeconds, refreshTokenRaw, refreshExpires);
+        var dto = new TokenResponseDto(accessToken, refreshTokenRaw,(int)(accessExpires - DateTime.UtcNow).TotalSeconds, refreshTokenHash, refreshExpires);
         return Result<TokenResponseDto>.Success(dto);
     }
 
@@ -115,7 +116,7 @@ public class JwtTokenService : IJwtTokenService
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
 
-            var dto = new TokenResponseDto(accessToken, (int)(accessExpires - DateTime.UtcNow).TotalSeconds, newRefreshRaw, newRefresh.ExpiresAt);
+            var dto = new TokenResponseDto(accessToken, accessToken, (int)(accessExpires - DateTime.UtcNow).TotalSeconds, newRefreshHash, accessExpires);
             return Result<TokenResponseDto>.Success(dto);
         }
         catch (Exception ex)

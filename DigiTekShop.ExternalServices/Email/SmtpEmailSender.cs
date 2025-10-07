@@ -1,4 +1,3 @@
-using DigiTekShop.Contracts.DTOs.EmailSender;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.Extensions.Logging;
@@ -6,6 +5,7 @@ using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Mail;
 using DigiTekShop.SharedKernel.Guards;
+using DigiTekShop.Contracts.DTOs.Auth.EmailSender;
 
 namespace DigiTekShop.ExternalServices.Email;
 

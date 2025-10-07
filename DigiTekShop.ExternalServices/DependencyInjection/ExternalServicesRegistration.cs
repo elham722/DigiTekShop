@@ -1,6 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.EmailConfirmation;
-using DigiTekShop.Contracts.DTOs.EmailSender;
-using DigiTekShop.Contracts.DTOs.PhoneVerification;
+﻿
 using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
 using DigiTekShop.ExternalServices.Email;
@@ -16,6 +14,7 @@ using DigiTekShop.ExternalServices.Sms.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using DigiTekShop.Contracts.DTOs.Auth.EmailSender;
 
 
 namespace DigiTekShop.ExternalServices.DependencyInjection

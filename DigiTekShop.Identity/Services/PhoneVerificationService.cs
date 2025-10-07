@@ -1,4 +1,3 @@
-using DigiTekShop.Contracts.DTOs.PhoneVerification;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.SharedKernel.Results;
@@ -8,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DigiTekShop.Contracts.Interfaces.Caching;
+using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
 
 namespace DigiTekShop.Identity.Services;
 
