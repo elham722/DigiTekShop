@@ -28,8 +28,23 @@ namespace DigiTekShop.Identity.Configurations
             builder.Property(x => x.ExpiresAt)
                 .IsRequired();
 
+            builder.Property(x => x.AttemptCount)
+                .HasDefaultValue(0);
+
+            builder.Property(x => x.LastAttemptAt)
+                .IsRequired(false);
+
+            builder.Property(x => x.ThrottleUntil)
+                .IsRequired(false);
+
             builder.HasIndex(x => new { x.UserId, x.ExpiresAt });
             builder.HasIndex(x => x.TokenHash).IsUnique();
+            
+            builder.HasIndex(x => new { x.UserId, x.IsUsed, x.ExpiresAt })
+                   .HasDatabaseName("IX_PasswordResetTokens_User_Active");
+            
+            builder.HasIndex(x => new { x.UserId, x.ThrottleUntil })
+                   .HasDatabaseName("IX_PasswordResetTokens_User_Throttle");
 
             builder.HasOne(x => x.User)
                 .WithMany(u => u.PasswordResetTokens) 

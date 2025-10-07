@@ -101,6 +101,16 @@ public sealed class PasswordResetService : IPasswordService
                 return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_RESET_TOKEN),
                                       IdentityErrorCodes.INVALID_RESET_TOKEN);
 
+            if (storedToken.IsThrottled)
+            {
+                storedToken.RecordFailedAttempt(); 
+                _context.PasswordResetTokens.Update(storedToken);
+                await _context.SaveChangesAsync(ct);
+                
+                return Result.Failure("Too many failed attempts. Please try again later.",
+                                      IdentityErrorCodes.PASSWORD_RESET_COOLDOWN_ACTIVE);
+            }
+
 
             var reused = await _passwordHistory.ExistsInHistoryAsync(
                 user.Id, request.NewPassword, maxToCheck: 5, ct: ct);
@@ -111,6 +121,11 @@ public sealed class PasswordResetService : IPasswordService
             var identityRes = await _userManager.ResetPasswordAsync(user, decodedToken, request.NewPassword);
             if (!identityRes.Succeeded)
             {
+               
+                storedToken.RecordFailedAttempt(maxAttempts: 3, TimeSpan.FromMinutes(15));
+                _context.PasswordResetTokens.Update(storedToken);
+                await _context.SaveChangesAsync(ct);
+
                 var errors = identityRes.Errors.Select(e => e.Description);
                 _logger.LogWarning("Password reset failed for user {UserId}. Errors: {Errors}", userId, string.Join(", ", errors));
                 return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.PASSWORD_RESET_FAILED),
@@ -222,6 +237,8 @@ public sealed class PasswordResetService : IPasswordService
             }
 
             var identityToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            await InvalidateActiveResetTokensAsync(user.Id, ct);
 
             var tokenHash = HashToken(identityToken);
             var tokenExpires = DateTime.UtcNow.AddMinutes(_settings.TokenValidityMinutes);
@@ -346,6 +363,29 @@ public sealed class PasswordResetService : IPasswordService
         }
     }
 
+    private async Task InvalidateActiveResetTokensAsync(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            var activeTokens = await _context.PasswordResetTokens
+                .Where(prt => prt.UserId == userId && !prt.IsUsed && !prt.IsExpired)
+                .ToListAsync(ct);
+
+            foreach (var token in activeTokens)
+                token.MarkAsUsed("Invalidated by new reset request");
+
+            if (activeTokens.Any())
+            {
+                _context.PasswordResetTokens.UpdateRange(activeTokens);
+                _logger.LogInformation("Invalidated {Count} active reset tokens for user {UserId}", activeTokens.Count, userId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to invalidate active reset tokens for user {UserId}", userId);
+        }
+    }
+
     private async Task InvalidateUserResetTokens(Guid userId, CancellationToken ct)
     {
         try
@@ -364,6 +404,56 @@ public sealed class PasswordResetService : IPasswordService
         {
             _logger.LogWarning(ex, "Failed to invalidate reset tokens for user {UserId}", userId);
         }
+    }
+
+ 
+    public async Task<int> CleanupExpiredThrottlesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var expiredThrottles = await _context.PasswordResetTokens
+                .Where(prt => prt.ThrottleUntil.HasValue && prt.ThrottleUntil.Value <= DateTime.UtcNow)
+                .ToListAsync(ct);
+
+            foreach (var token in expiredThrottles)
+            {
+                token.ClearThrottle();
+            }
+
+            if (expiredThrottles.Any())
+            {
+                _context.PasswordResetTokens.UpdateRange(expiredThrottles);
+                await _context.SaveChangesAsync(ct);
+                _logger.LogInformation("Cleaned up {Count} expired throttles", expiredThrottles.Count);
+            }
+
+            return expiredThrottles.Count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cleaning up expired throttles");
+            return 0;
+        }
+    }
+
+    public async Task<PasswordResetThrottleStatus> GetThrottleStatusAsync(Guid userId, CancellationToken ct = default)
+    {
+        var activeTokens = await _context.PasswordResetTokens
+            .Where(prt => prt.UserId == userId && !prt.IsUsed && !prt.IsExpired)
+            .OrderByDescending(prt => prt.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        if (activeTokens == null)
+            return new PasswordResetThrottleStatus { HasActiveToken = false };
+
+        return new PasswordResetThrottleStatus
+        {
+            HasActiveToken = true,
+            IsThrottled = activeTokens.IsThrottled,
+            AttemptCount = activeTokens.AttemptCount,
+            ThrottleUntil = activeTokens.ThrottleUntil,
+            LastAttemptAt = activeTokens.LastAttemptAt
+        };
     }
 
     private string HashToken(string token)

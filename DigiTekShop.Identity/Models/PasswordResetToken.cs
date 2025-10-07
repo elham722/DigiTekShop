@@ -15,6 +15,11 @@ public class PasswordResetToken
     public string? IpAddress { get; private set; }
     public string? UserAgent { get; private set; }
 
+    // Throttle fields
+    public int AttemptCount { get; private set; } = 0;
+    public DateTime? LastAttemptAt { get; private set; }
+    public DateTime? ThrottleUntil { get; private set; }
+
     // Navigation property
     public User User { get; private set; } = default!;
 
@@ -51,6 +56,30 @@ public class PasswordResetToken
             IpAddress = ipAddress;
     }
 
-    public bool IsValid => !IsUsed && !IsExpired;
+   
+    public void RecordFailedAttempt(int maxAttempts = 3, TimeSpan throttleDuration = default)
+    {
+        if (IsUsed || IsExpired) return;
+
+        AttemptCount++;
+        LastAttemptAt = DateTime.UtcNow;
+
+        if (AttemptCount >= maxAttempts)
+        {
+            ThrottleUntil = DateTime.UtcNow.Add(throttleDuration == default ? TimeSpan.FromMinutes(15) : throttleDuration);
+        }
+    }
+
+    public void ClearThrottle()
+    {
+        ThrottleUntil = null;
+        AttemptCount = 0;
+        LastAttemptAt = null;
+    }
+
+  
+    public bool IsThrottled => ThrottleUntil.HasValue && DateTime.UtcNow < ThrottleUntil.Value;
+
+    public bool IsValid => !IsUsed && !IsExpired && !IsThrottled;
     public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
 }
