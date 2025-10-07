@@ -2,8 +2,15 @@
 using DigiTekShop.Identity.DependencyInjection;
 using DigiTekShop.Infrastructure.DependencyInjection;
 using Microsoft.OpenApi.Models;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog
+builder.Host.UseSerilog((ctx, lc) => lc
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("App", "DigiTekShop.API"));
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -40,6 +47,8 @@ builder.Services.AddHttpsRedirection(options =>
 });
 
 var app = builder.Build();
+
+app.UseSerilogRequestLogging();
 
 // فقط در Production
 if (app.Environment.IsProduction())
