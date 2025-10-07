@@ -98,6 +98,8 @@ public static class IdentityServicesRegistration
         // MFA Service
         services.AddScoped<MfaService>();
 
+        // Registration Service
+        services.AddScoped<RegistrationService>();
 
         return services;
     }
