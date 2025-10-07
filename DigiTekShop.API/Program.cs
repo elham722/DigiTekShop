@@ -1,4 +1,5 @@
-﻿using DigiTekShop.ExternalServices.DependencyInjection;
+﻿using DigiTekShop.API.Errors;
+using DigiTekShop.ExternalServices.DependencyInjection;
 using DigiTekShop.Identity.DependencyInjection;
 using DigiTekShop.Infrastructure.DependencyInjection;
 using Microsoft.OpenApi.Models;
@@ -45,8 +46,13 @@ builder.Services.AddHttpsRedirection(options =>
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
     options.HttpsPort = 7055; // دقیقاً همونی که در launchSettings نوشتی
 });
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 
 var app = builder.Build();
+
+app.UseExceptionHandler(); 
+
 
 app.UseSerilogRequestLogging();
 
