@@ -8,6 +8,8 @@ using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Exceptions.Common;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Options;
+using DigiTekShop.Identity.Options.Security;
+using DigiTekShop.SharedKernel.Enums;
 using DigiTekShop.SharedKernel.Exceptions.Common;
 using DigiTekShop.SharedKernel.Exceptions.Validation;
 using DigiTekShop.SharedKernel.Results;
@@ -24,6 +26,8 @@ public class JwtTokenService : IJwtTokenService
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly JwtSettings _jwtSettings;
     private readonly DeviceLimitsSettings _deviceLimits;
+    private readonly SecuritySettings _securitySettings;
+    private readonly ISecurityEventService _securityEventService;
     private readonly ILogger<JwtTokenService> _logger;
 
 
@@ -32,12 +36,16 @@ public class JwtTokenService : IJwtTokenService
         DigiTekShopIdentityDbContext context,
         IOptions<JwtSettings> jwtOptions,
         IOptions<DeviceLimitsSettings> deviceLimitsOptions,
+        IOptions<SecuritySettings> securitySettings,
+        ISecurityEventService securityEventService,
         ILogger<JwtTokenService> logger)
     {
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _jwtSettings = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
         _deviceLimits = deviceLimitsOptions?.Value ?? throw new ArgumentNullException(nameof(deviceLimitsOptions));
+        _securitySettings = securitySettings?.Value ?? throw new ArgumentNullException(nameof(securitySettings));
+        _securityEventService = securityEventService ?? throw new ArgumentNullException(nameof(securityEventService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -127,8 +135,31 @@ public class JwtTokenService : IJwtTokenService
                 os: ExtractOSFromUserAgent(userAgent)
             );
 
-          
-            if (_deviceLimits.DefaultTrustNewDevices)
+            
+            if (_securitySettings.StepUp.Enabled && _securitySettings.StepUp.RequiredForNewDevices)
+            {
+                
+                newDevice.MarkAsUntrusted();
+                
+                _logger.LogInformation("New device detected for user {UserId}, Step-Up MFA required", user.Id);
+                
+                
+                await _securityEventService.RecordSecurityEventAsync(
+                    SecurityEventType.StepUpMfaRequired,
+                    metadata: new 
+                    { 
+                        DeviceId = deviceId,
+                        DeviceName = deviceName,
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent,
+                        Reason = "New device detected - Step-Up MFA required"
+                    },
+                    userId: user.Id,
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    deviceId: deviceId);
+            }
+            else if (_deviceLimits.DefaultTrustNewDevices)
             {
                 newDevice.MarkAsTrusted();
             }
@@ -375,6 +406,19 @@ public class JwtTokenService : IJwtTokenService
                 _logger.LogWarning("Potential token leak detected: Token {TokenId} is not the latest active token for user {UserId} device {DeviceId}", 
                     token.Id, token.UserId, token.DeviceId);
 
+                
+                await _securityEventService.RecordSecurityEventAsync(
+                    SecurityEventType.RefreshTokenAnomaly,
+                    metadata: new 
+                    { 
+                        TokenId = token.Id,
+                        LatestTokenId = latestActiveToken.Id,
+                        DeviceId = token.DeviceId,
+                        Reason = "Token rotation violation - not latest active token"
+                    },
+                    userId: token.UserId,
+                    deviceId: token.DeviceId);
+
                 await RevokeActiveTokensForDeviceAsync(token.UserId, token.DeviceId ?? "unknown", "Potential token leak detected", ct);
                 
                 throw new InvalidOperationException("Token rotation security violation detected");
@@ -391,6 +435,19 @@ public class JwtTokenService : IJwtTokenService
             {
                 _logger.LogWarning("Potential token replay attack: Token {TokenId} has used parent token {ParentTokenId}", 
                     token.Id, parentToken.Id);
+
+                await _securityEventService.RecordSecurityEventAsync(
+                    SecurityEventType.TokenReplay,
+                    metadata: new 
+                    { 
+                        TokenId = token.Id,
+                        ParentTokenId = parentToken.Id,
+                        ParentTokenUsageCount = parentToken.UsageCount,
+                        DeviceId = token.DeviceId,
+                        Reason = "Parent token already used - potential replay attack"
+                    },
+                    userId: token.UserId,
+                    deviceId: token.DeviceId);
 
                 await RevokeTokenChainAsync(token, "Potential replay attack detected", ct);
                 

@@ -14,6 +14,7 @@ using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options.PhoneVerification;
 using DigiTekShop.Identity.Services.Auth;
 using DigiTekShop.Identity.Services.Tokens;
+using DigiTekShop.Identity.Options.Security;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 
@@ -69,6 +70,12 @@ public static class IdentityServicesRegistration
         services.Configure<DeviceLimitsSettings>(configuration.GetSection("DeviceLimits"));
         services.AddSingleton(resolver =>
             resolver.GetRequiredService<IOptions<DeviceLimitsSettings>>().Value);
+        #endregion
+
+        #region Security Settings
+        services.Configure<SecuritySettings>(configuration.GetSection("Security"));
+        services.AddSingleton(resolver =>
+            resolver.GetRequiredService<IOptions<SecuritySettings>>().Value);
         #endregion
 
         #region Password Policy

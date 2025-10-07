@@ -1,5 +1,6 @@
 namespace DigiTekShop.SharedKernel.Enums;
 
+
 public enum SecurityEventType
 {
     // Authentication Events
@@ -53,5 +54,10 @@ public enum SecurityEventType
     // Rate Limiting Events
     RateLimitExceeded,
     BruteForceAttempt,
-    SuspiciousActivity
+    SuspiciousActivity,
+    
+    // Step-Up Authentication Events
+    StepUpMfaRequired,
+    StepUpMfaFailed,
+    StepUpMfaCompleted
 }
