@@ -22,12 +22,12 @@ public sealed class LockoutService : ILockoutService
 
         var prevEnd = await _userManager.GetLockoutEndDateAsync(user);
 
-        // حتماً LockoutEnabled روشن باشد
         if (!await _userManager.GetLockoutEnabledAsync(user))
             await _userManager.SetLockoutEnabledAsync(user, true);
 
-        var end = req.LockoutEnd ?? DateTimeOffset.UtcNow.AddMinutes(15); // پیش‌فرض
-        var setRes = await _userManager.SetLockoutEndDateAsync(user, end);
+
+        var end = req.LockoutEnd ?? DateTimeOffset.UtcNow.AddMinutes(15); 
+        var setRes = await _userManager.SetLockoutEndDateAsync(user, null);
         if (!setRes.Succeeded)
             return Result<LockUserResponseDto>.Failure(setRes.Errors.Select(e => e.Description));
 
@@ -43,12 +43,12 @@ public sealed class LockoutService : ILockoutService
         var user = await _userManager.FindByIdAsync(req.UserId);
         if (user is null) return Result<UnlockUserResponseDto>.Failure("User not found");
 
-        // پایان Lockout را به گذشته ببر
+       
         var setRes = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow);
         if (!setRes.Succeeded)
             return Result<UnlockUserResponseDto>.Failure(setRes.Errors.Select(e => e.Description));
 
-        // شمارنده‌ی شکست‌ها را ریست کن
+      
         await _userManager.ResetAccessFailedCountAsync(user);
 
         var end = await _userManager.GetLockoutEndDateAsync(user);

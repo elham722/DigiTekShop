@@ -1,16 +1,12 @@
 using System.Security.Cryptography;
+using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 
 namespace DigiTekShop.Identity.Services;
 
-public interface IEncryptionService
-{
-    string Encrypt(string plainText);
 
-    string Decrypt(string encryptedText);
-}
 
 public class EncryptionService : IEncryptionService
 {

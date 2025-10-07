@@ -91,12 +91,12 @@ public static class IdentityServicesRegistration
         services.Configure<PasswordResetSettings>(configuration.GetSection("PasswordReset"));
         services.AddScoped<IPasswordService, PasswordResetService>();    
 
-        services.AddScoped<ITwoFactorService, TwoFactorService>();         // یا MfaService اگر همینو public می‌کنی
+        services.AddScoped<ITwoFactorService, TwoFactorService>();    
         services.AddScoped<ILockoutService, LockoutService>();
 
         // Email Confirmation settings + service
         services.Configure<EmailConfirmationSettings>(configuration.GetSection("EmailConfirmation"));
-        services.AddScoped<EmailConfirmationService>();
+        services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
 
         // Phone Verification settings + service
         services.Configure<PhoneVerificationSettings>(configuration.GetSection("PhoneVerification"));

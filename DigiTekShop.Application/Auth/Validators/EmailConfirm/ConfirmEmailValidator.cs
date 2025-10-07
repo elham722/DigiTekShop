@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 
-namespace DigiTekShop.Application.Auth.Validators
+namespace DigiTekShop.Application.Auth.Validators.EmailConfirm
 {
     public sealed class ConfirmEmailValidator : AbstractValidator<ConfirmEmailRequestDto>
     {

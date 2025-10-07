@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DigiTekShop.Application.Auth.Validators
+namespace DigiTekShop.Application.Auth.Validators.Lock
 {
     public sealed class UnlockUserValidator : AbstractValidator<UnlockUserRequestDto>
     {
