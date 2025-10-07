@@ -53,8 +53,10 @@ public class JwtTokenService : IJwtTokenService
         if (user == null)
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
-        // مدیریت دستگاه‌ها
         await ManageUserDeviceAsync(user, deviceId, ipAddress, userAgent, ct);
+
+       
+        await CleanupExpiredTokensAsync(ct);
 
         var claims = await GetUserClaimsAsync(user);
 
@@ -66,6 +68,12 @@ public class JwtTokenService : IJwtTokenService
         var refreshTokenRaw = GenerateRefreshToken();
         var refreshExpiresAt = now.AddDays(_jwtSettings.RefreshTokenExpirationDays);
         var refreshTokenHash = HashToken(refreshTokenRaw);
+
+        // Revoke existing active tokens for the same user+device
+        if (!string.IsNullOrWhiteSpace(deviceId))
+        {
+            await RevokeActiveTokensForDeviceAsync(userGuid, deviceId, "New token created", ct);
+        }
 
         var refreshEntity = RefreshToken.Create(
             refreshTokenHash, refreshExpiresAt.UtcDateTime, userGuid, deviceId, ip: ipAddress, userAgent: userAgent);
@@ -248,12 +256,16 @@ public class JwtTokenService : IJwtTokenService
         await using var tx = await _context.Database.BeginTransactionAsync(ct);
         try
         {
-            // revoke قدیمی + زنجیر کردن به جدید
+           
+            await ValidateTokenRotationSecurityAsync(existing, ct);
+
+           
+            existing.MarkAsUsed();
+
             existing.Revoke("Token rotated");
 
             var now = DateTimeOffset.UtcNow;
 
-            // ایجاد refresh جدید (raw + hash)
             var newRefreshRaw = GenerateRefreshToken();
             var newRefreshHash = HashToken(newRefreshRaw);
             var newRefreshExpiresAt = now.AddDays(_jwtSettings.RefreshTokenExpirationDays);
@@ -296,6 +308,131 @@ public class JwtTokenService : IJwtTokenService
             await tx.RollbackAsync(ct);
             _logger.LogError(ex, "Error rotating refresh token");
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+        }
+    }
+
+    #endregion
+
+    #region Device Token Management
+
+ 
+    private async Task RevokeActiveTokensForDeviceAsync(Guid userId, string deviceId, string reason, CancellationToken ct = default)
+    {
+        var activeTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == userId && 
+                        rt.DeviceId == deviceId && 
+                        !rt.IsRevoked && 
+                        rt.ExpiresAt > DateTime.UtcNow)
+            .ToListAsync(ct);
+
+        foreach (var token in activeTokens)
+        {
+            token.Revoke(reason);
+        }
+
+        if (activeTokens.Any())
+        {
+            _context.RefreshTokens.UpdateRange(activeTokens);
+            _logger.LogInformation("Revoked {Count} active tokens for user {UserId} device {DeviceId}", 
+                activeTokens.Count, userId, deviceId);
+        }
+    }
+
+    public async Task CleanupExpiredTokensAsync(CancellationToken ct = default)
+    {
+        var expiredTokens = await _context.RefreshTokens
+            .Where(rt => rt.ExpiresAt <= DateTime.UtcNow && !rt.IsRevoked)
+            .ToListAsync(ct);
+
+        foreach (var token in expiredTokens)
+        {
+            token.Revoke("Token expired");
+        }
+
+        if (expiredTokens.Any())
+        {
+            _context.RefreshTokens.UpdateRange(expiredTokens);
+            await _context.SaveChangesAsync(ct);
+            _logger.LogInformation("Cleaned up {Count} expired tokens", expiredTokens.Count);
+        }
+    }
+
+    private async Task ValidateTokenRotationSecurityAsync(RefreshToken token, CancellationToken ct = default)
+    {
+        if (token.UsageCount > 0)
+        {
+            var latestActiveToken = await _context.RefreshTokens
+                .Where(rt => rt.UserId == token.UserId && 
+                           rt.DeviceId == token.DeviceId && 
+                           !rt.IsRevoked && 
+                           rt.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(rt => rt.CreatedAt)
+                .FirstOrDefaultAsync(ct);
+
+            
+            if (latestActiveToken != null && latestActiveToken.Id != token.Id)
+            {
+                _logger.LogWarning("Potential token leak detected: Token {TokenId} is not the latest active token for user {UserId} device {DeviceId}", 
+                    token.Id, token.UserId, token.DeviceId);
+
+                await RevokeActiveTokensForDeviceAsync(token.UserId, token.DeviceId ?? "unknown", "Potential token leak detected", ct);
+                
+                throw new InvalidOperationException("Token rotation security violation detected");
+            }
+        }
+
+        
+        if (!string.IsNullOrEmpty(token.ParentTokenHash))
+        {
+            var parentToken = await _context.RefreshTokens
+                .FirstOrDefaultAsync(rt => rt.TokenHash == token.ParentTokenHash, ct);
+
+            if (parentToken != null && parentToken.UsageCount > 0)
+            {
+                _logger.LogWarning("Potential token replay attack: Token {TokenId} has used parent token {ParentTokenId}", 
+                    token.Id, parentToken.Id);
+
+                await RevokeTokenChainAsync(token, "Potential replay attack detected", ct);
+                
+                throw new InvalidOperationException("Token replay attack detected");
+            }
+        }
+    }
+
+    
+    private async Task RevokeTokenChainAsync(RefreshToken token, string reason, CancellationToken ct = default)
+    {
+        var tokensToRevoke = new List<RefreshToken> { token };
+
+        
+        var childTokens = await _context.RefreshTokens
+            .Where(rt => rt.ParentTokenHash == token.TokenHash && !rt.IsRevoked)
+            .ToListAsync(ct);
+
+        tokensToRevoke.AddRange(childTokens);
+
+      
+        if (!string.IsNullOrEmpty(token.ParentTokenHash))
+        {
+            var parentToken = await _context.RefreshTokens
+                .FirstOrDefaultAsync(rt => rt.TokenHash == token.ParentTokenHash && !rt.IsRevoked, ct);
+            
+            if (parentToken != null)
+            {
+                tokensToRevoke.Add(parentToken);
+            }
+        }
+
+        foreach (var t in tokensToRevoke)
+        {
+            t.Revoke(reason);
+        }
+
+        if (tokensToRevoke.Any())
+        {
+            _context.RefreshTokens.UpdateRange(tokensToRevoke);
+            await _context.SaveChangesAsync(ct);
+            _logger.LogInformation("Revoked token chain with {Count} tokens for security violation", tokensToRevoke.Count);
         }
     }
 
@@ -500,17 +637,6 @@ public class JwtTokenService : IJwtTokenService
     }
 
 
-    public async Task CleanupExpiredTokensAsync(CancellationToken ct = default)
-    {
-        var expired = await _context.RefreshTokens
-            .Where(rt => rt.ExpiresAt <= DateTime.UtcNow)
-            .ToListAsync(ct);
-
-        if (expired.Count == 0) return;
-
-        _context.RefreshTokens.RemoveRange(expired);
-        await _context.SaveChangesAsync(ct);
-    }
 
     #endregion
 }

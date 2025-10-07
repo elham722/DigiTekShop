@@ -9,7 +9,7 @@ namespace DigiTekShop.Identity.Configurations;
             // Configure properties
             builder.Property(rt => rt.TokenHash)
                 .IsRequired()
-                .HasMaxLength(512);
+                .HasMaxLength(128); // Base64 SHA-512 = 88 chars, با حاشیه امنیت
 
             builder.Property(rt => rt.ExpiresAt)
                 .IsRequired();
@@ -24,6 +24,26 @@ namespace DigiTekShop.Identity.Configurations;
 
             builder.Property(rt => rt.RevokedReason)
                 .HasMaxLength(500)
+                .IsRequired(false);
+
+            builder.Property(rt => rt.DeviceId)
+                .HasMaxLength(256)
+                .IsRequired(false);
+
+            builder.Property(rt => rt.UserAgent)
+                .HasMaxLength(512)
+                .IsRequired(false);
+
+            builder.Property(rt => rt.CreatedByIp)
+                .HasMaxLength(45) // IPv6 max length
+                .IsRequired(false);
+
+            builder.Property(rt => rt.ParentTokenHash)
+                .HasMaxLength(128)
+                .IsRequired(false);
+
+            builder.Property(rt => rt.ReplacedByTokenHash)
+                .HasMaxLength(128)
                 .IsRequired(false);
 
             builder.Property(rt => rt.UserId)
@@ -42,6 +62,18 @@ namespace DigiTekShop.Identity.Configurations;
 
             builder.HasIndex(rt => rt.UserId)
                 .HasDatabaseName("IX_RefreshTokens_UserId");
+
+            // ایندکس مرکب برای کوئری‌های فعال
+            builder.HasIndex(rt => new { rt.UserId, rt.IsRevoked, rt.ExpiresAt })
+                .HasDatabaseName("IX_RefreshTokens_User_Active");
+
+            // ایندکس برای مرتب‌سازی بر اساس انقضا
+            builder.HasIndex(rt => new { rt.UserId, rt.ExpiresAt })
+                .HasDatabaseName("IX_RefreshTokens_User_Expires");
+
+            // ایندکس برای دستگاه‌ها
+            builder.HasIndex(rt => new { rt.UserId, rt.DeviceId })
+                .HasDatabaseName("IX_RefreshTokens_User_Device");
 
             builder.HasIndex(rt => rt.ExpiresAt)
                 .HasDatabaseName("IX_RefreshTokens_ExpiresAt");
