@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -99,7 +100,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         var hash = BCrypt.Net.BCrypt.HashPassword(code);
         var expires = DateTime.UtcNow.AddMinutes(_settings.CodeValidityMinutes);
 
-        await GetOrCreateAndPersistVerificationAsync(user.Id, hash, expires, ct);
+        await GetOrCreateAndPersistVerificationAsync(user.Id, hash, expires, phoneNumber, ct);
 
         var message = BuildMessage(code);
         var sendResult = await _phoneSender.SendCodeAsync(phoneNumber, code, message);
@@ -127,8 +128,8 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         if (!BCrypt.Net.BCrypt.Verify(enteredCode, verification.CodeHash))
             return Result.Failure("Invalid code.");
 
-      
-        verification.ResetAttempts();
+       
+        verification.MarkAsVerified();
         user.PhoneNumberConfirmed = true;
 
         var update = await _userManager.UpdateAsync(user);
@@ -153,7 +154,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
     }
 
    
-    private async Task GetOrCreateAndPersistVerificationAsync(Guid userId, string hash, DateTime expires, CancellationToken ct)
+    private async Task GetOrCreateAndPersistVerificationAsync(Guid userId, string hash, DateTime expires, string? phoneNumber, CancellationToken ct)
     {
         var existing = await _context.PhoneVerifications
             .Where(p => p.UserId == userId)
@@ -166,7 +167,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         }
         else
         {
-            var pv = PhoneVerification.Create(userId, hash, expires);
+            var pv = PhoneVerification.Create(userId, hash, expires, phoneNumber);
             _context.PhoneVerifications.Add(pv);
         }
 
@@ -181,5 +182,74 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
             : string.Format(t.CodeTemplate, code, t.CompanyName);
 
         return msg.Length > t.MaxSmsLength ? $"{t.CompanyName} - Code: {code}" : msg;
+    }
+
+  
+    public async Task<PhoneVerificationStatusDto?> GetLastVerificationAsync(Guid userId, CancellationToken ct = default)
+    {
+        var verification = await _context.PhoneVerifications
+            .AsNoTracking()
+            .Where(pv => pv.UserId == userId)
+            .OrderByDescending(pv => pv.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        if (verification == null)
+            return null;
+
+        return new PhoneVerificationStatusDto
+        {
+            IsVerified = verification.IsVerified,
+            IsExpired = verification.IsExpired(),
+            Attempts = verification.Attempts,
+            CreatedAt = verification.CreatedAt,
+            ExpiresAt = verification.ExpiresAt,
+            VerifiedAt = verification.VerifiedAt,
+            CanResend = DateTime.UtcNow >= verification.CreatedAt.AddMinutes(_settings.ResendCooldownMinutes)
+        };
+    }
+
+ 
+    public async Task<int> CleanupExpiredCodesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var expiredCodes = await _context.PhoneVerifications
+                .Where(pv => pv.ExpiresAt <= DateTime.UtcNow && !pv.IsVerified)
+                .ToListAsync(ct);
+
+            if (expiredCodes.Any())
+            {
+                _context.PhoneVerifications.RemoveRange(expiredCodes);
+                await _context.SaveChangesAsync(ct);
+                _logger.LogInformation("Cleaned up {Count} expired phone verification codes", expiredCodes.Count);
+            }
+
+            return expiredCodes.Count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cleaning up expired phone verification codes");
+            return 0;
+        }
+    }
+
+   
+    public async Task<PhoneVerificationStatsDto> GetVerificationStatsAsync(Guid userId, CancellationToken ct = default)
+    {
+        var stats = await _context.PhoneVerifications
+            .AsNoTracking()
+            .Where(pv => pv.UserId == userId)
+            .GroupBy(pv => 1)
+            .Select(g => new PhoneVerificationStatsDto
+            {
+                TotalCodes = g.Count(),
+                VerifiedCodes = g.Count(pv => pv.IsVerified),
+                ExpiredCodes = g.Count(pv => pv.ExpiresAt <= DateTime.UtcNow && !pv.IsVerified),
+                FailedAttempts = g.Sum(pv => pv.Attempts),
+                LastVerificationAt = g.Max(pv => pv.CreatedAt)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        return stats ?? new PhoneVerificationStatsDto();
     }
 }

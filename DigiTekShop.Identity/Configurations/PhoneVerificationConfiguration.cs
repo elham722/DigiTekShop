@@ -23,6 +23,24 @@ namespace DigiTekShop.Identity.Configurations;
             builder.Property(pv => pv.CreatedAt)
                 .IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
+            builder.Property(pv => pv.PhoneNumber)
+                .HasMaxLength(20)
+                .IsRequired(false);
+
+            builder.Property(pv => pv.IsVerified)
+                .HasDefaultValue(false);
+
+            builder.Property(pv => pv.VerifiedAt)
+                .IsRequired(false);
+
+            builder.Property(pv => pv.IpAddress)
+                .HasMaxLength(45) // IPv6 max length
+                .IsRequired(false);
+
+            builder.Property(pv => pv.UserAgent)
+                .HasMaxLength(512)
+                .IsRequired(false);
+
             // Configure relationships
             builder.HasOne<User>()
                 .WithMany()
@@ -42,9 +60,16 @@ namespace DigiTekShop.Identity.Configurations;
             builder.HasIndex(pv => new { pv.UserId, pv.ExpiresAt })
                 .HasDatabaseName("IX_PhoneVerifications_UserId_ExpiresAt");
 
+            builder.HasIndex(pv => new { pv.UserId, pv.CreatedAt })
+                .HasDatabaseName("IX_PhoneVerifications_UserId_CreatedAt");
+
             builder.HasIndex(pv => new { pv.UserId, pv.CodeHash, pv.ExpiresAt })
                 .IsUnique()
                 .HasDatabaseName("UX_PhoneVerifications_User_Code_ExpiresAt");
+
+          
+            builder.HasIndex(pv => new { pv.UserId, pv.IsVerified })
+                .HasDatabaseName("IX_PhoneVerifications_User_IsVerified");
 
     }
 }

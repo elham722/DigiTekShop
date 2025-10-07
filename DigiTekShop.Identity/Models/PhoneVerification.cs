@@ -6,10 +6,22 @@
     public DateTime ExpiresAt { get; private set; }
     public int Attempts { get; private set; }
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
+    
+    public string? PhoneNumber { get; private set; }
+    public bool IsVerified { get; private set; } = false;
+    public DateTime? VerifiedAt { get; private set; }
+    public string? IpAddress { get; private set; }
+    public string? UserAgent { get; private set; }
 
     private PhoneVerification() { }
 
-    public static PhoneVerification Create(Guid userId, string codeHash, DateTime expiresAt)
+    public static PhoneVerification Create(
+        Guid userId, 
+        string codeHash, 
+        DateTime expiresAt,
+        string? phoneNumber = null,
+        string? ipAddress = null,
+        string? userAgent = null)
     {
         Guard.AgainstEmpty(userId, nameof(userId));
         Guard.AgainstNullOrEmpty(codeHash, nameof(codeHash));
@@ -20,7 +32,10 @@
             UserId = userId,
             CodeHash = codeHash,
             ExpiresAt = expiresAt,
-            Attempts = 0
+            Attempts = 0,
+            PhoneNumber = phoneNumber,
+            IpAddress = ipAddress,
+            UserAgent = userAgent
         };
     }
 
@@ -45,5 +60,24 @@
 
     public void ResetAttempts() => Attempts = 0;
 
+  
+    public void MarkAsVerified()
+    {
+        IsVerified = true;
+        VerifiedAt = DateTime.UtcNow;
+        ResetAttempts();
+    }
+
+    public void UpdateRequestInfo(string? ipAddress = null, string? userAgent = null)
+    {
+        if (!string.IsNullOrWhiteSpace(ipAddress))
+            IpAddress = ipAddress;
+        
+        if (!string.IsNullOrWhiteSpace(userAgent))
+            UserAgent = userAgent;
+    }
+
     public bool IsExpired() => DateTime.UtcNow > ExpiresAt;
+    
+    public bool IsValid => !IsExpired() && !IsVerified && Attempts < 5;
 }
