@@ -117,6 +117,9 @@ public static class IdentityServicesRegistration
         // Device Management Service
         services.AddScoped<IDeviceManagementService, DeviceManagementService>();
 
+        // Permission Evaluator Service
+        services.AddScoped<IPermissionEvaluatorService, PermissionEvaluatorService>();
+
         #endregion
 
 

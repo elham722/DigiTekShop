@@ -33,4 +33,10 @@
             IsActive = active;
             UpdatedAt = DateTime.UtcNow;
         }
+
+        public int GetRoleCount() => Roles.Count;
+
+        public int GetDirectUserCount() => UserPermissions.Count(up => up.IsGranted);
+
+        public bool IsInUse => Roles.Any() || UserPermissions.Any();
     }

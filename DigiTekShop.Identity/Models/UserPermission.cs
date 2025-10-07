@@ -30,4 +30,8 @@
         public void Deny() => IsGranted = false;
 
         public void Toggle() => IsGranted = !IsGranted;
+
+        public bool IsGrantedPermission => IsGranted;
+
+        public bool IsDeniedPermission => !IsGranted;
     }

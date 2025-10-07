@@ -42,4 +42,16 @@
             if (permission != null)
                 Permissions.Remove(permission);
         }
+
+        public bool HasPermission(Guid permissionId)
+        {
+            return Permissions.Any(p => p.PermissionId == permissionId);
+        }
+
+        public int GetPermissionCount() => Permissions.Count;
+
+        public void ClearAllPermissions()
+        {
+            Permissions.Clear();
+        }
     }
