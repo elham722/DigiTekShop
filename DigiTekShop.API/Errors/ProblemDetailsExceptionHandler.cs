@@ -13,24 +13,42 @@ namespace DigiTekShop.API.Errors
         {
             _logger.LogError(ex, "Unhandled exception, TraceId={TraceId}", http.TraceIdentifier);
 
+            if (ex is FluentValidation.ValidationException vex)
+            {
+                var errors = vex.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+
+                var problem = new ValidationProblemDetails(errors)
+                {
+                    Title = "Validation failed",
+                    Status = StatusCodes.Status400BadRequest,
+                    Instance = http.TraceIdentifier
+                };
+
+                http.Response.StatusCode = problem.Status.Value;
+                await http.Response.WriteAsJsonAsync(problem, ct);
+                return true;
+            }
+
             var status = ex switch
             {
-                ValidationException => StatusCodes.Status400BadRequest,
                 KeyNotFoundException => StatusCodes.Status404NotFound,
                 _ => StatusCodes.Status500InternalServerError
             };
 
-            var problem = new ProblemDetails
+            var pd = new ProblemDetails
             {
-                Title = status == 500 ? "خطای غیرمنتظره" : ex.GetType().Name,
+                Title = status == 500 ? "Unexpected error" : ex.GetType().Name,
                 Detail = ex.Message,
                 Status = status,
                 Instance = http.TraceIdentifier
             };
 
             http.Response.StatusCode = status;
-            await http.Response.WriteAsJsonAsync(problem, ct);
+            await http.Response.WriteAsJsonAsync(pd, ct);
             return true;
         }
     }
+
 }

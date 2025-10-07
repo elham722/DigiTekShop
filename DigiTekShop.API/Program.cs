@@ -1,4 +1,6 @@
-﻿using DigiTekShop.API.Errors;
+﻿using Asp.Versioning;
+using DigiTekShop.API.Errors;
+using DigiTekShop.Application.DependencyInjection;
 using DigiTekShop.ExternalServices.DependencyInjection;
 using DigiTekShop.Identity.DependencyInjection;
 using DigiTekShop.Infrastructure.DependencyInjection;
@@ -13,6 +15,15 @@ builder.Host.UseSerilog((ctx, lc) => lc
     .Enrich.FromLogContext()
     .Enrich.WithProperty("App", "DigiTekShop.API"));
 
+
+builder.Services.AddCors(o =>
+{
+    o.AddPolicy("Default", p => p
+        .AllowAnyOrigin()  
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
+
 // Add services to the container.
 builder.Services.AddControllers();
 
@@ -22,39 +33,77 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // Identity and External services
 builder.Services.ConfigureIdentityCore(builder.Configuration).ConfigureJwtAuthentication(builder.Configuration);
 builder.Services.AddExternalServices(builder.Configuration);
+builder.Services.ConfigureApplicationCore();
 
 
-builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "MyShop API",
+        Title = "DigiTekShop API",
         Version = "v1.0",
-        Description = "MyShop E-commerce API v1.0",
-        Contact = new OpenApiContact
-        {
-            Name = "MyShop Team",
-            Email = "support@myshop.com"
-        }
+        Description = "DigiTekShop E-commerce API v1.0",
+        Contact = new OpenApiContact { Name = "DigiTekShop Team", Email = "support@myshop.com" }
+    });
+
+    // 🔒 JWT Bearer
+    var securityScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "Enter: Bearer {token}",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+    };
+
+    c.AddSecurityDefinition("Bearer", securityScheme);
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { securityScheme, Array.Empty<string>() }
     });
 });
+
 
 // 🔑 تنظیم ریدایرکت به HTTPS
 builder.Services.AddHttpsRedirection(options =>
 {
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
-    options.HttpsPort = 7055; // دقیقاً همونی که در launchSettings نوشتی
 });
+
+builder.Services.AddApiVersioning(o =>
+{
+    o.AssumeDefaultVersionWhenUnspecified = true;
+    o.DefaultApiVersion = new ApiVersion(1, 0);
+    o.ReportApiVersions = true;
+}).AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 
 var app = builder.Build();
 
-app.UseExceptionHandler(); 
+app.UseExceptionHandler();
 
 
-app.UseSerilogRequestLogging();
+app.UseSerilogRequestLogging(opts =>
+{
+    opts.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms (TraceId: {TraceId})";
+    opts.EnrichDiagnosticContext = (diag, http) =>
+    {
+        diag.Set("TraceId", http.TraceIdentifier);
+        if (http.User?.Identity?.IsAuthenticated == true)
+            diag.Set("User", http.User.Identity!.Name);
+    };
+});
+
 
 // فقط در Production
 if (app.Environment.IsProduction())
@@ -64,19 +113,20 @@ if (app.Environment.IsProduction())
 
 // ⬅️ خیلی مهم: قبل از Swagger
 app.UseHttpsRedirection();
-
+app.UseCors("Default");
+app.UseAuthentication();
+app.UseAuthorization();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyShop API V1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DigiTekShop API V1");
         c.RoutePrefix = string.Empty; // Swagger UI در root
     });
 }
 
-app.UseAuthentication();
-app.UseAuthorization();
+
 
 app.MapControllers();
 

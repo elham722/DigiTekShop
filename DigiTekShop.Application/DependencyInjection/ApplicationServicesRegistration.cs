@@ -25,6 +25,7 @@ namespace DigiTekShop.Application.DependencyInjection
             services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
 
             // Behaviors
+            services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 

@@ -106,7 +106,11 @@ public static class IdentityServicesRegistration
 
     public static IServiceCollection ConfigureJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
+        var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>()
+                          ?? throw new InvalidOperationException("JwtSettings section is missing.");
+
+        if (string.IsNullOrWhiteSpace(jwtSettings.Key))
+            throw new InvalidOperationException("JwtSettings:Key is not configured.");
 
         services.AddAuthentication(options =>
             {
@@ -115,6 +119,9 @@ public static class IdentityServicesRegistration
             })
             .AddJwtBearer(o =>
             {
+                o.RequireHttpsMetadata = true;         
+                o.SaveToken = true;                     
+
                 o.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
@@ -129,13 +136,14 @@ public static class IdentityServicesRegistration
                     ValidateLifetime = true,
                     RequireExpirationTime = true,
                     ClockSkew = TimeSpan.FromSeconds(30),
-
-                    ValidateActor = false
                 };
+
+                // (اختیاری) اگر بعداً لازم شد از QueryString برای SignalR بخوانی، اینجا Events اضافه می‌کنیم.
             });
 
         return services;
     }
+
 
 
 }
