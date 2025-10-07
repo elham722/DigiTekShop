@@ -1,8 +1,11 @@
-﻿namespace DigiTekShop.Identity.Models;
+﻿using DigiTekShop.SharedKernel.Enums;
+
+namespace DigiTekShop.Identity.Models;
     public class LoginAttempt
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
         public Guid? UserId { get; private set; }
+        public string? LoginNameOrEmail { get; private set; }
         public DateTime AttemptedAt { get; private set; } = DateTime.UtcNow;
         public LoginStatus Status { get; private set; }
         public string? IpAddress { get; private set; }
@@ -10,16 +13,25 @@
 
         private LoginAttempt() { }
 
-     public static LoginAttempt Create(Guid? userId,LoginStatus status, string? ipAddress = null, string? userAgent = null)
+        public static LoginAttempt Create(Guid? userId, LoginStatus status, string? ipAddress = null, string? userAgent = null, string? loginNameOrEmail = null)
         {
             return new LoginAttempt
             {
                 UserId = userId,
+                LoginNameOrEmail = loginNameOrEmail,
                 Status = status,
                 IpAddress = ipAddress,
                 UserAgent = userAgent,
                 AttemptedAt = DateTime.UtcNow
             };
+        }
+
+        public void UpdateAttempt(LoginStatus status, string? ipAddress = null, string? userAgent = null)
+        {
+            Status = status;
+            IpAddress = ipAddress;
+            UserAgent = userAgent;
+            AttemptedAt = DateTime.UtcNow;
         }
     }
 

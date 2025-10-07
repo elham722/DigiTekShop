@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Identity.Enums;
+﻿namespace DigiTekShop.SharedKernel.Enums;
     public enum LoginStatus
     {
         Success,

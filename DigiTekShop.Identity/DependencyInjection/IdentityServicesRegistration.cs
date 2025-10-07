@@ -120,6 +120,12 @@ public static class IdentityServicesRegistration
         // Permission Evaluator Service
         services.AddScoped<IPermissionEvaluatorService, PermissionEvaluatorService>();
 
+        // Login Attempt Service
+        services.AddScoped<ILoginAttemptService, LoginAttemptService>();
+
+        // Security Event Service
+        services.AddScoped<ISecurityEventService, SecurityEventService>();
+
         #endregion
 
 

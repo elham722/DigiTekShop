@@ -284,8 +284,8 @@ public sealed class PasswordResetService : IPasswordService
 
         var todayRequests = await _context.AuditLogs
             .AsNoTracking()
-            .Where(al => al.UserId == userId &&
-                         al.EntityName == "PasswordReset" &&
+            .Where(al => al.ActorId == userId &&
+                         al.TargetEntityName == "PasswordReset" &&
                          al.Action == AuditAction.Created &&
                          al.Timestamp >= DateTime.UtcNow.Date)
             .CountAsync(ct);
@@ -304,8 +304,8 @@ public sealed class PasswordResetService : IPasswordService
     {
         return await _context.AuditLogs
             .AsNoTracking()
-            .Where(al => al.UserId == userId &&
-                         al.EntityName == "PasswordReset" &&
+            .Where(al => al.ActorId == userId &&
+                         al.TargetEntityName == "PasswordReset" &&
                          al.Action == AuditAction.Created)
             .OrderByDescending(al => al.Timestamp)
             .FirstOrDefaultAsync(ct);

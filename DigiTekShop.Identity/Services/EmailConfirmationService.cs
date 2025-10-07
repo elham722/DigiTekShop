@@ -111,7 +111,7 @@ public class EmailConfirmationService : IEmailConfirmationService
     private async Task<bool> CanResendConfirmationAsync(Guid userId, CancellationToken ct)
     {
         var lastSent = await _context.AuditLogs
-            .Where(al => al.UserId == userId && al.EntityName == "EmailConfirmation")
+            .Where(al => al.ActorId == userId && al.TargetEntityName == "EmailConfirmation")
             .OrderByDescending(al => al.Timestamp)
             .FirstOrDefaultAsync(ct);
 

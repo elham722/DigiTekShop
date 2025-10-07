@@ -1,53 +1,62 @@
+using DigiTekShop.Identity.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 namespace DigiTekShop.Identity.Configurations;
-    internal class LoginAttemptConfiguration : IEntityTypeConfiguration<LoginAttempt>
+
+public class LoginAttemptConfiguration : IEntityTypeConfiguration<LoginAttempt>
+{
+    public void Configure(EntityTypeBuilder<LoginAttempt> builder)
     {
-        public void Configure(EntityTypeBuilder<LoginAttempt> builder)
-        {
-            // Configure primary key
-            builder.HasKey(la => la.Id);
+        builder.ToTable("LoginAttempts");
 
-            // Configure properties
-            builder.Property(la => la.UserId)
-                .IsRequired(false);
+        builder.HasKey(la => la.Id);
 
-            builder.Property(la => la.AttemptedAt)
-                .IsRequired();
+        builder.Property(la => la.Id)
+            .IsRequired()
+            .ValueGeneratedNever();
 
-            builder.Property(la => la.Status)
-                .IsRequired()
-                .HasConversion<string>();
+        builder.Property(la => la.UserId)
+            .IsRequired(false);
 
-            builder.Property(la => la.IpAddress)
-                .HasMaxLength(45) // IPv6 max length
-                .IsRequired(false);
+        builder.Property(la => la.LoginNameOrEmail)
+            .HasMaxLength(256)
+            .IsRequired(false);
 
-            builder.Property(la => la.UserAgent)
-                .HasMaxLength(1000)
-                .IsRequired(false);
+        builder.Property(la => la.AttemptedAt)
+            .IsRequired()
+            .HasDefaultValueSql("GETUTCDATE()");
 
-            // Configure relationships
-            builder.HasOne<User>()
-                .WithMany()
-                .HasForeignKey(la => la.UserId)
-                .OnDelete(DeleteBehavior.SetNull);
+        builder.Property(la => la.Status)
+            .IsRequired()
+            .HasConversion<string>();
 
-            // Configure indexes
-            builder.HasIndex(la => la.UserId)
-                .HasDatabaseName("IX_LoginAttempts_UserId");
+        builder.Property(la => la.IpAddress)
+            .HasMaxLength(45)
+            .IsRequired(false);
 
-            builder.HasIndex(la => la.Status)
-                .HasDatabaseName("IX_LoginAttempts_Status");
+        builder.Property(la => la.UserAgent)
+            .HasMaxLength(512)
+            .IsRequired(false);
 
-            builder.HasIndex(la => la.IpAddress)
-                .HasDatabaseName("IX_LoginAttempts_IpAddress");
+        
+        builder.HasIndex(la => new { la.UserId, la.AttemptedAt })
+            .HasDatabaseName("IX_LoginAttempts_UserId_AttemptedAt");
 
-            builder.HasIndex(la => la.AttemptedAt)
-                .HasDatabaseName("IX_LoginAttempts_AttemptedAt");
+        
+        builder.HasIndex(la => la.LoginNameOrEmail)
+            .HasDatabaseName("IX_LoginAttempts_LoginNameOrEmail");
 
-            builder.HasIndex(la => new { la.UserId, la.AttemptedAt })
-                .HasDatabaseName("IX_LoginAttempts_UserId_AttemptedAt");
+        
+        builder.HasIndex(la => la.IpAddress)
+            .HasDatabaseName("IX_LoginAttempts_IpAddress");
 
-            builder.HasIndex(la => new { la.IpAddress, la.AttemptedAt })
-                .HasDatabaseName("IX_LoginAttempts_IpAddress_AttemptedAt");
-        }
+       
+        builder.HasIndex(la => new { la.Status, la.AttemptedAt })
+            .HasDatabaseName("IX_LoginAttempts_Status_AttemptedAt");
+
+        
+        builder.HasIndex(la => new { la.IpAddress, la.Status, la.AttemptedAt })
+            .HasDatabaseName("IX_LoginAttempts_IpAddress_Status_AttemptedAt");
     }
+}

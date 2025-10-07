@@ -10,6 +10,7 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UserDevice> UserDevices => Set<UserDevice>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
@@ -32,6 +33,7 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
         builder.ApplyConfiguration(new UserDeviceConfiguration());
         builder.ApplyConfiguration(new RefreshTokenConfiguration());
         builder.ApplyConfiguration(new AuditLogConfiguration());
+        builder.ApplyConfiguration(new SecurityEventConfiguration());
         builder.ApplyConfiguration(new LoginAttemptConfiguration());
         builder.ApplyConfiguration(new PhoneVerificationConfiguration());
         builder.ApplyConfiguration(new PasswordHistoryConfiguration());
