@@ -3,18 +3,18 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using DigiTekShop.Contracts.DTOs.Auth.JwtSettings;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
-using DigiTekShop.Contracts.Interfaces.Identity;
+using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Exceptions.Common;
 using DigiTekShop.Identity.Models;
+using DigiTekShop.Identity.Options;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace DigiTekShop.Identity.Services;
+namespace DigiTekShop.Identity.Services.Tokens;
 
 public class JwtTokenService : IJwtTokenService
 {

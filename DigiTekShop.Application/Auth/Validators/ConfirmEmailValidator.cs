@@ -1,0 +1,19 @@
+﻿using FluentValidation;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+
+namespace DigiTekShop.Application.Auth.Validators
+{
+    public sealed class ConfirmEmailValidator : AbstractValidator<ConfirmEmailRequestDto>
+    {
+        public ConfirmEmailValidator()
+        {
+            RuleFor(x => x.UserId).NotEmpty();
+            RuleFor(x => x.Token).NotEmpty();
+        }
+    }
+}

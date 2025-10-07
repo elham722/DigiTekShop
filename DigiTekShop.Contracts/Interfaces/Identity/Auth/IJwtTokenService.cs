@@ -2,7 +2,7 @@
 using DigiTekShop.SharedKernel.Results;
 using System.Security.Claims;
 
-namespace DigiTekShop.Contracts.Interfaces.Identity;
+namespace DigiTekShop.Contracts.Interfaces.Identity.Auth;
 public interface IJwtTokenService
 {
     Task<Result<TokenResponseDto>> GenerateTokensAsync(string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default);

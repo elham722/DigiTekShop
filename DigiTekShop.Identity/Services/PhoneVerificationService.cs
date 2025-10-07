@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DigiTekShop.Contracts.Interfaces.Caching;
-using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
+using DigiTekShop.Identity.Options.PhoneVerification;
 
 namespace DigiTekShop.Identity.Services;
 

@@ -13,13 +13,15 @@ using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using System.Text;
 using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
+using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+using DigiTekShop.Identity.Options;
 
 namespace DigiTekShop.Identity.Services;
 
 /// <summary>
 /// Service for handling password reset functionality with improved security and auditing
 /// </summary>
-public class PasswordResetService
+public class PasswordResetService: IPasswordService
 {
     private readonly UserManager<User> _userManager;
     private readonly IEmailSender _emailSender;
@@ -46,12 +48,14 @@ public class PasswordResetService
     /// </summary>
     /// <param name="request">Password reset request</param>
     /// <returns>Operation result</returns>
-    public async Task<Result> SendResetLinkAsync(ForgotPasswordDto request, string? ipAddress = null, string? userAgent = null)
+    public async Task<Result> SendResetLinkAsync(ForgotPasswordRequestDto request, string? ipAddress = null, string? userAgent = null)
     {
         try
         {
             // Validate settings
             if (!_settings.IsEnabled)
+                return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.PASSWORD_RESET_DISABLED),
+                    IdentityErrorCodes.PASSWORD_RESET_DISABLED);
 
             // Validate input
             Guard.AgainstNullOrEmpty(request.Email, nameof(request.Email));
@@ -125,7 +129,7 @@ public class PasswordResetService
     /// <param name="request">Password reset request</param>
     /// <param name="ipAddress">Client IP address for audit</param>
     /// <returns>Operation result</returns>
-    public async Task<Result> ResetPasswordAsync(ResetPasswordDto request, string? ipAddress = null)
+    public async Task<Result> ResetPasswordAsync(ResetPasswordRequestDto request, string? ipAddress = null)
     {
         try
         {

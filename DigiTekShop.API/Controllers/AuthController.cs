@@ -2,8 +2,8 @@ using DigiTekShop.Identity.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using DigiTekShop.Identity.Options;
-using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
-using DigiTekShop.Contracts.DTOs.Auth.Register; // PasswordPolicyOptions
+using DigiTekShop.Contracts.DTOs.Auth.Register;
+using DigiTekShop.Identity.Options.PhoneVerification; // PasswordPolicyOptions
 
 namespace DigiTekShop.API.Controllers;
 

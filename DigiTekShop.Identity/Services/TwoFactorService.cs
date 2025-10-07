@@ -1,4 +1,6 @@
 ﻿using DigiTekShop.Contracts.DTOs.Auth.Mfa;
+using DigiTekShop.Contracts.DTOs.Auth.TwoFactor;
+using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
@@ -7,20 +9,20 @@ using QRCoder;
 
 namespace DigiTekShop.Identity.Services
 {
-    public class MfaService
+    public class TwoFactorService : ITwoFactorService
     {
         private readonly DigiTekShopIdentityDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IEncryptionService _encryptionService;
-        private readonly ILogger<MfaService> _logger;
+        private readonly ILogger<TwoFactorService> _logger;
 
         private const int MaxAttempts = 5;
 
-        public MfaService(
+        public TwoFactorService(
             DigiTekShopIdentityDbContext context,
             UserManager<User> userManager,
             IEncryptionService encryptionService,
-            ILogger<MfaService> logger)
+            ILogger<TwoFactorService> logger)
         {
             _context = context;
             _userManager = userManager;
@@ -111,6 +113,26 @@ namespace DigiTekShop.Identity.Services
             // Load MFA relationship
             await _context.Entry(user).Reference(u => u.Mfa).LoadAsync();
             return new MfaStatusDto(user.Mfa?.IsEnabled ?? false);
+        }
+
+        public Task<Result<TwoFactorResponseDto>> EnableTwoFactorAsync(TwoFactorRequestDto request, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Result<TwoFactorResponseDto>> DisableTwoFactorAsync(TwoFactorRequestDto request, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Result> VerifyTwoFactorTokenAsync(VerifyTwoFactorRequestDto request, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Result<TwoFactorTokenResponseDto>> GenerateTwoFactorTokenAsync(TwoFactorRequestDto request, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
         }
     }
 

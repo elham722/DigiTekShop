@@ -1,4 +1,4 @@
-namespace DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
+namespace DigiTekShop.Identity.Options.PhoneVerification;
 
 public sealed class PhoneTemplateSettings
 {

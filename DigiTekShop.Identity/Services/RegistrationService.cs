@@ -7,12 +7,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
-using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
 using DigiTekShop.Contracts.DTOs.Auth.Register;
-
+using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+using DigiTekShop.Identity.Options.PhoneVerification;
 namespace DigiTekShop.Identity.Services;
 
-public class RegistrationService
+public class RegistrationService: IRegistrationService
 {
     private const string RATE_LIMIT_TAG = "[RATE_LIMIT]";
 

@@ -1,6 +1,5 @@
 ﻿
 using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
-using DigiTekShop.Contracts.Interfaces.Identity;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Identity.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,10 +10,10 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
-using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
-using DigiTekShop.Contracts.DTOs.Auth.JwtSettings;
-using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
-using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
+using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+using DigiTekShop.Identity.Options.PhoneVerification;
+using DigiTekShop.Identity.Services.Auth;
+using DigiTekShop.Identity.Services.Tokens;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 
@@ -80,6 +79,21 @@ public static class IdentityServicesRegistration
 
         #endregion
 
+
+        #region AddServices
+
+        services.AddScoped<IAuthService, AuthService>();
+
+        services.AddScoped<ILoginService, LoginService>();
+
+        services.AddScoped<IRegistrationService, RegistrationService>();
+
+        services.Configure<PasswordResetSettings>(configuration.GetSection("PasswordReset"));
+        services.AddScoped<IPasswordService, PasswordResetService>();    
+
+        services.AddScoped<ITwoFactorService, TwoFactorService>();         // یا MfaService اگر همینو public می‌کنی
+        services.AddScoped<ILockoutService, LockoutService>();
+
         // Email Confirmation settings + service
         services.Configure<EmailConfirmationSettings>(configuration.GetSection("EmailConfirmation"));
         services.AddScoped<EmailConfirmationService>();
@@ -88,18 +102,16 @@ public static class IdentityServicesRegistration
         services.Configure<PhoneVerificationSettings>(configuration.GetSection("PhoneVerification"));
         services.AddScoped<PhoneVerificationService>();
 
-        // Password Reset settings + service
-        services.Configure<PasswordResetSettings>(configuration.GetSection("PasswordReset"));
-        services.AddScoped<PasswordResetService>();
+        services.AddScoped<PasswordHistoryService>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
 
         // Encryption Service for TOTP secrets
         services.AddScoped<IEncryptionService, EncryptionService>();
 
-        // MFA Service
-        services.AddScoped<MfaService>();
+        #endregion
 
-        // Registration Service
-        services.AddScoped<RegistrationService>();
+
+
 
         return services;
     }

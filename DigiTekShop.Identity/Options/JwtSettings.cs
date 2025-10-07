@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.DTOs.Auth.JwtSettings;
+﻿namespace DigiTekShop.Identity.Options;
 
 public class JwtSettings
 {

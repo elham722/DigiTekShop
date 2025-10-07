@@ -1,4 +1,4 @@
-namespace DigiTekShop.Contracts.DTOs.Auth.EmailSender;
+namespace DigiTekShop.Identity.Options;
 
 public sealed class SmtpSettings
 {
