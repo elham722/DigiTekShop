@@ -10,6 +10,11 @@
         public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
         public int Attempts { get; private set; } = 0;
         public DateTime? LastVerifiedAt { get; private set; }
+        
+        // Lock fields
+        public bool IsLocked { get; private set; } = false;
+        public DateTime? LockedAt { get; private set; }
+        public DateTime? LockedUntil { get; private set; }
 
         private UserMfa() { }
 
@@ -32,7 +37,7 @@
             Guard.AgainstNullOrEmpty(secretKeyEncrypted, nameof(secretKeyEncrypted));
             SecretKeyEncrypted = secretKeyEncrypted;
             IsEnabled = true;
-            Attempts = 0; // ریست بشه
+            Attempts = 0; 
         }
 
         public void Disable()
@@ -41,15 +46,18 @@
             IsEnabled = false;
             ResetAttempts();
         }
-        public void IncrementAttempts(int maxAttempts)
+        public void IncrementAttempts(int maxAttempts, TimeSpan lockDuration = default)
         {
             Guard.AgainstNegative(maxAttempts, nameof(maxAttempts));
 
-            if (Attempts >= maxAttempts)
-                throw new InvalidOperationException(
-                    $"Maximum MFA attempts ({maxAttempts}) exceeded for user {UserId}");
-
             Attempts++;
+
+            if (Attempts >= maxAttempts)
+            {
+                LockMfa(lockDuration == default ? TimeSpan.FromMinutes(15) : lockDuration);
+                throw new InvalidOperationException(
+                    $"Maximum MFA attempts ({maxAttempts}) exceeded for user {UserId}. MFA locked.");
+            }
         }
 
         public void ResetAttempts() => Attempts = 0;
@@ -59,5 +67,35 @@
             ResetAttempts();
             LastVerifiedAt = DateTime.UtcNow;
         }
+
+      
+        public void LockMfa(TimeSpan duration)
+        {
+            IsLocked = true;
+            LockedAt = DateTime.UtcNow;
+            LockedUntil = DateTime.UtcNow.Add(duration);
+        }
+
+        public void LockMfaUntil(DateTime until)
+        {
+            Guard.AgainstPastDate(until, () => DateTime.UtcNow, nameof(until));
+            
+            IsLocked = true;
+            LockedAt = DateTime.UtcNow;
+            LockedUntil = until;
+        }
+
+        public void UnlockMfa()
+        {
+            IsLocked = false;
+            LockedAt = null;
+            LockedUntil = null;
+            ResetAttempts();
+        }
+
+      
+        public bool IsCurrentlyLocked => IsLocked && LockedUntil.HasValue && DateTime.UtcNow < LockedUntil.Value;
+
+        public bool IsLockExpired => IsLocked && LockedUntil.HasValue && DateTime.UtcNow >= LockedUntil.Value;
     }
 }

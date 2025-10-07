@@ -6,5 +6,11 @@ using System.Threading.Tasks;
 
 namespace DigiTekShop.Contracts.DTOs.Auth.Mfa
 {
-    public record MfaStatusDto(bool IsEnabled);
+    public record MfaStatusDto(
+        bool IsEnabled,
+        bool IsLocked = false,
+        int AttemptCount = 0,
+        DateTime? LockedUntil = null,
+        DateTime? LastVerifiedAt = null
+    );
 }

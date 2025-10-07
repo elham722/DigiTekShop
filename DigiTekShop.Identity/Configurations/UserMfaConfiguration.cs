@@ -27,9 +27,19 @@ namespace DigiTekShop.Identity.Configurations
             builder.Property(x => x.LastVerifiedAt)
                 .IsRequired(false);
 
+            builder.Property(x => x.IsLocked)
+                .HasDefaultValue(false);
+
+            builder.Property(x => x.LockedAt)
+                .IsRequired(false);
+
+            builder.Property(x => x.LockedUntil)
+                .IsRequired(false);
 
             builder.HasIndex(x => x.UserId).IsUnique().HasDatabaseName("UX_UserMfa_UserId");
             builder.HasIndex(x => x.IsEnabled).HasDatabaseName("IX_UserMfa_IsEnabled");
+            builder.HasIndex(x => x.IsLocked).HasDatabaseName("IX_UserMfa_IsLocked");
+            builder.HasIndex(x => x.LockedUntil).HasDatabaseName("IX_UserMfa_LockedUntil");
 
         }
     }

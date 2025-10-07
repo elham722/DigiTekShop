@@ -17,6 +17,8 @@ namespace DigiTekShop.Identity.Services
         private readonly ILogger<TwoFactorService> _logger;
 
         private const int MaxAttempts = 5;
+        private const int DefaultWindow = 1; 
+        private const int MaxDrift = 2; 
 
         public TwoFactorService(
             DigiTekShopIdentityDbContext context,
@@ -65,24 +67,61 @@ namespace DigiTekShop.Identity.Services
             return new MfaSetupDto(qrBase64, secretKey);
         }
 
-        public async Task<Result> ValidateCodeAsync(User user, string code)
+        public async Task<Result> ValidateCodeAsync(User user, string code, int? window = null, int? maxDrift = null)
         {
             var record = await _context.UserMfa.FirstOrDefaultAsync(x => x.UserId == user.Id);
             if (record == null) return Result.Failure("MFA not configured.");
 
             if (!record.IsEnabled) return Result.Failure("MFA is disabled.");
 
-            if (record.Attempts >= MaxAttempts)
+            
+            if (record.IsCurrentlyLocked)
             {
-                _logger.LogWarning("MFA max attempts exceeded for user {UserId}", user.Id);
-                return Result.Failure("Too many attempts.");
+                _logger.LogWarning("MFA is locked for user {UserId} until {LockedUntil}", user.Id, record.LockedUntil);
+                return Result.Failure($"MFA is locked until {record.LockedUntil:yyyy-MM-dd HH:mm:ss} UTC");
             }
 
-            record.IncrementAttempts(MaxAttempts);
+            
+            if (record.IsLockExpired)
+            {
+                record.UnlockMfa();
+            }
+
+            try
+            {
+                record.IncrementAttempts(MaxAttempts, TimeSpan.FromMinutes(15));
+            }
+            catch (InvalidOperationException ex)
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogWarning("MFA locked for user {UserId} due to max attempts", user.Id);
+                return Result.Failure(ex.Message);
+            }
 
             var secretKey = _encryptionService.Decrypt(record.SecretKeyEncrypted);
             var totp = new Totp(Base32Encoding.ToBytes(secretKey));
-            var isValid = totp.VerifyTotp(code, out _, new VerificationWindow(1, 1));
+            
+            
+            var verificationWindow = new VerificationWindow(
+                window ?? DefaultWindow, 
+                window ?? DefaultWindow
+            );
+            
+            var isValid = totp.VerifyTotp(code, out var timeStepMatched, verificationWindow);
+
+            
+            if (isValid && maxDrift.HasValue)
+            {
+                var currentTimeStep = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds / 30;
+                var drift = Math.Abs(timeStepMatched - currentTimeStep);
+                
+                if (drift > maxDrift.Value)
+                {
+                    _logger.LogWarning("MFA code drift too large for user {UserId}: {Drift} steps", user.Id, drift);
+                    await _context.SaveChangesAsync();
+                    return Result.Failure("Code drift too large. Please sync your device time.");
+                }
+            }
 
             if (!isValid)
             {
@@ -222,6 +261,77 @@ namespace DigiTekShop.Identity.Services
             );
 
             return Result<TwoFactorTokenResponseDto>.Success(dto);
+        }
+
+       
+        public async Task<Result> UnlockMfaAsync(string userId, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return Result.Failure("UserId is required.");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null || user.IsDeleted)
+                return Result.Failure("User not found or inactive.");
+
+            var record = await _context.UserMfa.FirstOrDefaultAsync(x => x.UserId == user.Id, ct);
+            if (record == null)
+                return Result.Failure("MFA not configured.");
+
+            if (!record.IsLocked)
+                return Result.Failure("MFA is not locked.");
+
+            record.UnlockMfa();
+            await _context.SaveChangesAsync(ct);
+
+            _logger.LogInformation("MFA unlocked for user {UserId}", user.Id);
+            return Result.Success();
+        }
+
+      
+        public async Task<MfaStatusDto> GetDetailedStatusAsync(User user, CancellationToken ct = default)
+        {
+            var record = await _context.UserMfa.FirstOrDefaultAsync(x => x.UserId == user.Id, ct);
+            
+            if (record == null)
+                return new MfaStatusDto(false, false, 0, null, null);
+
+            return new MfaStatusDto(
+                record.IsEnabled,
+                record.IsCurrentlyLocked,
+                record.Attempts,
+                record.LockedUntil,
+                record.LastVerifiedAt
+            );
+        }
+
+      
+        public async Task<int> CleanupExpiredLocksAsync(CancellationToken ct = default)
+        {
+            try
+            {
+                var expiredLocks = await _context.UserMfa
+                    .Where(mfa => mfa.IsLocked && mfa.LockedUntil.HasValue && mfa.LockedUntil.Value <= DateTime.UtcNow)
+                    .ToListAsync(ct);
+
+                foreach (var mfa in expiredLocks)
+                {
+                    mfa.UnlockMfa();
+                }
+
+                if (expiredLocks.Any())
+                {
+                    _context.UserMfa.UpdateRange(expiredLocks);
+                    await _context.SaveChangesAsync(ct);
+                    _logger.LogInformation("Cleaned up {Count} expired MFA locks", expiredLocks.Count);
+                }
+
+                return expiredLocks.Count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cleaning up expired MFA locks");
+                return 0;
+            }
         }
     }
 }
