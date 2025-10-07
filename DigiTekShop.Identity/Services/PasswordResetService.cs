@@ -356,5 +356,20 @@ public class PasswordResetService: IPasswordService
         return Convert.ToBase64String(hashedBytes);
     }
 
+    public Task<Result> ForgotPasswordAsync(ForgotPasswordRequestDto request, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Result> ResetPasswordAsync(ResetPasswordRequestDto request, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Result> ChangePasswordAsync(ChangePasswordRequestDto request, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
     #endregion
 }

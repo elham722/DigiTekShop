@@ -10,15 +10,17 @@ using Microsoft.EntityFrameworkCore;
 using DigiTekShop.Contracts.DTOs.Auth.Register;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options.PhoneVerification;
+using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+
 namespace DigiTekShop.Identity.Services;
 
-public class RegistrationService: IRegistrationService
+public class RegistrationService : IRegistrationService
 {
     private const string RATE_LIMIT_TAG = "[RATE_LIMIT]";
 
     private readonly UserManager<User> _userManager;
-    private readonly EmailConfirmationService _emailConfirmationService;
-    private readonly PhoneVerificationService _phoneVerificationService;
+    private readonly IEmailConfirmationService _emailConfirmationService;   // ← interface
+    private readonly PhoneVerificationService _phoneVerificationService;    // می‌تونی بعداً interface‌اش رو هم بسازی
     private readonly IRateLimiter _rateLimiter;
     private readonly ILogger<RegistrationService> _logger;
     private readonly PhoneVerificationSettings _phoneSettings;
@@ -26,7 +28,7 @@ public class RegistrationService: IRegistrationService
 
     public RegistrationService(
         UserManager<User> userManager,
-        EmailConfirmationService emailConfirmationService,
+        IEmailConfirmationService emailConfirmationService,       // ← interface
         PhoneVerificationService phoneVerificationService,
         IRateLimiter rateLimiter,
         IOptions<PhoneVerificationSettings> phoneOptions,
@@ -42,11 +44,12 @@ public class RegistrationService: IRegistrationService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, string? ipAddress = null)
+    // ← فقط همین امضا مطابق interface بماند
+    public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default)
     {
         try
         {
-            // 1) Validate (بدون Exception)
+            // 1) Validate
             var validationResult = ValidateRegistrationRequest(request);
             if (validationResult.IsFailure)
                 return Result<RegisterResponseDto>.Failure(validationResult.Errors);
@@ -54,15 +57,15 @@ public class RegistrationService: IRegistrationService
             var normalizedEmail = request.Email.Trim().ToLowerInvariant();
             var normalizedEmailUpper = normalizedEmail.ToUpperInvariant();
 
-            // 2) Rate limit (با تگ ثابت)
-            var rateLimitResult = await CheckRateLimitsAsync(normalizedEmail, ipAddress);
+            // 2) Rate limit (IP فعلاً نداریم؛ unknown مشکلی نیست)
+            var rateLimitResult = await CheckRateLimitsAsync(normalizedEmail, ipAddress: null);
             if (rateLimitResult.IsFailure)
                 return Result<RegisterResponseDto>.Failure(rateLimitResult.Errors);
 
-            // 3) جلوگیری از ثبت‌نام حتی اگر کاربر Soft-Deleted باشد
+            // 3) جلوگیری از ثبت‌نام حتی با Soft-Delete
             var existsAny = await _context.Users
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.NormalizedEmail == normalizedEmailUpper);
+                .AnyAsync(u => u.NormalizedEmail == normalizedEmailUpper, ct);
 
             if (existsAny)
             {
@@ -85,11 +88,11 @@ public class RegistrationService: IRegistrationService
                 return Result<RegisterResponseDto>.Failure($"Registration failed: {string.Join(", ", errors)}");
             }
 
-            // 5) Email confirmation
+            // 5) Email confirmation (از سرویس اینترفیس‌محور)
             var emailSent = false;
             try
             {
-                var emailResult = await _emailConfirmationService.SendConfirmationEmailAsync(user);
+                var emailResult = await _emailConfirmationService.SendAsync(user.Id.ToString(), ct);
                 emailSent = emailResult.IsSuccess;
 
                 if (emailResult.IsFailure)
@@ -139,6 +142,12 @@ public class RegistrationService: IRegistrationService
             return Result<RegisterResponseDto>.Failure("An unexpected error occurred during registration.");
         }
     }
+
+    public Task<Result> ConfirmEmailAsync(ConfirmEmailRequestDto request, CancellationToken ct = default)
+        => _emailConfirmationService.ConfirmEmailAsync(request, ct);
+
+    public Task<Result> ResendEmailConfirmationAsync(ResendEmailConfirmationRequestDto request, CancellationToken ct = default)
+        => _emailConfirmationService.ResendAsync(request, ct);
 
     #region Private Helpers
 
@@ -211,7 +220,7 @@ public class RegistrationService: IRegistrationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking rate limits for email {Email}, IP {Ip}", normalizedEmail, ipAddress);
-            // Fail-open در صورت خطای Redis/… (در Dev خوبه)
+            // در صورت خطای Redis/… fail-open (به‌خصوص در Dev)
             return Result.Success();
         }
     }
