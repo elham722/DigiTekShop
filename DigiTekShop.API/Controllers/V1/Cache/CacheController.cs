@@ -1,7 +1,7 @@
 using DigiTekShop.Contracts.Interfaces.Caching;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DigiTekShop.API.Controllers;
+namespace DigiTekShop.API.Controllers.V1.Cache;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -32,7 +32,7 @@ public class CacheController : ControllerBase
             await _cacheService.SetAsync(request.Key, request.Value, TimeSpan.FromMinutes(request.TtlMinutes ?? 60));
             
             _logger.LogInformation("Cache set for key: {Key}", request.Key);
-            return Ok(new { Message = "Value cached successfully", Key = request.Key });
+            return Ok(new { Message = "Value cached successfully", request.Key });
         }
         catch (Exception ex)
         {
@@ -103,18 +103,18 @@ public class CacheController : ControllerBase
                 return StatusCode(429, new 
                 { 
                     Message = "Rate limit exceeded",
-                    Key = request.Key,
-                    Limit = request.Limit,
-                    WindowMinutes = request.WindowMinutes
+                    request.Key,
+                    request.Limit,
+                    request.WindowMinutes
                 });
             }
 
             return Ok(new 
             { 
                 Message = "Request allowed",
-                Key = request.Key,
-                Limit = request.Limit,
-                WindowMinutes = request.WindowMinutes
+                request.Key,
+                request.Limit,
+                request.WindowMinutes
             });
         }
         catch (Exception ex)

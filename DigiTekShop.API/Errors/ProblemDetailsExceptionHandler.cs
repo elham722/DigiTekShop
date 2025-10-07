@@ -1,4 +1,6 @@
-﻿using FluentValidation;
+﻿using DigiTekShop.API.Models;
+using DigiTekShop.SharedKernel.Exceptions.Common;
+using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,35 +15,20 @@ namespace DigiTekShop.API.Errors
         {
             _logger.LogError(ex, "Unhandled exception, TraceId={TraceId}", http.TraceIdentifier);
 
-            if (ex is FluentValidation.ValidationException vex)
+            var (status, code, detail) = ex switch
             {
-                var errors = vex.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-
-                var problem = new ValidationProblemDetails(errors)
-                {
-                    Title = "Validation failed",
-                    Status = StatusCodes.Status400BadRequest,
-                    Instance = http.TraceIdentifier
-                };
-
-                http.Response.StatusCode = problem.Status.Value;
-                await http.Response.WriteAsJsonAsync(problem, ct);
-                return true;
-            }
-
-            var status = ex switch
-            {
-                KeyNotFoundException => StatusCodes.Status404NotFound,
-                _ => StatusCodes.Status500InternalServerError
+                FluentValidation.ValidationException vex => (400, "VALIDATION_ERROR", "Validation failed"),
+                UnauthorizedAccessException => (401, "UNAUTHORIZED", "Unauthorized"),
+                KeyNotFoundException => (404, "NOT_FOUND", "Resource not found"),
+                TimeoutException => (408, "TIMEOUT", "Operation timed out"),
+                _ => (500, "INTERNAL_ERROR", "An unexpected error occurred")
             };
 
             var pd = new ProblemDetails
             {
-                Title = status == 500 ? "Unexpected error" : ex.GetType().Name,
-                Detail = ex.Message,
+                Title = code,
                 Status = status,
+                Detail = http.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment() ? ex.Message : detail,
                 Instance = http.TraceIdentifier
             };
 

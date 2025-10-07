@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace DigiTekShop.API.Controllers;
+namespace DigiTekShop.API.Controllers.V1.HealthCheck;
 
 [ApiController]
 [Route("api/[controller]")]

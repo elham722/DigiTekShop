@@ -1,6 +1,144 @@
-@DigiTekShop.API_HostAddress = http://localhost:5248
+### DigiTekShop API Test File
+### Base URL
+@baseUrl = https://localhost:7055
+@apiVersion = v1
 
-GET {{DigiTekShop.API_HostAddress}}/weatherforecast/
+### Variables
+@email = test@example.com
+@password = TestPassword123!
+@accessToken = 
+@refreshToken = 
+
+### 1. Health Check
+GET {{baseUrl}}/health
 Accept: application/json
 
-###
+### 2. Ping Test
+GET {{baseUrl}}/api/{{apiVersion}}/ping
+Accept: application/json
+
+### 3. Register New User
+POST {{baseUrl}}/api/{{apiVersion}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "confirmPassword": "{{password}}",
+  "phoneNumber": "+989123456789",
+  "acceptTerms": true
+}
+
+### 4. Login
+POST {{baseUrl}}/api/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### 5. Get Current User Info (requires authentication)
+GET {{baseUrl}}/api/{{apiVersion}}/user/me
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 6. Get User Permissions
+GET {{baseUrl}}/api/{{apiVersion}}/user/permissions
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 7. Refresh Token
+POST {{baseUrl}}/api/{{apiVersion}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 8. Forgot Password
+POST {{baseUrl}}/api/{{apiVersion}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "{{email}}"
+}
+
+### 9. Change Password (requires authentication)
+POST {{baseUrl}}/api/{{apiVersion}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "userId": "user-id-here",
+  "currentPassword": "{{password}}",
+  "newPassword": "NewPassword123!",
+  "confirmNewPassword": "NewPassword123!"
+}
+
+### 10. Enable 2FA (requires authentication)
+POST {{baseUrl}}/api/{{apiVersion}}/auth/2fa/enable
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "userId": "user-id-here",
+  "provider": "Authenticator"
+}
+
+### 11. Verify 2FA Token
+POST {{baseUrl}}/api/{{apiVersion}}/auth/2fa/verify
+Content-Type: application/json
+
+{
+  "userId": "user-id-here",
+  "token": "123456",
+  "provider": "Authenticator"
+}
+
+### 12. Logout
+POST {{baseUrl}}/api/{{apiVersion}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 13. Logout All Devices
+POST {{baseUrl}}/api/{{apiVersion}}/auth/logout-all
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 14. Get Lockout Status
+GET {{baseUrl}}/api/{{apiVersion}}/user/lockout-status
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 15. Cache Test - Set Value
+POST {{baseUrl}}/api/cache/set
+Content-Type: application/json
+
+{
+  "key": "test-key",
+  "value": "test-value",
+  "ttlMinutes": 60
+}
+
+### 16. Cache Test - Get Value
+GET {{baseUrl}}/api/cache/get/test-key
+Accept: application/json
+
+### 17. Rate Limit Test
+POST {{baseUrl}}/api/cache/rate-limit-test
+Content-Type: application/json
+
+{
+  "key": "test-rate-limit",
+  "limit": 5,
+  "windowMinutes": 1
+}
+
+### 18. Cache Statistics
+GET {{baseUrl}}/api/cache/stats
+Accept: application/json

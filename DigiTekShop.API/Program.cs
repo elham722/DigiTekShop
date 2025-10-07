@@ -4,8 +4,11 @@ using DigiTekShop.Application.DependencyInjection;
 using DigiTekShop.ExternalServices.DependencyInjection;
 using DigiTekShop.Identity.DependencyInjection;
 using DigiTekShop.Infrastructure.DependencyInjection;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +28,33 @@ builder.Services.AddCors(o =>
 });
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
+
+// Add Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.Identity?.Name ?? httpContext.Request.Headers.Host.ToString(),
+            factory: partition => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+
+    options.AddFixedWindowLimiter("AuthPolicy", options =>
+    {
+        options.PermitLimit = 5;
+        options.Window = TimeSpan.FromMinutes(1);
+        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        options.QueueLimit = 2;
+    });
+});
 
 // Infrastructure services (Redis, Caching, DataProtection)
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -43,27 +72,55 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "DigiTekShop API",
         Version = "v1.0",
-        Description = "DigiTekShop E-commerce API v1.0",
-        Contact = new OpenApiContact { Name = "DigiTekShop Team", Email = "support@myshop.com" }
+        Description = @"
+            DigiTekShop E-commerce API v1.0
+        ",
+        Contact = new OpenApiContact 
+        { 
+            Name = "DigiTekShop Team", 
+            Email = "support@digitekshop.com",
+            Url = new Uri("https://digitekshop.com/contact")
+        },
+        License = new OpenApiLicense
+        {
+            Name = "MIT License",
+            Url = new Uri("https://opensource.org/licenses/MIT")
+        }
     });
 
-    // 🔒 JWT Bearer
-    var securityScheme = new OpenApiSecurityScheme
+    var jwt = new OpenApiSecurityScheme
     {
-        Name = "Authorization",
-        Description = "Enter: Bearer {token}",
-        In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Description = "Bearer {token}",
         Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
     };
+    c.AddSecurityDefinition("Bearer", jwt);
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement { { jwt, Array.Empty<string>() } });
 
-    c.AddSecurityDefinition("Bearer", securityScheme);
+
+    c.AddSecurityDefinition("Bearer", jwt);
+    
+    // Apply security to all endpoints
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
-        { securityScheme, Array.Empty<string>() }
+        { jwt, Array.Empty<string>() }
     });
+
+    // Include XML comments if available
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+    
+    // Group endpoints by tags
+    c.TagActionsBy(api => new[] { api.GroupName ?? api.ActionDescriptor.RouteValues["controller"] ?? "Default" });
+    c.DocInclusionPredicate((name, api) => true);
 });
 
 
@@ -114,6 +171,7 @@ if (app.Environment.IsProduction())
 // ⬅️ خیلی مهم: قبل از Swagger
 app.UseHttpsRedirection();
 app.UseCors("Default");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 if (app.Environment.IsDevelopment())
