@@ -8,12 +8,12 @@
         public DateTime LastLoginAt { get; private set; } = DateTime.UtcNow;
         public bool IsActive { get; private set; } = true;
 
-        // پیشنهاد جدید
         public string? DeviceFingerprint { get; private set; }
         public string? BrowserInfo { get; private set; }
         public string? OperatingSystem { get; private set; }
         public bool IsTrusted { get; private set; }
         public DateTime? TrustedAt { get; private set; }
+        public DateTime? TrustExpiresAt { get; private set; }
 
         // User
         public Guid UserId { get; private set; }
@@ -57,21 +57,57 @@
         {
             IsTrusted = true;
             TrustedAt = DateTime.UtcNow;
+            TrustExpiresAt = null; 
         }
 
         public void MarkAsUntrusted()
         {
             IsTrusted = false;
             TrustedAt = null;
+            TrustExpiresAt = null;
         }
 
-       
+      
+        public void TrustUntil(DateTime expiresAt)
+        {
+            Guard.AgainstPastDate(expiresAt, () => DateTime.UtcNow, nameof(expiresAt));
+            
+            IsTrusted = true;
+            TrustedAt = DateTime.UtcNow;
+            TrustExpiresAt = expiresAt;
+        }
+
+        public void TrustFor(TimeSpan duration)
+        {
+            Guard.AgainstNegative(duration, nameof(duration));
+            
+            IsTrusted = true;
+            TrustedAt = DateTime.UtcNow;
+            TrustExpiresAt = DateTime.UtcNow.Add(duration);
+        }
+
+     
         public bool RequiresReVerification(TimeSpan trustExpirationThreshold)
         {
             if (!IsTrusted || !TrustedAt.HasValue)
                 return true;
 
+            if (TrustExpiresAt.HasValue && DateTime.UtcNow >= TrustExpiresAt.Value)
+                return true;
+
             return DateTime.UtcNow - TrustedAt.Value > trustExpirationThreshold;
+        }
+
+       
+        public bool IsTrustExpired()
+        {
+            return TrustExpiresAt.HasValue && DateTime.UtcNow >= TrustExpiresAt.Value;
+        }
+
+       
+        public bool IsCurrentlyTrusted()
+        {
+            return IsTrusted && !IsTrustExpired();
         }
 
        

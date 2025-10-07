@@ -46,22 +46,26 @@ public class DeviceManagementService : IDeviceManagementService
         if (user is null)
             return Result<IEnumerable<UserDeviceDto>>.Failure("User not found");
 
-        var dtos = await _context.UserDevices
-            .Where(d => d.UserId == user.Id) 
-            .OrderByDescending(d => d.LastLoginAt)
-            .Select(d => new UserDeviceDto
-            {
-                DeviceId = d.Id,
-                DeviceName = d.DeviceName,
-                Platform = d.DeviceFingerprint,
-                IpAddress = d.IpAddress,
-                UserAgent = d.BrowserInfo,
-                IsTrusted = d.IsTrusted,
-                LastLoginAt = d.LastLoginAt
-            })
-            .ToListAsync(ct);
+         var devices = await _context.UserDevices
+             .Where(d => d.UserId == user.Id) 
+             .OrderByDescending(d => d.LastLoginAt)
+             .Select(d => new UserDeviceDto
+             {
+                 DeviceId = d.Id,
+                 DeviceName = d.DeviceName,
+                 DeviceFingerprint = d.DeviceFingerprint,
+                 BrowserInfo = d.BrowserInfo,
+                 OperatingSystem = d.OperatingSystem,
+                 IpAddress = d.IpAddress,
+                 IsActive = d.IsActive,
+                 IsTrusted = d.IsTrusted,
+                 TrustedAt = d.TrustedAt,
+                 TrustExpiresAt = d.TrustExpiresAt,
+                 LastLoginAt = d.LastLoginAt
+             })
+             .ToListAsync(ct);
 
-        return Result<IEnumerable<UserDeviceDto>>.Success(dtos);
+        return Result<IEnumerable<UserDeviceDto>>.Success(devices);
     }
 
 
@@ -91,6 +95,80 @@ public class DeviceManagementService : IDeviceManagementService
         {
             _logger.LogWarning("Cannot trust device {DeviceId} for user {UserId}: {Message}", deviceId, userId, ex.Message);
             return Result.Failure(ex.Message);
+        }
+    }
+
+    public async Task<Result> TrustDeviceUntilAsync(string userId, Guid deviceId, DateTime expiresAt, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return Result.Failure("User ID is required");
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return Result.Failure("User not found");
+
+        try
+        {
+            var device = user.Devices.FirstOrDefault(d => d.Id == deviceId);
+            if (device == null)
+                return Result.Failure("Device not found");
+
+            if (!device.IsActive)
+                return Result.Failure("Cannot trust inactive device");
+
+            var trustedDevices = user.Devices.Count(d => d.IsTrusted);
+            if (trustedDevices >= _deviceLimits.MaxTrustedDevicesPerUser)
+            {
+                return Result.Failure($"Maximum trusted devices limit ({_deviceLimits.MaxTrustedDevicesPerUser}) exceeded");
+            }
+
+            device.TrustUntil(expiresAt);
+            await _context.SaveChangesAsync(ct);
+            
+            _logger.LogInformation("Device {DeviceId} trusted until {ExpiresAt} for user {UserId}", deviceId, expiresAt, userId);
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error trusting device {DeviceId} until {ExpiresAt} for user {UserId}", deviceId, expiresAt, userId);
+            return Result.Failure("Failed to trust device");
+        }
+    }
+
+    public async Task<Result> TrustDeviceForAsync(string userId, Guid deviceId, TimeSpan duration, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return Result.Failure("User ID is required");
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return Result.Failure("User not found");
+
+        try
+        {
+            var device = user.Devices.FirstOrDefault(d => d.Id == deviceId);
+            if (device == null)
+                return Result.Failure("Device not found");
+
+            if (!device.IsActive)
+                return Result.Failure("Cannot trust inactive device");
+
+            var trustedDevices = user.Devices.Count(d => d.IsTrusted);
+            if (trustedDevices >= _deviceLimits.MaxTrustedDevicesPerUser)
+            {
+                return Result.Failure($"Maximum trusted devices limit ({_deviceLimits.MaxTrustedDevicesPerUser}) exceeded");
+            }
+
+            device.TrustFor(duration);
+            await _context.SaveChangesAsync(ct);
+            
+            _logger.LogInformation("Device {DeviceId} trusted for {Duration} for user {UserId}", deviceId, duration, userId);
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error trusting device {DeviceId} for {Duration} for user {UserId}", deviceId, duration, userId);
+            return Result.Failure("Failed to trust device");
         }
     }
 

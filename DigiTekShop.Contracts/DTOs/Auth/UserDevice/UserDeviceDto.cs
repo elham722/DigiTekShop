@@ -8,23 +8,30 @@ namespace DigiTekShop.Contracts.DTOs.Auth.UserDevice
 {
     public sealed class UserDeviceDto
     {
-        public string UserId { get; init; } = default!;
+        public Guid DeviceId { get; init; }
 
-        public Guid? DeviceId { get; init; }
+        public string DeviceName { get; init; } = default!;
 
-        public string? DeviceName { get; init; }
+        public string? DeviceFingerprint { get; init; }
 
-        public string? Platform { get; init; }
+        public string? BrowserInfo { get; init; }
 
-        public string? IpAddress { get; init; }
+        public string? OperatingSystem { get; init; }
 
-        public string? UserAgent { get; init; }
+        public string IpAddress { get; init; } = default!;
+
+        public bool IsActive { get; init; }
 
         public bool IsTrusted { get; init; }
 
-        public bool IsRevoked { get; init; }
+        public DateTime? TrustedAt { get; init; }
 
-        public DateTime CreatedAt { get; init; }
-        public DateTime? LastLoginAt { get; init; }
+        public DateTime? TrustExpiresAt { get; init; }
+
+        public DateTime LastLoginAt { get; init; }
+
+        public bool IsTrustExpired => TrustExpiresAt.HasValue && DateTime.UtcNow >= TrustExpiresAt.Value;
+
+        public bool IsCurrentlyTrusted => IsTrusted && !IsTrustExpired;
     }
 }

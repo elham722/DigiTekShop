@@ -14,6 +14,10 @@ namespace DigiTekShop.Contracts.Interfaces.Identity.Auth
 
         Task<Result> TrustDeviceAsync(string userId, Guid deviceId, CancellationToken ct = default);
 
+        Task<Result> TrustDeviceUntilAsync(string userId, Guid deviceId, DateTime expiresAt, CancellationToken ct = default);
+
+        Task<Result> TrustDeviceForAsync(string userId, Guid deviceId, TimeSpan duration, CancellationToken ct = default);
+
         Task<Result> UntrustDeviceAsync(string userId, Guid deviceId, CancellationToken ct = default);
 
         Task<Result> RemoveDeviceAsync(string userId, Guid deviceId, CancellationToken ct = default);

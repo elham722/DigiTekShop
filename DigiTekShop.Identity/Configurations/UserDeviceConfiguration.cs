@@ -9,17 +9,38 @@ namespace DigiTekShop.Identity.Configurations;
             // Configure properties
             builder.Property(ud => ud.DeviceName)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(64); 
 
             builder.Property(ud => ud.IpAddress)
                 .IsRequired()
                 .HasMaxLength(45); // IPv6 max length
+
+            builder.Property(ud => ud.DeviceFingerprint)
+                .HasMaxLength(256)
+                .IsRequired(false);
+
+            builder.Property(ud => ud.BrowserInfo)
+                .HasMaxLength(128)
+                .IsRequired(false);
+
+            builder.Property(ud => ud.OperatingSystem)
+                .HasMaxLength(64)
+                .IsRequired(false);
 
             builder.Property(ud => ud.LastLoginAt)
                 .IsRequired();
 
             builder.Property(ud => ud.IsActive)
                 .HasDefaultValue(true);
+
+            builder.Property(ud => ud.IsTrusted)
+                .HasDefaultValue(false);
+
+            builder.Property(ud => ud.TrustedAt)
+                .IsRequired(false);
+
+            builder.Property(ud => ud.TrustExpiresAt)
+                .IsRequired(false);
 
             builder.Property(ud => ud.UserId)
                 .IsRequired();
@@ -47,6 +68,12 @@ namespace DigiTekShop.Identity.Configurations;
                 .IsUnique()
                 .HasDatabaseName("UX_UserDevices_User_DeviceFingerprint")
                 .HasFilter("[DeviceFingerprint] IS NOT NULL");
+
+            builder.HasIndex(ud => new { ud.UserId, ud.IsActive })
+                .HasDatabaseName("IX_UserDevices_User_IsActive");
+
+            builder.HasIndex(ud => new { ud.UserId, ud.IsTrusted })
+                .HasDatabaseName("IX_UserDevices_User_IsTrusted");
 
     }
 }
