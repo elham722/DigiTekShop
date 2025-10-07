@@ -2,6 +2,7 @@
 using DigiTekShop.Contracts.DTOs.Auth.Lockout;
 using DigiTekShop.Contracts.DTOs.Auth.Login;
 using DigiTekShop.Contracts.DTOs.Auth.Logout;
+using DigiTekShop.Contracts.DTOs.Auth.PasswordHistory;
 using DigiTekShop.Contracts.DTOs.Auth.Register;
 using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
@@ -22,6 +23,7 @@ public interface IAuthService
     Task<Result> SendAsync(string userId, CancellationToken ct = default);
     Task<Result> ConfirmEmailAsync(ConfirmEmailRequestDto request, CancellationToken ct = default);
     Task<Result> ResendAsync(ResendEmailConfirmationRequestDto request, CancellationToken ct = default);
+    Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default);
 
     // Password
     Task<Result> ForgotPasswordAsync(ForgotPasswordRequestDto request, CancellationToken ct = default);
@@ -39,4 +41,6 @@ public interface IAuthService
     Task<Result<UnlockUserResponseDto>> UnlockUserAsync(UnlockUserRequestDto request, CancellationToken ct = default);
     Task<Result<LockoutStatusResponseDto>> GetLockoutStatusAsync(string userId, CancellationToken ct = default);
     Task<Result<TimeSpan?>> GetLockoutEndTimeAsync(string userId, CancellationToken ct = default);
+
+   
 }

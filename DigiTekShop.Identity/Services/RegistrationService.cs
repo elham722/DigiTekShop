@@ -143,11 +143,6 @@ public class RegistrationService : IRegistrationService
         }
     }
 
-    public Task<Result> ConfirmEmailAsync(ConfirmEmailRequestDto request, CancellationToken ct = default)
-        => _emailConfirmationService.ConfirmEmailAsync(request, ct);
-
-    public Task<Result> ResendEmailConfirmationAsync(ResendEmailConfirmationRequestDto request, CancellationToken ct = default)
-        => _emailConfirmationService.ResendAsync(request, ct);
 
     #region Private Helpers
 

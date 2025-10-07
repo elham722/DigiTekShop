@@ -12,7 +12,5 @@ namespace DigiTekShop.Contracts.Interfaces.Identity.Auth
     public interface IRegistrationService
     {
         Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default);
-        Task<Result> ConfirmEmailAsync(ConfirmEmailRequestDto request, CancellationToken ct = default);
-        Task<Result> ResendEmailConfirmationAsync(ResendEmailConfirmationRequestDto request, CancellationToken ct = default);
     }
 }
