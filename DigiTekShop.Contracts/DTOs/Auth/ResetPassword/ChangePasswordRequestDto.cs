@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace DigiTekShop.Contracts.DTOs.Auth.ResetPassword
 {
-    public record ChangePasswordRequestDto(string CurrentPassword, string NewPassword);
+    public record ChangePasswordRequestDto(Guid UserId, string CurrentPassword, string NewPassword);
 }

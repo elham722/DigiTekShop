@@ -1,107 +1,101 @@
+using DigiTekShop.Contracts.DTOs.Auth.PasswordHistory;
+using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Models;
-using DigiTekShop.Identity.Options;
+using DigiTekShop.SharedKernel.Guards;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace DigiTekShop.Identity.Services;
 
-public class PasswordHistoryService
+public sealed class PasswordHistoryService : IPasswordHistoryService
 {
     private readonly DigiTekShopIdentityDbContext _context;
-    private readonly PasswordPolicyOptions _policyOptions;
     private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly UserManager<User> _userManager;
     private readonly ILogger<PasswordHistoryService> _logger;
 
     public PasswordHistoryService(
         DigiTekShopIdentityDbContext context,
-        IOptions<PasswordPolicyOptions> policyOptions,
         IPasswordHasher<User> passwordHasher,
+        UserManager<User> userManager,
         ILogger<PasswordHistoryService> logger)
     {
-        _context = context;
-        _policyOptions = policyOptions.Value;
-        _passwordHasher = passwordHasher;
-        _logger = logger;
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
+        _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    /// <summary>
-    /// اضافه کردن پسورد جدید به تاریخچه کاربر
-    /// </summary>
-    public async Task<bool> AddPasswordToHistoryAsync(User user, string passwordHash)
+    public async Task<bool> AddAsync(Guid userId, string passwordHash, int? keepLastN = null, CancellationToken ct = default)
     {
+        Guard.AgainstEmpty(userId, nameof(userId));
+        Guard.AgainstNullOrEmpty(passwordHash, nameof(passwordHash));
+
         try
         {
-            var historyEntry = PasswordHistory.Create(user.Id, passwordHash);
-            _context.PasswordHistories.Add(historyEntry);
+            _context.PasswordHistories.Add(PasswordHistory.Create(userId, passwordHash));
 
-            // حذف تاریخچه‌های قدیمی‌تر از حد مشخص شده
-            await CleanupOldHistoriesAsync(user.Id);
+            if (keepLastN is int k && k > 0)
+            {
+                // Trim در همان تراکنش/Save
+                await TrimInternalAsync(userId, k, ct);
+            }
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
             return true;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to add password to history for user {UserId}", user.Id);
+            _logger.LogError(ex, "Failed to add password to history for user {UserId}", userId);
             return false;
         }
     }
 
-    /// <summary>
-    /// دریافت تاریخچه پسوردهای کاربر
-    /// </summary>
-    public async Task<IEnumerable<PasswordHistory>> GetPasswordHistoryAsync(Guid userId, int count = 10)
+    public async Task<IReadOnlyList<PasswordHistoryEntryDto>> GetAsync(Guid userId, int count = 10, CancellationToken ct = default)
     {
-        return await _context.PasswordHistories
+        Guard.AgainstEmpty(userId, nameof(userId));
+        if (count <= 0) count = 10;
+
+        var items = await _context.PasswordHistories
+            .AsNoTracking()
             .Where(ph => ph.UserId == userId)
             .OrderByDescending(ph => ph.ChangedAt)
             .Take(count)
-            .ToListAsync();
+            .Select(ph => new PasswordHistoryEntryDto(ph.ChangedAt))
+            .ToListAsync(ct);
+
+        return items;
     }
 
-    /// <summary>
-    /// حذف تاریخچه قدیمی‌تر از حد مشخص شده
-    /// </summary>
-    public async Task<int> CleanupOldHistoriesAsync(Guid userId)
+    public async Task<int> TrimAsync(Guid userId, int keepLastN, CancellationToken ct = default)
     {
-        if (_policyOptions.HistoryDepth <= 0) return 0;
+        Guard.AgainstEmpty(userId, nameof(userId));
+        if (keepLastN < 0) keepLastN = 0;
 
-        var histories = await _context.PasswordHistories
-            .Where(ph => ph.UserId == userId)
-            .OrderByDescending(ph => ph.ChangedAt)
-            .Skip(_policyOptions.HistoryDepth)
-            .ToListAsync();
-
-        if (histories.Any())
-        {
-            _context.PasswordHistories.RemoveRange(histories);
-            await _context.SaveChangesAsync();
-        }
-
-        return histories.Count;
+        var removed = await TrimInternalAsync(userId, keepLastN, ct);
+        await _context.SaveChangesAsync(ct);
+        return removed;
     }
 
-    /// <summary>
-    /// حذف کامل تاریخچه پسوردهای کاربر
-    /// </summary>
-    public async Task<bool> ClearPasswordHistoryAsync(Guid userId)
+    public async Task<bool> ClearAsync(Guid userId, CancellationToken ct = default)
     {
+        Guard.AgainstEmpty(userId, nameof(userId));
+
         try
         {
-            var histories = await _context.PasswordHistories
+            var all = await _context.PasswordHistories
                 .Where(ph => ph.UserId == userId)
-                .ToListAsync();
+                .ToListAsync(ct);
 
-            if (histories.Any())
-            {
-                _context.PasswordHistories.RemoveRange(histories);
-                await _context.SaveChangesAsync();
-            }
+            if (all.Count == 0) return true;
 
+            _context.PasswordHistories.RemoveRange(all);
+            await _context.SaveChangesAsync(ct);
             return true;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to clear password history for user {UserId}", userId);
@@ -109,28 +103,51 @@ public class PasswordHistoryService
         }
     }
 
-    /// <summary>
-    /// بررسی اینکه آیا پسورد در تاریخچه وجود دارد یا نه
-    /// </summary>
-    public async Task<bool> DoesPasswordExistInHistoryAsync(User user, string plainPassword)
+    public async Task<bool> ExistsInHistoryAsync(Guid userId, string plainPassword, int maxToCheck = 10, CancellationToken ct = default)
     {
-        if (_policyOptions.HistoryDepth <= 0) return false;
+        Guard.AgainstEmpty(userId, nameof(userId));
+        if (string.IsNullOrWhiteSpace(plainPassword)) return false;
+        if (maxToCheck <= 0) maxToCheck = 10;
 
-        var histories = await _context.PasswordHistories
-            .Where(ph => ph.UserId == user.Id)
-            .OrderByDescending(ph => ph.ChangedAt)
-            .Take(_policyOptions.HistoryDepth)
-            .ToListAsync();
-
-        foreach (var history in histories)
+        // ✅ دیگه new User نمی‌زنیم؛ کاربر واقعی رو میاریم
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
         {
-            var result = _passwordHasher.VerifyHashedPassword(user, history.PasswordHash, plainPassword);
-            if (result == PasswordVerificationResult.Success || result == PasswordVerificationResult.SuccessRehashNeeded)
-            {
+            _logger.LogWarning("ExistsInHistoryAsync: user not found {UserId}", userId);
+            return false;
+        }
+
+        var lastHashes = await _context.PasswordHistories
+            .AsNoTracking()
+            .Where(ph => ph.UserId == userId)
+            .OrderByDescending(ph => ph.ChangedAt)
+            .Take(maxToCheck)
+            .Select(ph => ph.PasswordHash)
+            .ToListAsync(ct);
+
+        foreach (var oldHash in lastHashes)
+        {
+            var verification = _passwordHasher.VerifyHashedPassword(user, oldHash, plainPassword);
+            if (verification is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded)
                 return true;
-            }
         }
 
         return false;
+    }
+
+    // ---------- Private ----------
+
+    private async Task<int> TrimInternalAsync(Guid userId, int keepLastN, CancellationToken ct)
+    {
+        var oldOnes = await _context.PasswordHistories
+            .Where(ph => ph.UserId == userId)
+            .OrderByDescending(ph => ph.ChangedAt)
+            .Skip(keepLastN)
+            .ToListAsync(ct);
+
+        if (oldOnes.Count == 0) return 0;
+
+        _context.PasswordHistories.RemoveRange(oldOnes);
+        return oldOnes.Count;
     }
 }

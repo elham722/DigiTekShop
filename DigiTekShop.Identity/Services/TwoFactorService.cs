@@ -2,7 +2,7 @@
 using DigiTekShop.Contracts.DTOs.Auth.TwoFactor;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.SharedKernel.Results;
-using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OtpNet;
 using QRCoder;
@@ -30,6 +30,7 @@ namespace DigiTekShop.Identity.Services
             _logger = logger;
         }
 
+     
         public async Task<MfaSetupDto> SetupAsync(User user)
         {
             Guard.AgainstNull(user, nameof(user));
@@ -49,7 +50,8 @@ namespace DigiTekShop.Identity.Services
             var existing = await _context.UserMfa.FirstOrDefaultAsync(x => x.UserId == user.Id);
             if (existing != null)
             {
-                existing.Enable(encryptedKey);   // ✅ اگر وجود داشت آپدیت کن
+             
+                existing.Enable(encryptedKey);
             }
             else
             {
@@ -89,7 +91,7 @@ namespace DigiTekShop.Identity.Services
                 return Result.Failure("Invalid code.");
             }
 
-            record.MarkVerified();  // ✅ ثبت زمان آخرین موفقیت
+            record.MarkVerified();
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("MFA validated successfully for user {UserId}", user.Id);
@@ -110,30 +112,116 @@ namespace DigiTekShop.Identity.Services
 
         public async Task<MfaStatusDto> GetStatusAsync(User user)
         {
-            // Load MFA relationship
             await _context.Entry(user).Reference(u => u.Mfa).LoadAsync();
             return new MfaStatusDto(user.Mfa?.IsEnabled ?? false);
         }
 
-        public Task<Result<TwoFactorResponseDto>> EnableTwoFactorAsync(TwoFactorRequestDto request, CancellationToken ct = default)
+       
+
+        public async Task<Result<TwoFactorResponseDto>> EnableTwoFactorAsync(TwoFactorRequestDto request, CancellationToken ct = default)
         {
-            throw new NotImplementedException();
+            
+            if (string.IsNullOrWhiteSpace(request.UserId))
+                return Result<TwoFactorResponseDto>.Failure("UserId is required.");
+
+            var user = await _userManager.FindByIdAsync(request.UserId);
+            if (user is null || user.IsDeleted)
+                return Result<TwoFactorResponseDto>.Failure("User not found or inactive.");
+
+            
+            var setup = await SetupAsync(user);
+
+           
+            if (user.TwoFactorEnabled)
+            {
+                user.TwoFactorEnabled = false;
+                await _userManager.UpdateAsync(user);
+            }
+
+          
+            var resp = new TwoFactorResponseDto(
+                Enabled: false,
+              TwoFactorProvider.Sms
+            );
+
+            return Result<TwoFactorResponseDto>.Success(resp);
         }
 
-        public Task<Result<TwoFactorResponseDto>> DisableTwoFactorAsync(TwoFactorRequestDto request, CancellationToken ct = default)
+        public async Task<Result<TwoFactorResponseDto>> DisableTwoFactorAsync(TwoFactorRequestDto request, CancellationToken ct = default)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(request.UserId))
+                return Result<TwoFactorResponseDto>.Failure("UserId is required.");
+
+            var user = await _userManager.FindByIdAsync(request.UserId);
+            if (user is null || user.IsDeleted)
+                return Result<TwoFactorResponseDto>.Failure("User not found or inactive.");
+
+           
+            var res = await DisableAsync(user);
+            if (res.IsFailure) return Result<TwoFactorResponseDto>.Failure(res.Errors);
+
+            
+            if (user.TwoFactorEnabled)
+            {
+                user.TwoFactorEnabled = false;
+                await _userManager.UpdateAsync(user);
+            }
+
+            var dto = new TwoFactorResponseDto(
+                Enabled: false,
+                TwoFactorProvider.Sms
+            );
+            return Result<TwoFactorResponseDto>.Success(dto);
         }
 
-        public Task<Result> VerifyTwoFactorTokenAsync(VerifyTwoFactorRequestDto request, CancellationToken ct = default)
+        public async Task<Result> VerifyTwoFactorTokenAsync(VerifyTwoFactorRequestDto request, CancellationToken ct = default)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(request.UserId))
+                return Result.Failure("UserId is required.");
+            if (string.IsNullOrWhiteSpace(request.Code))
+                return Result.Failure("Code is required.");
+
+            var user = await _userManager.FindByIdAsync(request.UserId);
+            if (user is null || user.IsDeleted)
+                return Result.Failure("User not found or inactive.");
+
+            var validation = await ValidateCodeAsync(user, request.Code);
+            if (validation.IsFailure) return validation;
+
+            
+            if (!user.TwoFactorEnabled)
+            {
+                user.TwoFactorEnabled = true;
+                await _userManager.UpdateAsync(user);
+            }
+
+            return Result.Success();
         }
 
-        public Task<Result<TwoFactorTokenResponseDto>> GenerateTwoFactorTokenAsync(TwoFactorRequestDto request, CancellationToken ct = default)
+        public async Task<Result<TwoFactorTokenResponseDto>> GenerateTwoFactorTokenAsync(TwoFactorRequestDto request, CancellationToken ct = default)
         {
-            throw new NotImplementedException();
+            
+            if (string.IsNullOrWhiteSpace(request.UserId))
+                return Result<TwoFactorTokenResponseDto>.Failure("UserId is required.");
+
+            var user = await _userManager.FindByIdAsync(request.UserId);
+            if (user is null || user.IsDeleted)
+                return Result<TwoFactorTokenResponseDto>.Failure("User not found or inactive.");
+
+            var setup = await SetupAsync(user); 
+
+           
+            var issuer = Uri.EscapeDataString("DigiTekShop");
+            var label = Uri.EscapeDataString(user.Email);
+            var otpauthUri = $"otpauth://totp/{issuer}:{label}?secret={setup.SecretKey}&issuer={issuer}&algorithm=SHA1&digits=6&period=30";
+
+            // باید درست کنم
+            var dto = new TwoFactorTokenResponseDto(
+               Token:null,
+               DateTimeOffset.MaxValue
+            );
+
+            return Result<TwoFactorTokenResponseDto>.Success(dto);
         }
     }
-
 }

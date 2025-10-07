@@ -1,17 +1,18 @@
 using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
+using DigiTekShop.Contracts.Interfaces.Caching;
+using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Models;
-using DigiTekShop.SharedKernel.Results;
+using DigiTekShop.Identity.Options.PhoneVerification;
 using DigiTekShop.SharedKernel.Guards;
+using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using DigiTekShop.Contracts.Interfaces.Caching;
-using DigiTekShop.Identity.Options.PhoneVerification;
 
 namespace DigiTekShop.Identity.Services;
 
-public class PhoneVerificationService
+public sealed class PhoneVerificationService : IPhoneVerificationService
 {
     private readonly UserManager<User> _userManager;
     private readonly IPhoneSender _phoneSender;
@@ -36,18 +37,53 @@ public class PhoneVerificationService
         _logger = logger;
     }
 
-    public async Task<Result> SendVerificationCodeAsync(User user, string phoneNumber)
+  
+
+    public async Task<Result> SendVerificationCodeAsync(Guid userId, string phoneNumber, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.IsDeleted) return Result.Failure("User not found or inactive.");
+
+        return await SendVerificationCodeCoreAsync(user, phoneNumber, ct);
+    }
+
+    public async Task<Result> VerifyCodeAsync(string userId, string code, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null || user.IsDeleted) return Result.Failure("User not found or inactive.");
+
+        return await VerifyCodeCoreAsync(user, code, ct);
+    }
+
+    public async Task<bool> CanResendCodeAsync(Guid userId, CancellationToken ct = default)
+    {
+        var last = await _context.PhoneVerifications
+            .AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        return last == null || DateTime.UtcNow >= last.CreatedAt.AddMinutes(_settings.ResendCooldownMinutes);
+    }
+
+   
+
+    private async Task<Result> SendVerificationCodeCoreAsync(User user, string phoneNumber, CancellationToken ct)
     {
         if (!_settings.RequirePhoneConfirmation || user.PhoneNumberConfirmed)
             return Result.Success();
 
         Guard.AgainstInvalidFormat(phoneNumber, _settings.Security.AllowedPhonePattern, nameof(phoneNumber));
 
-        // Rate limiting check
+        
+        if (_settings.Security.RequireUniquePhoneNumbers && !string.Equals(user.PhoneNumber, phoneNumber, StringComparison.Ordinal))
+            return Result.Failure("Phone number does not match the registered number.");
+
+        // Rate limit
         var rateLimitKey = $"phone_verification:{user.Id}";
         var isAllowed = await _rateLimiter.ShouldAllowAsync(
-            rateLimitKey, 
-            _settings.Security.MaxRequestsPerHour, 
+            rateLimitKey,
+            _settings.Security.MaxRequestsPerHour,
             TimeSpan.FromHours(1));
 
         if (!isAllowed)
@@ -56,81 +92,85 @@ public class PhoneVerificationService
             return Result.Failure("Too many verification requests. Please try again later.");
         }
 
-        if (_settings.AllowResendCode && !await CanResendCodeAsync(user.Id))
+        if (_settings.AllowResendCode && !await CanResendCodeAsync(user.Id, ct))
             return Result.Failure($"Please wait {_settings.ResendCooldownMinutes} minutes before resend.");
 
         var code = GenerateCode(_settings.CodeLength);
         var hash = BCrypt.Net.BCrypt.HashPassword(code);
         var expires = DateTime.UtcNow.AddMinutes(_settings.CodeValidityMinutes);
 
-        var verification = await GetOrCreateVerification(user.Id, hash, expires);
-        _context.PhoneVerifications.Update(verification);
+        await GetOrCreateAndPersistVerificationAsync(user.Id, hash, expires, ct);
 
         var message = BuildMessage(code);
         var sendResult = await _phoneSender.SendCodeAsync(phoneNumber, code, message);
-
         if (sendResult.IsFailure) return Result.Failure("Failed to send SMS.");
-        await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Verification code sent to {Phone}", phoneNumber);
+        _logger.LogInformation("Verification code sent to {Phone} for user {UserId}", phoneNumber, user.Id);
         return Result.Success();
     }
 
-    public async Task<Result> VerifyCodeAsync(User user, string enteredCode)
+    private async Task<Result> VerifyCodeCoreAsync(User user, string enteredCode, CancellationToken ct)
     {
         var verification = await _context.PhoneVerifications
             .Where(p => p.UserId == user.Id)
             .OrderByDescending(p => p.CreatedAt)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(ct);
 
         if (verification == null) return Result.Failure("No code found.");
         if (verification.IsExpired()) return Result.Failure("Code expired.");
         if (verification.Attempts >= _settings.MaxAttempts) return Result.Failure("Too many attempts.");
 
+        
         verification.IncrementAttempts(_settings.MaxAttempts);
+        await _context.SaveChangesAsync(ct);
 
         if (!BCrypt.Net.BCrypt.Verify(enteredCode, verification.CodeHash))
             return Result.Failure("Invalid code.");
 
-        verification.ResetAttempts(); // ✅ Reset after success
+      
+        verification.ResetAttempts();
         user.PhoneNumberConfirmed = true;
 
         var update = await _userManager.UpdateAsync(user);
         if (!update.Succeeded)
             return Result.Failure(string.Join(", ", update.Errors.Select(e => e.Description)));
 
-        _logger.LogInformation("Phone {Phone} verified for user {User}", user.PhoneNumber, user.Id);
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Phone {Phone} verified for user {UserId}", user.PhoneNumber, user.Id);
         return Result.Success();
     }
 
-    #region Helpers
 
     private static string GenerateCode(int length)
     {
         Span<byte> bytes = stackalloc byte[length];
         System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
         Span<char> chars = stackalloc char[length];
-
         for (int i = 0; i < length; i++)
             chars[i] = (char)('0' + (bytes[i] % 10));
-
         return new string(chars);
     }
 
-    private async Task<PhoneVerification> GetOrCreateVerification(Guid userId, string hash, DateTime expires)
+   
+    private async Task GetOrCreateAndPersistVerificationAsync(Guid userId, string hash, DateTime expires, CancellationToken ct)
     {
         var existing = await _context.PhoneVerifications
             .Where(p => p.UserId == userId)
             .OrderByDescending(p => p.CreatedAt)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(ct);
 
         if (existing != null)
         {
             existing.ResetCode(hash, expires);
-            return existing;
+        }
+        else
+        {
+            var pv = PhoneVerification.Create(userId, hash, expires);
+            _context.PhoneVerifications.Add(pv);
         }
 
-        return PhoneVerification.Create(userId, hash, expires);
+        await _context.SaveChangesAsync(ct);
     }
 
     private string BuildMessage(string code)
@@ -142,16 +182,4 @@ public class PhoneVerificationService
 
         return msg.Length > t.MaxSmsLength ? $"{t.CompanyName} - Code: {code}" : msg;
     }
-
-    public async Task<bool> CanResendCodeAsync(Guid userId)
-    {
-        var last = await _context.PhoneVerifications
-            .Where(p => p.UserId == userId)
-            .OrderByDescending(p => p.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        return last == null || DateTime.UtcNow >= last.CreatedAt.AddMinutes(_settings.ResendCooldownMinutes);
-    }
-
-    #endregion
 }

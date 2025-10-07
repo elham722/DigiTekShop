@@ -100,9 +100,9 @@ public static class IdentityServicesRegistration
 
         // Phone Verification settings + service
         services.Configure<PhoneVerificationSettings>(configuration.GetSection("PhoneVerification"));
-        services.AddScoped<PhoneVerificationService>();
+        services.AddScoped<IPhoneVerificationService, PhoneVerificationService>();
 
-        services.AddScoped<PasswordHistoryService>();
+        services.AddScoped<IPasswordHistoryService, PasswordHistoryService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
 
         // Encryption Service for TOTP secrets

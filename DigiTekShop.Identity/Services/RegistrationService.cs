@@ -19,8 +19,8 @@ public class RegistrationService : IRegistrationService
     private const string RATE_LIMIT_TAG = "[RATE_LIMIT]";
 
     private readonly UserManager<User> _userManager;
-    private readonly IEmailConfirmationService _emailConfirmationService;   // ← interface
-    private readonly PhoneVerificationService _phoneVerificationService;    // می‌تونی بعداً interface‌اش رو هم بسازی
+    private readonly IEmailConfirmationService _emailConfirmationService;   
+    private readonly IPhoneVerificationService _phoneVerificationService;   
     private readonly IRateLimiter _rateLimiter;
     private readonly ILogger<RegistrationService> _logger;
     private readonly PhoneVerificationSettings _phoneSettings;
@@ -28,8 +28,8 @@ public class RegistrationService : IRegistrationService
 
     public RegistrationService(
         UserManager<User> userManager,
-        IEmailConfirmationService emailConfirmationService,       // ← interface
-        PhoneVerificationService phoneVerificationService,
+        IEmailConfirmationService emailConfirmationService,
+        IPhoneVerificationService phoneVerificationService,
         IRateLimiter rateLimiter,
         IOptions<PhoneVerificationSettings> phoneOptions,
         DigiTekShopIdentityDbContext context,
@@ -44,12 +44,12 @@ public class RegistrationService : IRegistrationService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    // ← فقط همین امضا مطابق interface بماند
+   
     public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default)
     {
         try
         {
-            // 1) Validate
+           
             var validationResult = ValidateRegistrationRequest(request);
             if (validationResult.IsFailure)
                 return Result<RegisterResponseDto>.Failure(validationResult.Errors);
@@ -57,12 +57,12 @@ public class RegistrationService : IRegistrationService
             var normalizedEmail = request.Email.Trim().ToLowerInvariant();
             var normalizedEmailUpper = normalizedEmail.ToUpperInvariant();
 
-            // 2) Rate limit (IP فعلاً نداریم؛ unknown مشکلی نیست)
+           
             var rateLimitResult = await CheckRateLimitsAsync(normalizedEmail, ipAddress: null);
             if (rateLimitResult.IsFailure)
                 return Result<RegisterResponseDto>.Failure(rateLimitResult.Errors);
 
-            // 3) جلوگیری از ثبت‌نام حتی با Soft-Delete
+            
             var existsAny = await _context.Users
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.NormalizedEmail == normalizedEmailUpper, ct);
@@ -73,7 +73,7 @@ public class RegistrationService : IRegistrationService
                 return Result<RegisterResponseDto>.Failure("Email already registered.");
             }
 
-            // 4) Create user
+            
             var user = User.Create(normalizedEmail, normalizedEmail);
 
             if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
@@ -88,7 +88,7 @@ public class RegistrationService : IRegistrationService
                 return Result<RegisterResponseDto>.Failure($"Registration failed: {string.Join(", ", errors)}");
             }
 
-            // 5) Email confirmation (از سرویس اینترفیس‌محور)
+           
             var emailSent = false;
             try
             {
@@ -104,13 +104,13 @@ public class RegistrationService : IRegistrationService
                 _logger.LogError(ex, "Exception while sending email confirmation to {Email}", user.Email);
             }
 
-            // 6) Phone verification (اختیاری)
+           
             var phoneCodeSent = false;
             if (_phoneSettings.RequirePhoneConfirmation && !string.IsNullOrWhiteSpace(user.PhoneNumber))
             {
                 try
                 {
-                    var phoneResult = await _phoneVerificationService.SendVerificationCodeAsync(user, user.PhoneNumber);
+                    var phoneResult = await _phoneVerificationService.SendVerificationCodeAsync(user.Id, user.PhoneNumber);
                     phoneCodeSent = phoneResult.IsSuccess;
 
                     if (phoneResult.IsFailure)
@@ -220,7 +220,7 @@ public class RegistrationService : IRegistrationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking rate limits for email {Email}, IP {Ip}", normalizedEmail, ipAddress);
-            // در صورت خطای Redis/… fail-open (به‌خصوص در Dev)
+            
             return Result.Success();
         }
     }
