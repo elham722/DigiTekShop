@@ -11,11 +11,14 @@ internal class PasswordHistoryConfiguration : IEntityTypeConfiguration<PasswordH
         builder.Property(x => x.PasswordHash).IsRequired().HasMaxLength(4000);
         builder.Property(x => x.ChangedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
         builder.HasOne(x => x.User)
-               .WithMany()
+               .WithMany(u => u.PasswordHistories)
                .HasForeignKey(x => x.UserId)
                .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => new { x.UserId, x.ChangedAt })
                .HasDatabaseName("IX_PasswordHistory_User_ChangedAt");
+
+        builder.HasIndex(x => x.UserId)
+               .HasDatabaseName("IX_PasswordHistory_UserId");
     }
 }

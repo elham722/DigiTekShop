@@ -1,10 +1,12 @@
 using DigiTekShop.Contracts.DTOs.Auth.PasswordHistory;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Models;
+using DigiTekShop.Identity.Options;
 using DigiTekShop.SharedKernel.Guards;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -13,17 +15,20 @@ public sealed class PasswordHistoryService : IPasswordHistoryService
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly IPasswordHasher<User> _passwordHasher;
     private readonly UserManager<User> _userManager;
+    private readonly PasswordPolicyOptions _passwordPolicy;
     private readonly ILogger<PasswordHistoryService> _logger;
 
     public PasswordHistoryService(
         DigiTekShopIdentityDbContext context,
         IPasswordHasher<User> passwordHasher,
         UserManager<User> userManager,
+        IOptions<PasswordPolicyOptions> passwordPolicyOptions,
         ILogger<PasswordHistoryService> logger)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+        _passwordPolicy = passwordPolicyOptions?.Value ?? throw new ArgumentNullException(nameof(passwordPolicyOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -36,10 +41,11 @@ public sealed class PasswordHistoryService : IPasswordHistoryService
         {
             _context.PasswordHistories.Add(PasswordHistory.Create(userId, passwordHash));
 
-            if (keepLastN is int k && k > 0)
+            var historyDepth = keepLastN ?? _passwordPolicy.HistoryDepth;
+            
+            if (historyDepth > 0)
             {
-                // Trim در همان تراکنش/Save
-                await TrimInternalAsync(userId, k, ct);
+                await TrimInternalAsync(userId, historyDepth, ct);
             }
 
             await _context.SaveChangesAsync(ct);
@@ -103,13 +109,14 @@ public sealed class PasswordHistoryService : IPasswordHistoryService
         }
     }
 
-    public async Task<bool> ExistsInHistoryAsync(Guid userId, string plainPassword, int maxToCheck = 10, CancellationToken ct = default)
+    public async Task<bool> ExistsInHistoryAsync(Guid userId, string plainPassword, int? maxToCheck = null, CancellationToken ct = default)
     {
         Guard.AgainstEmpty(userId, nameof(userId));
         if (string.IsNullOrWhiteSpace(plainPassword)) return false;
-        if (maxToCheck <= 0) maxToCheck = 10;
+      
+        var checkCount = maxToCheck ?? _passwordPolicy.HistoryDepth;
+        if (checkCount <= 0) checkCount = _passwordPolicy.HistoryDepth;
 
-        // ✅ دیگه new User نمی‌زنیم؛ کاربر واقعی رو میاریم
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user is null)
         {
@@ -121,7 +128,7 @@ public sealed class PasswordHistoryService : IPasswordHistoryService
             .AsNoTracking()
             .Where(ph => ph.UserId == userId)
             .OrderByDescending(ph => ph.ChangedAt)
-            .Take(maxToCheck)
+            .Take(checkCount)
             .Select(ph => ph.PasswordHash)
             .ToListAsync(ct);
 
@@ -135,7 +142,36 @@ public sealed class PasswordHistoryService : IPasswordHistoryService
         return false;
     }
 
-    // ---------- Private ----------
+  
+    public async Task<int> GetHistoryCountAsync(Guid userId, CancellationToken ct = default)
+    {
+        Guard.AgainstEmpty(userId, nameof(userId));
+        
+        return await _context.PasswordHistories
+            .AsNoTracking()
+            .CountAsync(ph => ph.UserId == userId, ct);
+    }
+
+   
+    public async Task<int> CleanupOldHistoryAsync(Guid userId, TimeSpan olderThan, CancellationToken ct = default)
+    {
+        Guard.AgainstEmpty(userId, nameof(userId));
+        
+        var cutoffDate = DateTime.UtcNow - olderThan;
+        var oldEntries = await _context.PasswordHistories
+            .Where(ph => ph.UserId == userId && ph.ChangedAt < cutoffDate)
+            .ToListAsync(ct);
+
+        if (oldEntries.Count == 0) return 0;
+
+        _context.PasswordHistories.RemoveRange(oldEntries);
+        await _context.SaveChangesAsync(ct);
+        
+        _logger.LogInformation("Cleaned up {Count} old password history entries for user {UserId}", oldEntries.Count, userId);
+        return oldEntries.Count;
+    }
+
+  
 
     private async Task<int> TrimInternalAsync(Guid userId, int keepLastN, CancellationToken ct)
     {

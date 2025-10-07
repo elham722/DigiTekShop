@@ -21,6 +21,7 @@ public class User : IdentityUser<Guid>
     public ICollection<RefreshToken> RefreshTokens { get; private set; } = new List<RefreshToken>();
     public ICollection<UserPermission> UserPermissions { get; private set; } = new List<UserPermission>();
     public ICollection<PasswordResetToken> PasswordResetTokens { get; private set; } = new List<PasswordResetToken>();
+    public ICollection<PasswordHistory> PasswordHistories { get; private set; } = new List<PasswordHistory>();
     
     // MFA relationship
     public UserMfa? Mfa { get; private set; }

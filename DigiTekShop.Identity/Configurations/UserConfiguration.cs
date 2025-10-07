@@ -45,10 +45,15 @@
                 .HasForeignKey(up => up.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            builder.HasMany(u => u.PasswordResetTokens)
-                .WithOne(prt => prt.User)
-                .HasForeignKey(prt => prt.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(u => u.PasswordResetTokens)
+            .WithOne(prt => prt.User)
+            .HasForeignKey(prt => prt.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(u => u.PasswordHistories)
+            .WithOne(ph => ph.User)
+            .HasForeignKey(ph => ph.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(u => u.Mfa)
             .WithOne(um => um.User)            
