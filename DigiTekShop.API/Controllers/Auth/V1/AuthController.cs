@@ -17,32 +17,17 @@ namespace DigiTekShop.API.Controllers.Auth.V1;
 [ApiVersion("1.0")]
 [Produces("application/json")]
 [Consumes("application/json")]
-public class AuthController : ApiControllerBase
+public sealed class AuthController : ApiControllerBase
 {
-    private readonly IAuthService _authService;
+    private readonly ILoginService _loginService;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authService, ILogger<AuthController> logger)
+    public AuthController(ILoginService loginService, ILogger<AuthController> logger)
     {
-        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _loginService = loginService ?? throw new ArgumentNullException(nameof(loginService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    #region Registration & Email Confirmation
-
-    [HttpPost("register")]
-    [AllowAnonymous]
-    [EnableRateLimiting("AuthPolicy")]
-    [ProducesResponseType(typeof(ApiResponse<RegisterResponseDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken = default)
-    {
-        var enriched = request with { DeviceId = request.DeviceId ?? ClientDeviceId, UserAgent = request.UserAgent ?? UserAgentHeader, Ip = request.Ip ?? ClientIp };
-        var result = await _authService.RegisterAsync(enriched, cancellationToken);
-        return this.ToActionResult(result);
-    }
-
-    #endregion
 
     #region Authentication
 
@@ -55,7 +40,7 @@ public class AuthController : ApiControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
     {
         var enriched = request with { DeviceId = request.DeviceId ?? ClientDeviceId, UserAgent = request.UserAgent ?? UserAgentHeader, Ip = request.Ip ?? ClientIp };
-        var result = await _authService.LoginAsync(enriched, cancellationToken);
+        var result = await _loginService.LoginAsync(enriched, cancellationToken);
         return this.ToActionResult(result);
     }
 
@@ -69,7 +54,7 @@ public class AuthController : ApiControllerBase
     {
 
         var enriched = request with { DeviceId = request.DeviceId ?? ClientDeviceId, UserAgent = request.UserAgent ?? UserAgentHeader, Ip = request.Ip ?? ClientIp };
-        var result = await _authService.RefreshAsync(enriched, cancellationToken);
+        var result = await _loginService.RefreshAsync(enriched, cancellationToken);
         return this.ToActionResult(result);
     }
     #endregion

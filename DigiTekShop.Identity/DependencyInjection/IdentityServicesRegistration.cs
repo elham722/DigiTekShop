@@ -49,7 +49,8 @@ public static class IdentityServicesRegistration
             options.User.RequireUniqueEmail = true;
 
             // SignIn settings
-            options.SignIn.RequireConfirmedEmail = true;
+            // ⚠️ TODO: Set to true in production after Email service is configured
+            options.SignIn.RequireConfirmedEmail = false; // Temporarily disabled for testing
             options.SignIn.RequireConfirmedPhoneNumber = false;
         })
         .AddEntityFrameworkStores<DigiTekShopIdentityDbContext>()

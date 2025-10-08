@@ -1,57 +1,52 @@
 ﻿using Serilog.Context;
 
-namespace DigiTekShop.API.Middleware
+namespace DigiTekShop.API.Middleware;
+
+/// <summary>
+/// Middleware to add a Correlation ID to each request
+/// </summary>
+public class CorrelationIdMiddleware
 {
-    public sealed class CorrelationIdMiddleware
+    private readonly RequestDelegate _next;
+    private readonly string _headerName;
+
+    public CorrelationIdMiddleware(RequestDelegate next, string headerName = "X-Request-ID")
     {
-        private const string DefaultHeaderName = "X-Request-ID";
-        private readonly RequestDelegate _next;
-        private readonly ILogger<CorrelationIdMiddleware> _logger;
-        private readonly string _headerName;
-
-        // ← پارامتر اختیاری headerName اضافه شد
-        public CorrelationIdMiddleware(
-            RequestDelegate next,
-            ILogger<CorrelationIdMiddleware> logger,
-            string? headerName = null)
-        {
-            _next = next ?? throw new ArgumentNullException(nameof(next));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _headerName = string.IsNullOrWhiteSpace(headerName) ? DefaultHeaderName : headerName.Trim();
-        }
-
-        public async Task Invoke(HttpContext context)
-        {
-            var incoming = context.Request.Headers[_headerName].FirstOrDefault();
-            var correlationId = string.IsNullOrWhiteSpace(incoming) ? CreateId() : incoming.Trim();
-
-            context.TraceIdentifier = correlationId;
-
-            context.Response.OnStarting(() =>
-            {
-                if (!context.Response.Headers.ContainsKey(_headerName))
-                    context.Response.Headers.Add(_headerName, correlationId);
-                return Task.CompletedTask;
-            });
-
-            using (LogContext.PushProperty("CorrelationId", correlationId))
-            using (_logger.BeginScope(new Dictionary<string, object?> { ["CorrelationId"] = correlationId }))
-            {
-                await _next(context);
-            }
-        }
-
-        private static string CreateId()
-            => $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
+        _next = next;
+        _headerName = headerName;
     }
 
-    public static class CorrelationIdExtensions
+    public async Task InvokeAsync(HttpContext context)
     {
-        public static IApplicationBuilder UseCorrelationId(this IApplicationBuilder app)
-            => app.UseMiddleware<CorrelationIdMiddleware>();
+        // Get or create correlation ID
+        var correlationId = context.Request.Headers[_headerName].FirstOrDefault() 
+                           ?? Guid.NewGuid().ToString();
 
-        // ← اورلود جدید با پارامتر هدر
-        public static IApplicationBuilder UseCorrelationId(this IApplicationBuilder app, string headerName)
-            => app.UseMiddleware<CorrelationIdMiddleware>(headerName);
+        // Add to response headers
+        context.Response.OnStarting(() =>
+        {
+            if (!context.Response.Headers.ContainsKey(_headerName))
+            {
+                context.Response.Headers[_headerName] = correlationId;
+            }
+            return Task.CompletedTask;
+        });
+
+        // Add to Serilog LogContext
+        using (LogContext.PushProperty("CorrelationId", correlationId))
+        {
+            await _next(context);
+        }
+    }
+}
+
+/// <summary>
+/// Extension method to register CorrelationIdMiddleware
+/// </summary>
+public static class CorrelationIdMiddlewareExtensions
+{
+    public static IApplicationBuilder UseCorrelationId(this IApplicationBuilder builder, string headerName = "X-Request-ID")
+    {
+        return builder.UseMiddleware<CorrelationIdMiddleware>(headerName);
     }
 }
