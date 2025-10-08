@@ -1,52 +1,103 @@
 ﻿using Asp.Versioning;
 using DigiTekShop.API.Errors;
+using DigiTekShop.API.Extensions;
+using DigiTekShop.API.Middleware;
 using DigiTekShop.Application.DependencyInjection;
 using DigiTekShop.ExternalServices.DependencyInjection;
 using DigiTekShop.Identity.DependencyInjection;
 using DigiTekShop.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Serilog
+// ============================
+// Constants / Shared strings
+// ============================
+const string CorrelationHeader = "X-Request-ID"; // ← هدر واحد برای Correlation
+
+#region Logging Configuration
+
+// ✅ Serilog Configuration
 builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration)
     .Enrich.FromLogContext()
-    .Enrich.WithProperty("App", "DigiTekShop.API"));
+    .Enrich.WithProperty("Application", "DigiTekShop.API")
+    .Enrich.WithProperty("Environment", ctx.HostingEnvironment.EnvironmentName));
 
+#endregion
 
-builder.Services.AddCors(o =>
+// ✅ Kestrel soft limits (DoS نرم)
+builder.WebHost.ConfigureKestrel(o =>
 {
-    o.AddPolicy("Default", p => p
-        .AllowAnyOrigin()  
-        .AllowAnyHeader()
-        .AllowAnyMethod());
+    o.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
+    o.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2);
+    o.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30);
 });
 
-// Add services to the container.
+// ✅ ForwardedHeaders (قبل از Build و مطابق appsettings.Production)
+builder.Services.AddForwardedHeadersSupport(builder.Configuration);
+
+#region CORS Configuration
+
+// ✅ CORS Policy
+builder.Services.AddCors(options =>
+{
+    // Development: Allow all
+    options.AddPolicy("Development", policy => policy
+        .AllowAnyOrigin()
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+
+    // Production: Restrict to specific origins
+    options.AddPolicy("Production", policy => policy
+        .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+        .WithHeaders("Authorization", "Content-Type", "X-Device-Id", CorrelationHeader)
+        .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
+        .WithExposedHeaders("X-Pagination", CorrelationHeader)
+        .AllowCredentials()
+        .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));
+});
+
+#endregion
+
+#region Controllers & JSON Configuration
+
 builder.Services.AddControllers()
-    .AddJsonOptions(o =>
+    .AddJsonOptions(options =>
     {
-        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
     });
 
-// Add Rate Limiting
+#endregion
+
+#region Rate Limiting
+
 builder.Services.AddRateLimiter(options =>
 {
+    // Global rate limiter (per user or IP)
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.User.Identity?.Name ?? httpContext.Request.Headers.Host.ToString(),
-            factory: partition => new FixedWindowRateLimiterOptions
+    {
+        var userId = httpContext.User.Identity?.Name;
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var partitionKey = userId ?? ipAddress;
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
+            factory: _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
                 PermitLimit = 100,
                 Window = TimeSpan.FromMinutes(1)
-            }));
+            });
+    });
 
+    // Auth endpoints: strict
     options.AddFixedWindowLimiter("AuthPolicy", options =>
     {
         options.PermitLimit = 5;
@@ -54,135 +105,263 @@ builder.Services.AddRateLimiter(options =>
         options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         options.QueueLimit = 2;
     });
-});
 
-// Infrastructure services (Redis, Caching, DataProtection)
-builder.Services.AddInfrastructure(builder.Configuration);
-
-// Identity and External services
-builder.Services.ConfigureIdentityCore(builder.Configuration).ConfigureJwtAuthentication(builder.Configuration);
-builder.Services.AddExternalServices(builder.Configuration);
-builder.Services.ConfigureApplicationCore();
-
-
-
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
+    // API endpoints: moderate
+    options.AddFixedWindowLimiter("ApiPolicy", options =>
     {
-        Title = "DigiTekShop API",
-        Version = "v1.0",
-        Description = @"
-            DigiTekShop E-commerce API v1.0
-        ",
-        Contact = new OpenApiContact 
-        { 
-            Name = "DigiTekShop Team", 
-            Email = "support@digitekshop.com",
-            Url = new Uri("https://digitekshop.com/contact")
-        },
-        License = new OpenApiLicense
-        {
-            Name = "MIT License",
-            Url = new Uri("https://opensource.org/licenses/MIT")
-        }
+        options.PermitLimit = 50;
+        options.Window = TimeSpan.FromMinutes(1);
+        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        options.QueueLimit = 5;
     });
 
-    var jwt = new OpenApiSecurityScheme
+    // ✅ On rejection → 429 + Retry-After (اختیاری: تمیزتر با null)
+    options.OnRejected = async (context, cancellationToken) =>
     {
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Name = "Authorization",
-        Description = "Bearer {token}",
-        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+        double? retryAfterSec = null;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter = retryAfter.TotalSeconds.ToString();
+            retryAfterSec = retryAfter.TotalSeconds;
+        }
+
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            error = "Too many requests. Please try again later.",
+            code = "RATE_LIMIT_EXCEEDED",
+            retryAfter = retryAfterSec
+        }, cancellationToken);
     };
-    c.AddSecurityDefinition("Bearer", jwt);
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement { { jwt, Array.Empty<string>() } });
-
-
-    // Include XML comments if available
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath))
-    {
-        c.IncludeXmlComments(xmlPath);
-    }
-    
-    // Group endpoints by tags
-    c.TagActionsBy(api => new[] { api.GroupName ?? api.ActionDescriptor.RouteValues["controller"] ?? "Default" });
-    c.DocInclusionPredicate((name, api) => true);
 });
 
+#endregion
 
-// 🔑 تنظیم ریدایرکت به HTTPS
+#region Infrastructure & Application Services
+
+// ✅ Infrastructure services (Redis, Caching, DataProtection)
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// ✅ Identity and Authentication
+builder.Services
+    .ConfigureIdentityCore(builder.Configuration)
+    .ConfigureJwtAuthentication(builder.Configuration);
+
+// ✅ External services (Email, SMS)
+builder.Services.AddExternalServices(builder.Configuration);
+
+// ✅ Application layer (MediatR, FluentValidation)
+builder.Services.ConfigureApplicationCore();
+
+#endregion
+
+#region API Documentation (Swagger/OpenAPI)
+
+builder.Services.AddModernSwagger(builder.Configuration);
+builder.Services.AddEndpointsApiExplorer();
+
+#endregion
+
+#region HTTPS & HSTS
+
 builder.Services.AddHttpsRedirection(options =>
 {
-    options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
+    options.RedirectStatusCode = StatusCodes.Status308PermanentRedirect;
+    options.HttpsPort = 443;
 });
 
-builder.Services.AddApiVersioning(o =>
+builder.Services.AddHsts(options =>
 {
-    o.AssumeDefaultVersionWhenUnspecified = true;
-    o.DefaultApiVersion = new ApiVersion(1, 0);
-    o.ReportApiVersions = true;
+    options.Preload = true;
+    options.IncludeSubDomains = true;
+    options.MaxAge = TimeSpan.FromDays(365);
+});
+
+#endregion
+
+#region API Versioning
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new HeaderApiVersionReader("X-API-Version"),
+        new QueryStringApiVersionReader("api-version")
+    );
 }).AddApiExplorer(options =>
 {
     options.GroupNameFormat = "'v'VVV";
     options.SubstituteApiVersionInUrl = true;
 });
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddHealthChecks();
+
+#endregion
+
+#region Health Checks
+
+builder.Services.AddComprehensiveHealthChecks();
+
+#endregion
+
+#region Error Handling
+
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
-builder.Services.AddMemoryCache();
 
+#endregion
+
+#region Performance Optimizations
+
+// ✅ Response Compression (Gzip, Brotli)
+builder.Services.AddResponseCompressionOptimized();
+
+// ✅ Output Caching
+builder.Services.AddOutputCachingOptimized();
+
+// ✅ Memory Cache
+builder.Services.AddMemoryCache(options =>
+{
+    options.SizeLimit = 1024;
+    options.CompactionPercentage = 0.2;
+});
+
+// ✅ HTTP Client optimizations
+builder.Services.AddHttpClientOptimized();
+
+#endregion
+
+// ============================================================
+// Build Application
+// ============================================================
 
 var app = builder.Build();
 
+// ============================================================
+// Middleware Pipeline (ORDER MATTERS!)
+// ============================================================
+
+#region Exception Handling
+
+// ✅ Exception handler (must be first)
 app.UseExceptionHandler();
 
+#endregion
 
-app.UseSerilogRequestLogging(opts =>
+// ✅ Forwarded headers (قبل از هر چیزی که به IP/Schema نیاز دارد)
+app.UseForwardedHeadersSupport(builder.Configuration);
+
+// ✅ Correlation ID (هدر واحد)
+app.UseCorrelationId(headerName: CorrelationHeader);
+
+#region Logging
+
+// ✅ Serilog request logging
+app.UseSerilogRequestLogging(options =>
 {
-    opts.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms (TraceId: {TraceId})";
-    opts.EnrichDiagnosticContext = (diag, http) =>
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000}ms | TraceId: {TraceId}";
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
     {
-        diag.Set("TraceId", http.TraceIdentifier);
-        if (http.User?.Identity?.IsAuthenticated == true)
-            diag.Set("User", http.User.Identity!.Name);
+        diagnosticContext.Set("TraceId", httpContext.TraceIdentifier);
+        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+        diagnosticContext.Set("RemoteIP", httpContext.Connection.RemoteIpAddress?.ToString());
+
+        if (httpContext.User?.Identity?.IsAuthenticated == true)
+        {
+            diagnosticContext.Set("UserName", httpContext.User.Identity.Name);
+        }
     };
 });
 
+// ✅ Request logging middleware (development only)
+if (app.Environment.IsDevelopment())
+{
+    app.UseRequestLogging();
+}
 
-// فقط در Production
+#endregion
+
+#region Security
+
+// ✅ HSTS (production only)
 if (app.Environment.IsProduction())
 {
     app.UseHsts();
 }
 
-// ⬅️ خیلی مهم: قبل از Swagger
+// ✅ HTTPS Redirection
 app.UseHttpsRedirection();
-app.UseCors("Default");
+
+// ✅ Security Headers
+app.UseSecurityHeaders();
+
+// ✅ CORS
+app.UseCors(app.Environment.IsProduction() ? "Production" : "Development");
+
+#endregion
+
+#region Performance
+
+// ✅ Response Compression
+app.UseResponseCompression();
+
+// ✅ Output Caching
+app.UseOutputCache();
+
+#endregion
+
+#region Routing & Rate Limiting
+
+app.UseRouting();
+
+// ✅ Rate Limiting (before authentication)
 app.UseRateLimiter();
+
+#endregion
+
+#region Authentication & Authorization
+
+// ✅ Authentication (JWT)
 app.UseAuthentication();
+
+// ✅ Authorization
 app.UseAuthorization();
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DigiTekShop API V1");
-        c.RoutePrefix = string.Empty; // Swagger UI در root
-    });
-}
 
+#endregion
 
+#region Swagger (Development Only)
 
+app.UseModernSwagger(app.Environment);
+
+#endregion
+
+#region Endpoints
+
+// ✅ Map controllers
 app.MapControllers();
 
-// Health checks endpoint
-app.MapHealthChecks("/health");
+// ✅ Health check endpoints
+app.MapHealthCheckEndpoints();
 
-app.Run();
+#endregion
+
+// ============================================================
+// Run Application
+// ============================================================
+
+try
+{
+    Log.Information("Starting DigiTekShop API...");
+    Log.Information("Environment: {Environment}", app.Environment.EnvironmentName);
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
