@@ -84,7 +84,10 @@
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0")
                 .HasDatabaseName("UX_Users_NormalizedUserName_Active");
-            builder.HasIndex(u => u.Email).IsUnique();
+        builder.HasIndex(u => u.Email)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0")
+            .HasDatabaseName("UX_Users_Email_Active");
 
     }
 
