@@ -51,6 +51,7 @@ namespace DigiTekShop.Identity.Exceptions.Common
         public const string TOKEN_EXPIRED = "TOKEN_EXPIRED";
         public const string TOKEN_REVOKED = "TOKEN_REVOKED";
         public const string TOKEN_ALREADY_REVOKED = "TOKEN_ALREADY_REVOKED";
+        public const string TOKEN_ALREADY_USED = "TOKEN_ALREADY_USED";
         public const string INVALID_TOKEN = "INVALID_TOKEN";
 
         // Phone Verification

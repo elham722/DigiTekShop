@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
+using DigiTekShop.Contracts.Interfaces.Caching;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Exceptions.Common;
 using DigiTekShop.Identity.Models;
@@ -28,6 +29,7 @@ public class JwtTokenService : IJwtTokenService
     private readonly DeviceLimitsSettings _deviceLimits;
     private readonly SecuritySettings _securitySettings;
     private readonly ISecurityEventService _securityEventService;
+    private readonly ITokenBlacklistService _tokenBlacklist;
     private readonly ILogger<JwtTokenService> _logger;
 
 
@@ -38,6 +40,7 @@ public class JwtTokenService : IJwtTokenService
         IOptions<DeviceLimitsSettings> deviceLimitsOptions,
         IOptions<SecuritySettings> securitySettings,
         ISecurityEventService securityEventService,
+        ITokenBlacklistService tokenBlacklist,
         ILogger<JwtTokenService> logger)
     {
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
@@ -46,6 +49,7 @@ public class JwtTokenService : IJwtTokenService
         _deviceLimits = deviceLimitsOptions?.Value ?? throw new ArgumentNullException(nameof(deviceLimitsOptions));
         _securitySettings = securitySettings?.Value ?? throw new ArgumentNullException(nameof(securitySettings));
         _securityEventService = securityEventService ?? throw new ArgumentNullException(nameof(securityEventService));
+        _tokenBlacklist = tokenBlacklist ?? throw new ArgumentNullException(nameof(tokenBlacklist));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -277,6 +281,32 @@ public class JwtTokenService : IJwtTokenService
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_NOT_FOUND));
         if (existing.IsRevoked)
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_REVOKED));
+        if (existing.IsRotated)
+        {
+            
+            _logger.LogWarning("Token replay detected: Rotated token {TokenId} used again for user {UserId}", 
+                existing.Id, existing.UserId);
+
+            await _securityEventService.RecordSecurityEventAsync(
+                SecurityEventType.TokenReplay,
+                metadata: new 
+                { 
+                    TokenId = existing.Id,
+                    RotatedAt = existing.RotatedAt,
+                    ReplacedByTokenHash = existing.ReplacedByTokenHash,
+                    DeviceId = existing.DeviceId,
+                    Reason = "Rotated token reused - replay attack detected"
+                },
+                userId: existing.UserId,
+                ipAddress: ipAddress,
+                deviceId: existing.DeviceId,
+                ct: ct);
+
+           
+            await RevokeTokenChainAsync(existing, "Token replay attack - rotated token reused", ct);
+            
+            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_USED), IdentityErrorCodes.TOKEN_ALREADY_USED);
+        }
         if (existing.ExpiresAt <= DateTime.UtcNow)
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_EXPIRED));
 
@@ -431,27 +461,58 @@ public class JwtTokenService : IJwtTokenService
             var parentToken = await _context.RefreshTokens
                 .FirstOrDefaultAsync(rt => rt.TokenHash == token.ParentTokenHash, ct);
 
-            if (parentToken != null && parentToken.UsageCount > 0)
+            if (parentToken != null)
             {
-                _logger.LogWarning("Potential token replay attack: Token {TokenId} has used parent token {ParentTokenId}", 
-                    token.Id, parentToken.Id);
+               
+                if (parentToken.IsRotated)
+                {
+                    _logger.LogWarning("Token replay attack: Parent token {ParentTokenId} was already rotated, but child token {TokenId} is being used", 
+                        parentToken.Id, token.Id);
 
-                await _securityEventService.RecordSecurityEventAsync(
-                    SecurityEventType.TokenReplay,
-                    metadata: new 
-                    { 
-                        TokenId = token.Id,
-                        ParentTokenId = parentToken.Id,
-                        ParentTokenUsageCount = parentToken.UsageCount,
-                        DeviceId = token.DeviceId,
-                        Reason = "Parent token already used - potential replay attack"
-                    },
-                    userId: token.UserId,
-                    deviceId: token.DeviceId);
+                    await _securityEventService.RecordSecurityEventAsync(
+                        SecurityEventType.TokenReplay,
+                        metadata: new 
+                        { 
+                            TokenId = token.Id,
+                            ParentTokenId = parentToken.Id,
+                            ParentRotatedAt = parentToken.RotatedAt,
+                            ParentReplacedByTokenHash = parentToken.ReplacedByTokenHash,
+                            DeviceId = token.DeviceId,
+                            Reason = "Parent token already rotated - replay attack detected"
+                        },
+                        userId: token.UserId,
+                        deviceId: token.DeviceId,
+                        ct: ct);
 
-                await RevokeTokenChainAsync(token, "Potential replay attack detected", ct);
-                
-                throw new InvalidOperationException("Token replay attack detected");
+                    await RevokeTokenChainAsync(token, "Parent token replay attack detected", ct);
+                    
+                    throw new InvalidOperationException("Token replay attack detected - parent token already rotated");
+                }
+
+               
+                if (parentToken.UsageCount > 0)
+                {
+                    _logger.LogWarning("Potential token replay attack: Token {TokenId} has used parent token {ParentTokenId} (usage: {UsageCount})", 
+                        token.Id, parentToken.Id, parentToken.UsageCount);
+
+                    await _securityEventService.RecordSecurityEventAsync(
+                        SecurityEventType.TokenReplay,
+                        metadata: new 
+                        { 
+                            TokenId = token.Id,
+                            ParentTokenId = parentToken.Id,
+                            ParentTokenUsageCount = parentToken.UsageCount,
+                            DeviceId = token.DeviceId,
+                            Reason = "Parent token already used - potential replay attack"
+                        },
+                        userId: token.UserId,
+                        deviceId: token.DeviceId,
+                        ct: ct);
+
+                    await RevokeTokenChainAsync(token, "Potential replay attack detected", ct);
+                    
+                    throw new InvalidOperationException("Token replay attack detected");
+                }
             }
         }
     }
@@ -540,6 +601,68 @@ public class JwtTokenService : IJwtTokenService
 
     #endregion
 
+    #region Access Token Revocation
+
+    
+    public async Task<Result> RevokeAccessTokenAsync(string accessToken, string? reason = null, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken))
+            return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+
+        try
+        {
+           
+            var tokenHandler = new JwtSecurityTokenHandler();
+            
+            if (!tokenHandler.CanReadToken(accessToken))
+                return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+
+            var jwtToken = tokenHandler.ReadJwtToken(accessToken);
+            
+            var jti = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+            if (string.IsNullOrEmpty(jti))
+                return Result.Failure("Token does not contain JTI claim");
+
+            var exp = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Exp)?.Value;
+            if (string.IsNullOrEmpty(exp) || !long.TryParse(exp, out var expTimestamp))
+                return Result.Failure("Token does not contain valid expiration");
+
+            var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expTimestamp).UtcDateTime;
+
+           
+            await _tokenBlacklist.RevokeAccessTokenAsync(jti, expiresAt, reason ?? "Access token revoked", ct);
+
+            _logger.LogInformation("Access token revoked: JTI={Jti}, Reason={Reason}", jti, reason);
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error revoking access token");
+            return Result.Failure("Failed to revoke access token");
+        }
+    }
+
+  
+    public async Task<Result> RevokeAllUserAccessTokensAsync(Guid userId, string? reason = null, CancellationToken ct = default)
+    {
+        try
+        {
+            await _tokenBlacklist.RevokeAllUserTokensAsync(userId, reason ?? "All user tokens revoked", ct);
+            
+            _logger.LogWarning("All access tokens revoked for user: UserId={UserId}, Reason={Reason}", 
+                userId, reason);
+            
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error revoking all user access tokens: UserId={UserId}", userId);
+            return Result.Failure("Failed to revoke user tokens");
+        }
+    }
+
+    #endregion
+
     #region Validate Access Token
 
     public async Task<Result<ClaimsPrincipal>> ValidateAccessTokenAsync(string accessToken, CancellationToken ct = default)
@@ -573,9 +696,30 @@ public class JwtTokenService : IJwtTokenService
             if (string.IsNullOrEmpty(jti))
                 return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
 
-            // Check if token is revoked (if JTI tracking is implemented)
-            var revoked = await IsAccessTokenRevokedAsync(jti,ct);
-            if (revoked) return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
+            // Check if token is revoked (JTI blacklist)
+            var isJtiRevoked = await _tokenBlacklist.IsTokenRevokedAsync(jti, ct);
+            if (isJtiRevoked)
+            {
+                _logger.LogWarning("Access denied: Blacklisted token JTI {Jti}", jti);
+                return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
+            }
+
+            // Check user-level revocation (all user tokens revoked after password change, etc.)
+            var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var iatClaim = principal.FindFirst(JwtRegisteredClaimNames.Iat)?.Value;
+            
+            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var userId) && 
+                !string.IsNullOrEmpty(iatClaim) && long.TryParse(iatClaim, out var iatTimestamp))
+            {
+                var tokenIssuedAt = DateTimeOffset.FromUnixTimeSeconds(iatTimestamp).UtcDateTime;
+                var isUserRevoked = await _tokenBlacklist.IsUserTokensRevokedAsync(userId, tokenIssuedAt, ct);
+                
+                if (isUserRevoked)
+                {
+                    _logger.LogWarning("Access denied: User-level token revocation for UserId {UserId}", userId);
+                    return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
+                }
+            }
 
             return Result<ClaimsPrincipal>.Success(principal);
         }
@@ -595,11 +739,34 @@ public class JwtTokenService : IJwtTokenService
         }
     }
 
-    private Task<bool> IsAccessTokenRevokedAsync(string jti, CancellationToken ct = default)
+  
+    private async Task<bool> IsAccessTokenRevokedAsync(string jti, CancellationToken ct = default)
     {
-        // Placeholder:
-        // If you implement storing access-jti in DB, check it here (and check revoked flag).
-        return Task.FromResult(false);
+        try
+        {
+            // Check 1: Is this specific token (JTI) in the blacklist?
+            var isJtiRevoked = await _tokenBlacklist.IsTokenRevokedAsync(jti, ct);
+            if (isJtiRevoked)
+            {
+                _logger.LogWarning("Access denied: Token JTI {Jti} is blacklisted", jti);
+                return true;
+            }
+
+            // Check 2: Are all tokens for this user revoked? (user-level revocation)
+            // We need to extract userId and iat (issued at) from the JTI context
+            // In a real scenario, you'd parse these from the token claims before calling this method
+            // For now, we'll return false for user-level check
+            // TODO: Add user-level revocation check if needed
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking token revocation status for JTI: {Jti}", jti);
+            // در صورت خطا، به احتیاط اجازه می‌دهیم (تا سرویس از کار نیفتد)
+            // می‌توانید این را به true تغییر دهید برای امنیت بیشتر
+            return false;
+        }
     }
 
     #endregion
@@ -609,8 +776,15 @@ public class JwtTokenService : IJwtTokenService
     private (string token, string jti) CreateJwtToken(IEnumerable<Claim> claims, DateTime expires)
     {
         var jti = Guid.NewGuid().ToString();
+        var issuedAt = DateTimeOffset.UtcNow;
+        
         var claimsList = claims.ToList();
         claimsList.Add(new Claim(JwtRegisteredClaimNames.Jti, jti));
+        
+        // Add iat (issued at) claim for token revocation tracking
+        claimsList.Add(new Claim(JwtRegisteredClaimNames.Iat, 
+            issuedAt.ToUnixTimeSeconds().ToString(), 
+            ClaimValueTypes.Integer64));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -620,6 +794,7 @@ public class JwtTokenService : IJwtTokenService
             audience: _jwtSettings.Audience,
             claims: claimsList,
             expires: expires,
+            notBefore: issuedAt.UtcDateTime, // Token valid from issuedAt
             signingCredentials: creds
         );
 

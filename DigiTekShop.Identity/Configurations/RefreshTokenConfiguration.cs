@@ -56,6 +56,7 @@ namespace DigiTekShop.Identity.Configurations;
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Configure indexes
+            
             builder.HasIndex(rt => rt.TokenHash)
                 .IsUnique()
                 .HasDatabaseName("IX_RefreshTokens_Token");
@@ -63,15 +64,15 @@ namespace DigiTekShop.Identity.Configurations;
             builder.HasIndex(rt => rt.UserId)
                 .HasDatabaseName("IX_RefreshTokens_UserId");
 
-            // ایندکس مرکب برای کوئری‌های فعال
+         
             builder.HasIndex(rt => new { rt.UserId, rt.IsRevoked, rt.ExpiresAt })
                 .HasDatabaseName("IX_RefreshTokens_User_Active");
 
-            // ایندکس برای مرتب‌سازی بر اساس انقضا
+           
             builder.HasIndex(rt => new { rt.UserId, rt.ExpiresAt })
                 .HasDatabaseName("IX_RefreshTokens_User_Expires");
 
-            // ایندکس برای دستگاه‌ها
+         
             builder.HasIndex(rt => new { rt.UserId, rt.DeviceId })
                 .HasDatabaseName("IX_RefreshTokens_User_Device");
 

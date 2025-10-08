@@ -47,6 +47,7 @@ namespace DigiTekShop.Identity.Exceptions.Common
             { IdentityErrorCodes.TOKEN_EXPIRED, "Token has expired." },
             { IdentityErrorCodes.TOKEN_REVOKED, "Token has been revoked." },
             { IdentityErrorCodes.TOKEN_ALREADY_REVOKED, "Token is already revoked." },
+            { IdentityErrorCodes.TOKEN_ALREADY_USED, "Token has already been used. Please re-authenticate." },
             { IdentityErrorCodes.INVALID_TOKEN, "Invalid token." },
 
             // Phone Verification

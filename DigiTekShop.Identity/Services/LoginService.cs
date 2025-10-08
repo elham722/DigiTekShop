@@ -309,12 +309,29 @@ public sealed class LoginService : ILoginService
 
     public async Task<Result> LogoutAsync(LogoutRequestDto request, CancellationToken ct = default)
     {
-       
-        if (string.IsNullOrWhiteSpace(request.RefreshToken))
-            return Result.Success(); 
+        var errors = new List<string>();
 
-        var res = await _jwtTokenService.RevokeRefreshTokenAsync(request.RefreshToken, reason: "User logout", ct);
-        return res;
+        // Revoke refresh token
+        if (!string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            var refreshResult = await _jwtTokenService.RevokeRefreshTokenAsync(request.RefreshToken, reason: "User logout", ct);
+            if (refreshResult.IsFailure)
+                errors.Add($"Refresh token revocation failed: {refreshResult.GetFirstError()}");
+        }
+
+        // Revoke access token (add to blacklist for immediate invalidation)
+        if (!string.IsNullOrWhiteSpace(request.AccessToken))
+        {
+            var accessResult = await _jwtTokenService.RevokeAccessTokenAsync(request.AccessToken, reason: "User logout", ct);
+            if (accessResult.IsFailure)
+                errors.Add($"Access token revocation failed: {accessResult.GetFirstError()}");
+        }
+
+        // Even if some failures, logout should succeed (tokens might already be invalid)
+        if (errors.Any())
+            _logger.LogWarning("Logout completed with warnings: {Warnings}", string.Join("; ", errors));
+
+        return Result.Success();
     }
 
     public async Task<Result> LogoutAllDevicesAsync(string userId, CancellationToken ct = default)
@@ -322,7 +339,25 @@ public sealed class LoginService : ILoginService
         if (string.IsNullOrWhiteSpace(userId))
             return Result.Failure("User id is required.");
 
-        var res = await _jwtTokenService.RevokeAllUserTokensAsync(userId, reason: "User logout all devices", ct);
-        return res;
+        if (!Guid.TryParse(userId, out var userGuid))
+            return Result.Failure("Invalid user id format.");
+
+        // Revoke all refresh tokens
+        var refreshResult = await _jwtTokenService.RevokeAllUserTokensAsync(userId, reason: "User logout all devices", ct);
+        
+        // Revoke all access tokens (user-level revocation)
+        var accessResult = await _jwtTokenService.RevokeAllUserAccessTokensAsync(userGuid, reason: "User logout all devices", ct);
+
+        if (refreshResult.IsFailure || accessResult.IsFailure)
+        {
+            var errors = new List<string>();
+            if (refreshResult.IsFailure) errors.Add($"Refresh: {refreshResult.GetFirstError()}");
+            if (accessResult.IsFailure) errors.Add($"Access: {accessResult.GetFirstError()}");
+            
+            _logger.LogError("Failed to logout all devices: {Errors}", string.Join("; ", errors));
+            return Result.Failure(string.Join("; ", errors));
+        }
+
+        return Result.Success();
     }
 }
