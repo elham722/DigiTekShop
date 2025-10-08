@@ -15,11 +15,9 @@ public static class HealthCheckExtensions
     /// </summary>
     public static IServiceCollection AddComprehensiveHealthChecks(this IServiceCollection services)
     {
+        // Note: Redis health check is already registered in Infrastructure layer
+        // We only add custom checks here to avoid duplicate registrations
         services.AddHealthChecks()
-            .AddCheck<RedisHealthCheck>(
-                name: "redis",
-                failureStatus: HealthStatus.Degraded,
-                tags: new[] { "cache", "infrastructure" })
             .AddCheck<DatabaseHealthCheck>(
                 name: "database",
                 failureStatus: HealthStatus.Unhealthy,

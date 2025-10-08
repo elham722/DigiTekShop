@@ -13,14 +13,10 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ============================
-// Constants / Shared strings
-// ============================
-const string CorrelationHeader = "X-Request-ID"; // ← هدر واحد برای Correlation
+const string CorrelationHeader = "X-Request-ID"; 
 
 #region Logging Configuration
 
-// ✅ Serilog Configuration
 builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration)
     .Enrich.FromLogContext()
@@ -29,29 +25,29 @@ builder.Host.UseSerilog((ctx, lc) => lc
 
 #endregion
 
-// ✅ Kestrel soft limits (DoS نرم)
+
 builder.WebHost.ConfigureKestrel(o =>
 {
-    o.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
+    o.Limits.MaxRequestBodySize = 10 * 1024 * 1024; 
     o.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2);
     o.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30);
 });
 
-// ✅ ForwardedHeaders (قبل از Build و مطابق appsettings.Production)
+
 builder.Services.AddForwardedHeadersSupport(builder.Configuration);
 
 #region CORS Configuration
 
-// ✅ CORS Policy
+
 builder.Services.AddCors(options =>
 {
-    // Development: Allow all
+   
     options.AddPolicy("Development", policy => policy
         .AllowAnyOrigin()
         .AllowAnyHeader()
         .AllowAnyMethod());
 
-    // Production: Restrict to specific origins
+    
     options.AddPolicy("Production", policy => policy
         .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
         .WithHeaders("Authorization", "Content-Type", "X-Device-Id", CorrelationHeader)
@@ -80,7 +76,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddRateLimiter(options =>
 {
-    // Global rate limiter (per user or IP)
+    
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
     {
         var userId = httpContext.User.Identity?.Name;
@@ -97,7 +93,7 @@ builder.Services.AddRateLimiter(options =>
             });
     });
 
-    // Auth endpoints: strict
+    
     options.AddFixedWindowLimiter("AuthPolicy", options =>
     {
         options.PermitLimit = 5;
@@ -106,7 +102,6 @@ builder.Services.AddRateLimiter(options =>
         options.QueueLimit = 2;
     });
 
-    // API endpoints: moderate
     options.AddFixedWindowLimiter("ApiPolicy", options =>
     {
         options.PermitLimit = 50;
@@ -115,7 +110,7 @@ builder.Services.AddRateLimiter(options =>
         options.QueueLimit = 5;
     });
 
-    // ✅ On rejection → 429 + Retry-After (اختیاری: تمیزتر با null)
+    
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -140,18 +135,17 @@ builder.Services.AddRateLimiter(options =>
 
 #region Infrastructure & Application Services
 
-// ✅ Infrastructure services (Redis, Caching, DataProtection)
+
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// ✅ Identity and Authentication
+
 builder.Services
     .ConfigureIdentityCore(builder.Configuration)
     .ConfigureJwtAuthentication(builder.Configuration);
 
-// ✅ External services (Email, SMS)
 builder.Services.AddExternalServices(builder.Configuration);
 
-// ✅ Application layer (MediatR, FluentValidation)
+
 builder.Services.ConfigureApplicationCore();
 
 #endregion
@@ -215,50 +209,45 @@ builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 
 #region Performance Optimizations
 
-// ✅ Response Compression (Gzip, Brotli)
+
 builder.Services.AddResponseCompressionOptimized();
 
-// ✅ Output Caching
+
 builder.Services.AddOutputCachingOptimized();
 
-// ✅ Memory Cache
+
 builder.Services.AddMemoryCache(options =>
 {
     options.SizeLimit = 1024;
     options.CompactionPercentage = 0.2;
 });
 
-// ✅ HTTP Client optimizations
+
 builder.Services.AddHttpClientOptimized();
 
 #endregion
 
-// ============================================================
-// Build Application
-// ============================================================
+
 
 var app = builder.Build();
 
-// ============================================================
-// Middleware Pipeline (ORDER MATTERS!)
-// ============================================================
 
 #region Exception Handling
 
-// ✅ Exception handler (must be first)
+
 app.UseExceptionHandler();
 
 #endregion
 
-// ✅ Forwarded headers (قبل از هر چیزی که به IP/Schema نیاز دارد)
+
 app.UseForwardedHeadersSupport(builder.Configuration);
 
-// ✅ Correlation ID (هدر واحد)
+
 app.UseCorrelationId(headerName: CorrelationHeader);
 
 #region Logging
 
-// ✅ Serilog request logging
+
 app.UseSerilogRequestLogging(options =>
 {
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000}ms | TraceId: {TraceId}";
@@ -275,7 +264,7 @@ app.UseSerilogRequestLogging(options =>
     };
 });
 
-// ✅ Request logging middleware (development only)
+
 if (app.Environment.IsDevelopment())
 {
     app.UseRequestLogging();
@@ -285,29 +274,29 @@ if (app.Environment.IsDevelopment())
 
 #region Security
 
-// ✅ HSTS (production only)
+
 if (app.Environment.IsProduction())
 {
     app.UseHsts();
 }
 
-// ✅ HTTPS Redirection
+
 app.UseHttpsRedirection();
 
-// ✅ Security Headers
+
 app.UseSecurityHeaders();
 
-// ✅ CORS
+
 app.UseCors(app.Environment.IsProduction() ? "Production" : "Development");
 
 #endregion
 
 #region Performance
 
-// ✅ Response Compression
+
 app.UseResponseCompression();
 
-// ✅ Output Caching
+
 app.UseOutputCache();
 
 #endregion
@@ -316,17 +305,17 @@ app.UseOutputCache();
 
 app.UseRouting();
 
-// ✅ Rate Limiting (before authentication)
+
 app.UseRateLimiter();
 
 #endregion
 
 #region Authentication & Authorization
 
-// ✅ Authentication (JWT)
+
 app.UseAuthentication();
 
-// ✅ Authorization
+
 app.UseAuthorization();
 
 #endregion
@@ -339,7 +328,7 @@ app.UseModernSwagger(app.Environment);
 
 #region Endpoints
 
-// ✅ Map controllers
+
 app.MapControllers();
 
 // ✅ Health check endpoints
@@ -347,9 +336,6 @@ app.MapHealthCheckEndpoints();
 
 #endregion
 
-// ============================================================
-// Run Application
-// ============================================================
 
 try
 {
