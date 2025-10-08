@@ -6,12 +6,13 @@ namespace DigiTekShop.Identity.Models;
         public Guid Id { get; private set; } = Guid.NewGuid();
         public Guid? UserId { get; private set; }
         public string? LoginNameOrEmail { get; private set; }
-        public DateTime AttemptedAt { get; private set; } = DateTime.UtcNow;
+        public DateTime AttemptedAt { get; private set; } 
         public LoginStatus Status { get; private set; }
         public string? IpAddress { get; private set; }
         public string? UserAgent { get; private set; }
+        public string? LoginNameOrEmailNormalized { get; private set; }
 
-        private LoginAttempt() { }
+    private LoginAttempt() { }
 
         public static LoginAttempt Create(Guid? userId, LoginStatus status, string? ipAddress = null, string? userAgent = null, string? loginNameOrEmail = null)
         {
@@ -21,8 +22,7 @@ namespace DigiTekShop.Identity.Models;
                 LoginNameOrEmail = loginNameOrEmail,
                 Status = status,
                 IpAddress = ipAddress,
-                UserAgent = userAgent,
-                AttemptedAt = DateTime.UtcNow
+                UserAgent = userAgent
             };
         }
 
@@ -33,5 +33,8 @@ namespace DigiTekShop.Identity.Models;
             UserAgent = userAgent;
             AttemptedAt = DateTime.UtcNow;
         }
-    }
+
+        private static string? Normalize(string? s)
+            => string.IsNullOrWhiteSpace(s) ? null : s.Trim().ToLowerInvariant();
+}
 

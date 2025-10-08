@@ -48,29 +48,20 @@ public sealed class LoginService : ILoginService
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             return Result<TokenResponseDto>.Failure("Email and password are required.");
 
-      
-        if (_securitySettings.BruteForce.Enabled)
-        {
-            await CheckBruteForceAsync(request.Ip, request.DeviceId, ct);
-        }
+        // به‌جای throw، دلیل بلاک را برگردان
+        var blockReason = await GetBruteForceBlockReasonAsync(request.Ip, request.DeviceId, ct);
+        if (blockReason is not null)
+            return Result<TokenResponseDto>.Failure("Too many failed attempts. Try later.", blockReason);
 
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user is null)
         {
-           
-            await _loginAttemptService.RecordLoginAttemptAsync(
-                userId: null,
-                status: LoginStatus.Failed,
-                ipAddress: request.Ip,
-                userAgent: request.UserAgent,
-                loginNameOrEmail: request.Email,
-                ct: ct);
-                
+            await _loginAttemptService.RecordLoginAttemptAsync(null, LoginStatus.Failed, request.Ip, request.UserAgent, request.Email, ct);
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_CREDENTIALS), IdentityErrorCodes.INVALID_CREDENTIALS);
         }
 
-        
-         if (user.IsDeleted) return Result<TokenResponseDto>.Failure("User not found or inactive.");
+        if (user.IsDeleted)
+            return Result<TokenResponseDto>.Failure("User not found or inactive.");
 
         if (await _userManager.IsLockedOutAsync(user))
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.ACCOUNT_LOCKED), IdentityErrorCodes.ACCOUNT_LOCKED);
@@ -79,119 +70,77 @@ public sealed class LoginService : ILoginService
 
         if (signIn.Succeeded)
         {
-            
-            await _loginAttemptService.RecordLoginAttemptAsync(
-                userId: user.Id,
-                status: LoginStatus.Success,
-                ipAddress: request.Ip,
-                userAgent: request.UserAgent,
-                loginNameOrEmail: request.Email,
-                ct: ct);
-            
+            await _loginAttemptService.RecordLoginAttemptAsync(user.Id, LoginStatus.Success, request.Ip, request.UserAgent, request.Email, ct);
+
             if (await _userManager.GetTwoFactorEnabledAsync(user))
                 return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.REQUIRES_TWO_FACTOR), IdentityErrorCodes.REQUIRES_TWO_FACTOR);
 
-            
+            // Step-Up بر اساس دستگاه
             if (_securitySettings.StepUp.Enabled && _securitySettings.StepUp.RequiredForNewDevices && !string.IsNullOrWhiteSpace(request.DeviceId))
             {
                 var requiresStepUp = await CheckStepUpMfaRequiredAsync(user.Id, request.DeviceId, ct);
                 if (requiresStepUp)
-                {
-                    _logger.LogInformation("Step-Up MFA required for user {UserId} on device {DeviceId}", user.Id, request.DeviceId);
                     return Result<TokenResponseDto>.Failure("Step-Up MFA required for new device", "STEP_UP_MFA_REQUIRED");
-                }
             }
 
-           
-            var tokens = await _jwtTokenService.GenerateTokensAsync(
-                userId: user.Id.ToString(),
-                deviceId: request.DeviceId,
-                ipAddress: request.Ip,
-                userAgent: request.UserAgent,
-                ct: ct);
+            // موفقیت کامل → ثبت آخرین ورود
+            user.RecordLogin(DateTime.UtcNow);
+            await _userManager.UpdateAsync(user);
 
+            // تولید توکن‌ها (ManageUserDevice در JwtTokenService شما انجام می‌شود)
+            var tokens = await _jwtTokenService.GenerateTokensAsync(user.Id.ToString(), request.DeviceId, request.Ip, request.UserAgent, ct);
             return tokens;
         }
 
-        
-        await _loginAttemptService.RecordLoginAttemptAsync(
-            userId: user.Id,
-            status: LoginStatus.Failed,
-            ipAddress: request.Ip,
-            userAgent: request.UserAgent,
-            loginNameOrEmail: request.Email,
-            ct: ct);
+        // شکست
+        await _loginAttemptService.RecordLoginAttemptAsync(user.Id, LoginStatus.Failed, request.Ip, request.UserAgent, request.Email, ct);
 
-        
-        if (_securitySettings.BruteForce.Enabled)
-        {
-            await CheckBruteForceAfterFailureAsync(request.Ip, request.DeviceId, user.Id, ct);
-        }
+        // چک Brute-force پس از شکست
+        await CheckBruteForceAfterFailureAsync(request.Ip, request.DeviceId, user.Id, ct);
 
         if (signIn.IsLockedOut)
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.ACCOUNT_LOCKED), IdentityErrorCodes.ACCOUNT_LOCKED);
-
         if (signIn.RequiresTwoFactor)
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.REQUIRES_TWO_FACTOR), IdentityErrorCodes.REQUIRES_TWO_FACTOR);
-
         if (signIn.IsNotAllowed)
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.SIGNIN_NOT_ALLOWED), IdentityErrorCodes.SIGNIN_NOT_ALLOWED);
 
-        // invalid credentials
         return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_CREDENTIALS), IdentityErrorCodes.INVALID_CREDENTIALS);
     }
 
     #region Brute Force Detection
 
-    private async Task CheckBruteForceAsync(string? ipAddress, string? deviceId, CancellationToken ct = default)
+    private async Task<string?> GetBruteForceBlockReasonAsync(string? ipAddress, string? deviceId, CancellationToken ct)
     {
-        if (!_securitySettings.BruteForce.Enabled)
-            return;
+        if (!_securitySettings.BruteForce.Enabled) return null;
 
         try
         {
-            // بررسی IP-based Brute Force
             if (_securitySettings.BruteForce.IpBasedLockout && !string.IsNullOrWhiteSpace(ipAddress))
             {
-                var ipFailedAttempts = await _loginAttemptService.GetFailedAttemptsFromIpAsync(
-                    ipAddress, _securitySettings.BruteForce.TimeWindow, ct);
-
-                if (ipFailedAttempts.IsSuccess && ipFailedAttempts.Value >= _securitySettings.BruteForce.MaxFailedAttemptsPerIp)
+                var r = await _loginAttemptService.GetFailedAttemptsFromIpAsync(ipAddress, _securitySettings.BruteForce.TimeWindow, ct);
+                if (r.IsSuccess && r.Value >= _securitySettings.BruteForce.MaxFailedAttemptsPerIp)
                 {
-                    _logger.LogWarning("IP-based brute force detected: IP {IpAddress} has {Count} failed attempts", 
-                        ipAddress, ipFailedAttempts.Value);
-
                     await _securityEventService.RecordSecurityEventAsync(
                         SecurityEventType.BruteForceAttempt,
-                        metadata: new 
-                        { 
-                            Type = "IP-based",
-                            IpAddress = ipAddress,
-                            FailedAttempts = ipFailedAttempts.Value,
-                            TimeWindow = _securitySettings.BruteForce.TimeWindow.ToString()
-                        },
+                        metadata: new { Type = "IP-based", IpAddress = ipAddress, Failed = r.Value, Window = _securitySettings.BruteForce.TimeWindow.ToString() },
                         ipAddress: ipAddress,
                         ct: ct);
-
-                    throw new InvalidOperationException("Too many failed login attempts from this IP address");
+                    return "TOO_MANY_ATTEMPTS_IP";
                 }
             }
 
-            // بررسی Device-based Brute Force
-            if (_securitySettings.BruteForce.DeviceBasedLockout && !string.IsNullOrWhiteSpace(deviceId))
-            {
-                // اینجا می‌توانید منطق Device-based Brute Force را پیاده‌سازی کنید
-                // برای سادگی، فعلاً فقط IP-based را پیاده‌سازی می‌کنیم
-            }
+            // اگر DeviceBased هم خواستی، همین‌جا اضافه کن…
+            return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking brute force for IP {IpAddress}", ipAddress);
-            // در صورت خطا، اجازه ورود را می‌دهیم تا سیستم مسدود نشود
+            _logger.LogError(ex, "Error checking brute force for IP {Ip}", ipAddress);
+            return null; // fail-open
         }
     }
 
-   
+
     private async Task CheckBruteForceAfterFailureAsync(string? ipAddress, string? deviceId, Guid userId, CancellationToken ct = default)
     {
         if (!_securitySettings.BruteForce.Enabled)
@@ -264,32 +213,24 @@ public sealed class LoginService : ILoginService
 
     #region Step-Up MFA
 
-   
-    private async Task<bool> CheckStepUpMfaRequiredAsync(Guid userId, string deviceId, CancellationToken ct = default)
+
+    private async Task<bool> CheckStepUpMfaRequiredAsync(Guid userId, string deviceId, CancellationToken ct)
     {
         try
         {
-            // بررسی اینکه آیا دستگاه جدید است یا خیر
-            var userDevices = await _loginAttemptService.GetUserLoginAttemptsAsync(userId, 1, ct);
-            if (userDevices.IsSuccess && !userDevices.Value.Any())
-            {
-                // کاربر هیچ تلاش ورودی نداشته، احتمالاً دستگاه جدید است
-                return true;
-            }
+           
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null) return true;
 
-            // بررسی اینکه آیا دستگاه قبلاً استفاده شده یا خیر
-            // اینجا می‌توانید منطق پیچیده‌تری برای تشخیص دستگاه جدید پیاده‌سازی کنید
-            // برای سادگی، فعلاً فقط بررسی می‌کنیم که آیا دستگاه در لیست دستگاه‌های قابل اعتماد است یا خیر
-            
-            return false; // فعلاً Step-Up را غیرفعال می‌کنیم
+          
+            return !user.HasDeviceWithFingerprint(deviceId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking Step-Up MFA requirement for user {UserId} device {DeviceId}", userId, deviceId);
-            return false; // در صورت خطا، Step-Up را غیرفعال می‌کنیم
+            _logger.LogError(ex, "Error checking Step-Up for user {UserId} device {DeviceId}", userId, deviceId);
+            return false; // fail-open
         }
     }
-
     #endregion
 
     public async Task<Result<TokenResponseDto>> RefreshAsync(RefreshRequestDto request, CancellationToken ct = default)

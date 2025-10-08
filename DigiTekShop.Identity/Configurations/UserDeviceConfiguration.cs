@@ -17,10 +17,12 @@ namespace DigiTekShop.Identity.Configurations;
 
             builder.Property(ud => ud.DeviceFingerprint)
                 .HasMaxLength(256)
+                .IsUnicode(false)
                 .IsRequired(false);
 
             builder.Property(ud => ud.BrowserInfo)
                 .HasMaxLength(128)
+                .IsUnicode(false)
                 .IsRequired(false);
 
             builder.Property(ud => ud.OperatingSystem)
@@ -28,6 +30,7 @@ namespace DigiTekShop.Identity.Configurations;
                 .IsRequired(false);
 
             builder.Property(ud => ud.LastLoginAt)
+                .HasColumnType("datetime2(3)")
                 .IsRequired();
 
             builder.Property(ud => ud.IsActive)
