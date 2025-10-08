@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DigiTekShop.API.Common;
-using DigiTekShop.API.Controllers.V1.Common;
+using DigiTekShop.API.Controllers.Common.V1;
 using DigiTekShop.API.Models;
 using DigiTekShop.Contracts.DTOs.Auth.Login;
 using DigiTekShop.Contracts.DTOs.Auth.Register;
@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace DigiTekShop.API.Controllers.V1.Auth;
+namespace DigiTekShop.API.Controllers.Auth.V1;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]

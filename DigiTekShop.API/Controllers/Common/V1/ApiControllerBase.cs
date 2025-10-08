@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace DigiTekShop.API.Controllers.V1.Common
+namespace DigiTekShop.API.Controllers.Common.V1
 {
     [ApiController]
     public abstract class ApiControllerBase : ControllerBase

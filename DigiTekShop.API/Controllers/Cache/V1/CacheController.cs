@@ -1,7 +1,7 @@
 using DigiTekShop.Contracts.Interfaces.Caching;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DigiTekShop.API.Controllers.V1.Cache;
+namespace DigiTekShop.API.Controllers.Cache.V1;
 
 [ApiController]
 [Route("api/[controller]")]
