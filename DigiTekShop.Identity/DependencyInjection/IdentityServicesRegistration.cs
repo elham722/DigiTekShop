@@ -87,8 +87,6 @@ public static class IdentityServicesRegistration
         // Strong Password Validator
         services.AddTransient<IPasswordValidator<User>, StrongPasswordValidator>();
 
-        // Password History Service
-        services.AddScoped<PasswordHistoryService>();
 
         #endregion
 
@@ -116,7 +114,7 @@ public static class IdentityServicesRegistration
         services.AddScoped<IPhoneVerificationService, PhoneVerificationService>();
 
         services.AddScoped<IPasswordHistoryService, PasswordHistoryService>();
-        services.AddScoped<IJwtTokenService, JwtTokenService>();
+       
 
         // Encryption Service for TOTP secrets
         services.AddScoped<IEncryptionService, EncryptionService>();
@@ -161,21 +159,43 @@ public static class IdentityServicesRegistration
 
                 o.TokenValidationParameters = new TokenValidationParameters
                 {
+                    // ✅ Signature Validation
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+                    RequireSignedTokens = true, // ✅ Only accept signed tokens
 
+                    // ✅ Issuer Validation
                     ValidateIssuer = true,
                     ValidIssuer = jwtSettings.Issuer,
 
+                    // ✅ Audience Validation
                     ValidateAudience = true,
                     ValidAudience = jwtSettings.Audience,
 
+                    // ✅ Lifetime Validation
                     ValidateLifetime = true,
                     RequireExpirationTime = true,
                     ClockSkew = TimeSpan.FromSeconds(30),
+
+                    // ✅ Algorithm Validation (prevent algorithm substitution attacks)
+                    ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 }
                 };
 
-                // (اختیاری) اگر بعداً لازم شد از QueryString برای SignalR بخوانی، اینجا Events اضافه می‌کنیم.
+                // ✅ Optional: SignalR/WebSocket support (read token from query string)
+                // Uncomment if you add SignalR:
+                // o.Events = new JwtBearerEvents
+                // {
+                //     OnMessageReceived = context =>
+                //     {
+                //         var accessToken = context.Request.Query["access_token"];
+                //         var path = context.HttpContext.Request.Path;
+                //         if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                //         {
+                //             context.Token = accessToken;
+                //         }
+                //         return Task.CompletedTask;
+                //     }
+                // };
             });
 
         return services;

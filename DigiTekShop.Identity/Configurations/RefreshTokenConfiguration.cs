@@ -9,17 +9,26 @@ namespace DigiTekShop.Identity.Configurations;
             // Configure properties
             builder.Property(rt => rt.TokenHash)
                 .IsRequired()
-                .HasMaxLength(128); // Base64 SHA-512 = 88 chars, با حاشیه امنیت
+                .HasMaxLength(128).IsUnicode(false); // HMACSHA256 Base64Url (no padding) ≈ 43 chars, with safety margin
 
             builder.Property(rt => rt.ExpiresAt)
+                .HasColumnType("datetime2(3)")
+                .IsRequired();
+
+            // ✅ Optimistic Concurrency Control: RowVersion (timestamp in SQL Server)
+            builder.Property(rt => rt.RowVersion)
+                .IsRowVersion()
                 .IsRequired();
 
             builder.Property(rt => rt.IsRevoked)
                 .HasDefaultValue(false);
 
-            builder.Property(rt => rt.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+            builder.Property(rt => rt.CreatedAt)
+                .HasColumnType("datetime2(3)")
+                .IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
             builder.Property(rt => rt.RevokedAt)
+                .HasColumnType("datetime2(3)")
                 .IsRequired(false);
 
             builder.Property(rt => rt.RevokedReason)
@@ -28,7 +37,7 @@ namespace DigiTekShop.Identity.Configurations;
 
             builder.Property(rt => rt.DeviceId)
                 .HasMaxLength(256)
-                .IsRequired(false);
+                .IsRequired(false).IsUnicode(false);
 
             builder.Property(rt => rt.UserAgent)
                 .HasMaxLength(512)
@@ -36,15 +45,15 @@ namespace DigiTekShop.Identity.Configurations;
 
             builder.Property(rt => rt.CreatedByIp)
                 .HasMaxLength(45) // IPv6 max length
-                .IsRequired(false);
+                .IsRequired(false).IsUnicode(false);
 
             builder.Property(rt => rt.ParentTokenHash)
                 .HasMaxLength(128)
-                .IsRequired(false);
+                .IsRequired(false).IsUnicode(false);
 
             builder.Property(rt => rt.ReplacedByTokenHash)
                 .HasMaxLength(128)
-                .IsRequired(false);
+                .IsRequired(false).IsUnicode(false);
 
             builder.Property(rt => rt.UserId)
                 .IsRequired();
@@ -57,26 +66,30 @@ namespace DigiTekShop.Identity.Configurations;
 
             // Configure indexes
             
+            // ✅ Unique index on TokenHash (critical for security)
             builder.HasIndex(rt => rt.TokenHash)
                 .IsUnique()
                 .HasDatabaseName("IX_RefreshTokens_Token");
 
-            builder.HasIndex(rt => rt.UserId)
-                .HasDatabaseName("IX_RefreshTokens_UserId");
+        // ✅ Most important composite index for active device tokens query
+        // Covers: WHERE UserId = X AND DeviceId = Y AND IsRevoked = 0 AND ExpiresAt > NOW
+        // This is the most frequent query pattern in RefreshTokensAsync and RevokeActiveTokensForDeviceAsync
+        builder.HasIndex(rt => new { rt.UserId, rt.DeviceId, rt.IsRevoked, rt.ExpiresAt })
+            .HasDatabaseName("IX_RefreshTokens_User_Device_Active")
+            .IncludeProperties(rt => new { rt.Id, rt.TokenHash, rt.CreatedAt });
 
-         
-            builder.HasIndex(rt => new { rt.UserId, rt.IsRevoked, rt.ExpiresAt })
-                .HasDatabaseName("IX_RefreshTokens_User_Active");
+        // ✅ Composite index for user-level active tokens (without device filtering)
+        // Covers: WHERE UserId = X AND IsRevoked = 0 AND ExpiresAt > NOW
+        builder.HasIndex(rt => new { rt.UserId, rt.IsRevoked, rt.ExpiresAt })
+            .HasDatabaseName("IX_RefreshTokens_User_Active")
+            .IncludeProperties(rt => new { rt.Id, rt.TokenHash, rt.DeviceId, rt.CreatedAt });
 
-           
-            builder.HasIndex(rt => new { rt.UserId, rt.ExpiresAt })
-                .HasDatabaseName("IX_RefreshTokens_User_Expires");
+        // Note: Removed redundant indexes that are covered by the above composite indexes:
+        // - (UserId) alone → covered by (UserId, DeviceId, IsRevoked, ExpiresAt)
+        // - (UserId, ExpiresAt) → covered by (UserId, IsRevoked, ExpiresAt)
+        // - (UserId, DeviceId) → covered by (UserId, DeviceId, IsRevoked, ExpiresAt)
 
-         
-            builder.HasIndex(rt => new { rt.UserId, rt.DeviceId })
-                .HasDatabaseName("IX_RefreshTokens_User_Device");
-
-            builder.HasIndex(rt => rt.ExpiresAt)
+        builder.HasIndex(rt => rt.ExpiresAt)
                 .HasDatabaseName("IX_RefreshTokens_ExpiresAt");
 
             builder.HasIndex(rt => rt.IsRevoked)
@@ -90,6 +103,18 @@ namespace DigiTekShop.Identity.Configurations;
 
             builder.HasIndex(rt => rt.ReplacedByTokenHash)
                 .HasDatabaseName("IX_RefreshTokens_ReplacedByTokenHash");
+    
+            builder.ToTable(tb =>
+        {
+            tb.HasCheckConstraint(
+                "CK_RefreshTokens_ExpiresAfterCreated",
+                "[ExpiresAt] > [CreatedAt]");
+
+            tb.HasCheckConstraint(
+                "CK_RefreshTokens_RotationConsistency",
+                "(([IsRotated] = 0 AND [ReplacedByTokenHash] IS NULL) OR ([IsRotated] = 1 AND [ReplacedByTokenHash] IS NOT NULL))");
+        });
+
 
     }
 }

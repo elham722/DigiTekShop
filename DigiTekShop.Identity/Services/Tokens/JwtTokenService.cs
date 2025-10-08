@@ -15,6 +15,7 @@ using DigiTekShop.SharedKernel.Exceptions.Common;
 using DigiTekShop.SharedKernel.Exceptions.Validation;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -314,11 +315,69 @@ public class JwtTokenService : IJwtTokenService
         if (user == null)
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
 
+        // ✅ Device Integrity Check: Prevent device hijacking via token refresh
+        var boundDeviceId = existing.DeviceId;
+        if (!string.IsNullOrWhiteSpace(deviceId) && !string.IsNullOrWhiteSpace(boundDeviceId) &&
+            !string.Equals(deviceId, boundDeviceId, StringComparison.Ordinal))
+        {
+            _logger.LogWarning("Device mismatch on refresh: token device={TokenDevice}, provided device={Provided}, user={UserId}",
+                boundDeviceId, deviceId, existing.UserId);
+
+            await _securityEventService.RecordSecurityEventAsync(
+                SecurityEventType.RefreshTokenAnomaly,
+                metadata: new
+                {
+                    TokenId = existing.Id,
+                    TokenDeviceId = boundDeviceId,
+                    ProvidedDeviceId = deviceId,
+                    Reason = "Device mismatch - potential token theft"
+                },
+                userId: existing.UserId,
+                ipAddress: ipAddress,
+                deviceId: deviceId,
+                ct: ct);
+
+            return Result<TokenResponseDto>.Failure("Device mismatch. Please re-authenticate.", IdentityErrorCodes.INVALID_TOKEN);
+        }
+
+        // ✅ IP/UserAgent Anomaly Detection (optional but recommended)
+        if (_securitySettings.StepUp.Enabled && _securitySettings.StepUp.RequiredForAnomalousActivity)
+        {
+            await DetectAndHandleContextAnomaliesAsync(existing, ipAddress, userAgent, ct);
+        }
+
         await using var tx = await _context.Database.BeginTransactionAsync(ct);
         try
         {
            
             await ValidateTokenRotationSecurityAsync(existing, ct);
+
+            // ✅ Enforce single-active-token-per-device policy
+            // Revoke any other active tokens for this device (except the current one being rotated)
+            if (!string.IsNullOrWhiteSpace(boundDeviceId))
+            {
+                var otherActiveTokens = await _context.RefreshTokens
+                    .Where(rt => rt.UserId == existing.UserId &&
+                                rt.DeviceId == boundDeviceId &&
+                                rt.Id != existing.Id && // exclude current token being rotated
+                                !rt.IsRevoked &&
+                                rt.ExpiresAt > DateTime.UtcNow)
+                    .ToListAsync(ct);
+
+                if (otherActiveTokens.Any())
+                {
+                    _logger.LogInformation(
+                        "Revoking {Count} other active tokens for device {DeviceId} during refresh (single-active-per-device policy)",
+                        otherActiveTokens.Count, boundDeviceId);
+
+                    foreach (var token in otherActiveTokens)
+                    {
+                        token.Revoke("Single-active-token-per-device policy: new token created via refresh");
+                    }
+
+                    _context.RefreshTokens.UpdateRange(otherActiveTokens);
+                }
+            }
 
            
             existing.MarkAsUsed();
@@ -331,13 +390,14 @@ public class JwtTokenService : IJwtTokenService
             var newRefreshHash = HashToken(newRefreshRaw);
             var newRefreshExpiresAt = now.AddDays(_jwtSettings.RefreshTokenExpirationDays);
 
+            // ✅ Use bound deviceId from existing token (prevent device switching)
             var newRefresh = RefreshToken.Create(
                 tokenHash: newRefreshHash,
                 expiresAt: newRefreshExpiresAt.UtcDateTime,
                 userId: existing.UserId,
-                deviceId: deviceId,
-                ip: ipAddress,
-                userAgent: userAgent,
+                deviceId: boundDeviceId, // ✅ از device اصلی استفاده می‌کنیم
+                ip: ipAddress, // IP می‌تواند تغییر کند (mobile networks, VPN)
+                userAgent: userAgent, // UserAgent می‌تواند به‌روزرسانی شود
                 parentTokenHash: existing.TokenHash 
             );
 
@@ -364,10 +424,41 @@ public class JwtTokenService : IJwtTokenService
 
             return Result<TokenResponseDto>.Success(dto);
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // ✅ Optimistic Concurrency Conflict: Another request already rotated this token
+            await tx.RollbackAsync(ct);
+            
+            _logger.LogWarning(ex, 
+                "Concurrency conflict during token rotation for token {TokenId}, user {UserId}. " +
+                "This typically means the token was already rotated by a concurrent request (race condition).",
+                existing.Id, existing.UserId);
+
+            // Record security event for potential replay/race condition
+            await _securityEventService.RecordSecurityEventAsync(
+                SecurityEventType.TokenReplay,
+                metadata: new
+                {
+                    TokenId = existing.Id,
+                    UserId = existing.UserId,
+                    DeviceId = existing.DeviceId,
+                    Reason = "Concurrency conflict - token already modified (possible race condition or replay)",
+                    ExceptionType = "DbUpdateConcurrencyException"
+                },
+                userId: existing.UserId,
+                ipAddress: ipAddress,
+                deviceId: existing.DeviceId,
+                ct: ct);
+
+            // Treat concurrency conflict as token already used (similar to replay attack)
+            return Result<TokenResponseDto>.Failure(
+                "This token has already been used. Please use the latest token or re-authenticate.",
+                IdentityErrorCodes.TOKEN_ALREADY_USED);
+        }
         catch (Exception ex)
         {
             await tx.RollbackAsync(ct);
-            _logger.LogError(ex, "Error rotating refresh token");
+            _logger.LogError(ex, "Error rotating refresh token for user {UserId}", existing.UserId);
             return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
         }
     }
@@ -517,40 +608,248 @@ public class JwtTokenService : IJwtTokenService
         }
     }
 
-    
-    private async Task RevokeTokenChainAsync(RefreshToken token, string reason, CancellationToken ct = default)
+    /// <summary>
+    /// Detects and handles IP/UserAgent anomalies during token refresh
+    /// </summary>
+    /// <remarks>
+    /// Checks for significant changes in IP address or UserAgent that may indicate token theft.
+    /// Threshold-based approach: minor changes are OK, radical changes require Step-Up MFA or re-authentication.
+    /// </remarks>
+    private async Task DetectAndHandleContextAnomaliesAsync(RefreshToken existingToken, string? newIpAddress, string? newUserAgent, CancellationToken ct = default)
     {
-        var tokensToRevoke = new List<RefreshToken> { token };
+        var anomalies = new List<string>();
 
-        
-        var childTokens = await _context.RefreshTokens
-            .Where(rt => rt.ParentTokenHash == token.TokenHash && !rt.IsRevoked)
-            .ToListAsync(ct);
-
-        tokensToRevoke.AddRange(childTokens);
-
-      
-        if (!string.IsNullOrEmpty(token.ParentTokenHash))
+        // ✅ IP Address Change Detection
+        if (!string.IsNullOrWhiteSpace(existingToken.CreatedByIp) && !string.IsNullOrWhiteSpace(newIpAddress))
         {
-            var parentToken = await _context.RefreshTokens
-                .FirstOrDefaultAsync(rt => rt.TokenHash == token.ParentTokenHash && !rt.IsRevoked, ct);
-            
-            if (parentToken != null)
+            // Simple check: exact mismatch (can be enhanced with IP range/geolocation checks)
+            if (!string.Equals(existingToken.CreatedByIp, newIpAddress, StringComparison.OrdinalIgnoreCase))
             {
-                tokensToRevoke.Add(parentToken);
+                // Note: IP changes are common (mobile networks, VPN, WiFi/4G switching)
+                // We log it but don't block unless configured to be strict
+                _logger.LogInformation("IP address changed during refresh: {OldIp} → {NewIp} for user {UserId}",
+                    existingToken.CreatedByIp, newIpAddress, existingToken.UserId);
+
+                anomalies.Add($"IP changed: {existingToken.CreatedByIp} → {newIpAddress}");
+
+                // Optional: Check if IP is from completely different country/region (requires GeoIP service)
+                // var isRadicalChange = await _geoIpService.IsRadicalLocationChangeAsync(existingToken.CreatedByIp, newIpAddress);
+                // if (isRadicalChange) { ... require Step-Up ... }
             }
         }
 
-        foreach (var t in tokensToRevoke)
+        // ✅ UserAgent Change Detection
+        if (!string.IsNullOrWhiteSpace(existingToken.UserAgent) && !string.IsNullOrWhiteSpace(newUserAgent))
         {
-            t.Revoke(reason);
+            // Check for significant UserAgent changes (e.g., different browser or OS)
+            var isSignificantChange = DetectSignificantUserAgentChange(existingToken.UserAgent, newUserAgent);
+            
+            if (isSignificantChange)
+            {
+                _logger.LogWarning("Significant UserAgent change detected during refresh for user {UserId}: {OldUA} → {NewUA}",
+                    existingToken.UserId, existingToken.UserAgent, newUserAgent);
+
+                anomalies.Add($"UserAgent changed significantly: {existingToken.UserAgent} → {newUserAgent}");
+            }
         }
 
+        // ✅ Record Security Event if anomalies detected
+        if (anomalies.Any())
+        {
+            var severity = anomalies.Count > 1 ? "High" : "Medium"; // Multiple anomalies = higher severity
+            
+            await _securityEventService.RecordSecurityEventAsync(
+                SecurityEventType.RefreshTokenAnomaly,
+                metadata: new
+                {
+                    TokenId = existingToken.Id,
+                    Anomalies = anomalies,
+                    AnomalyCount = anomalies.Count,
+                    OldIp = existingToken.CreatedByIp,
+                    NewIp = newIpAddress,
+                    OldUserAgent = existingToken.UserAgent,
+                    NewUserAgent = newUserAgent,
+                    Severity = severity,
+                    Action = "Logged - token refresh allowed with monitoring",
+                    Recommendation = "Consider implementing Step-Up MFA for high-severity anomalies"
+                },
+                userId: existingToken.UserId,
+                ipAddress: newIpAddress,
+                deviceId: existingToken.DeviceId,
+                ct: ct);
+
+            // ✅ Optional: Mark device as untrusted for severe anomalies (requires re-verification)
+            // This can be used with Step-Up MFA requirement
+            if (_securitySettings.StepUp.Enabled && 
+                _securitySettings.StepUp.RequiredForAnomalousActivity && 
+                anomalies.Count > 1) // Multiple anomalies = suspicious
+            {
+                _logger.LogWarning(
+                    "Multiple context anomalies detected for user {UserId} device {DeviceId}. " +
+                    "Device marked as untrusted and may require Step-Up MFA on next critical operation.",
+                    existingToken.UserId, existingToken.DeviceId);
+
+                // Note: You can implement device trust level management here:
+                // var device = await _context.UserDevices
+                //     .FirstOrDefaultAsync(d => d.UserId == existingToken.UserId && 
+                //                              d.DeviceFingerprint == existingToken.DeviceId, ct);
+                // if (device != null)
+                // {
+                //     device.MarkAsUntrusted();
+                //     await _context.SaveChangesAsync(ct);
+                // }
+
+                // Optional: For very severe anomalies, enforce immediate re-authentication:
+                // throw new InvalidOperationException("Suspicious activity detected. Please re-authenticate.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Detects significant changes in UserAgent (browser/OS/device type)
+    /// </summary>
+    private bool DetectSignificantUserAgentChange(string oldUserAgent, string newUserAgent)
+    {
+        if (string.Equals(oldUserAgent, newUserAgent, StringComparison.Ordinal))
+            return false;
+
+        // Normalize and compare key components
+        var oldUA = oldUserAgent.ToLowerInvariant();
+        var newUA = newUserAgent.ToLowerInvariant();
+
+        // Check for browser change
+        var browsers = new[] { "chrome", "firefox", "safari", "edge", "opera" };
+        var oldBrowser = browsers.FirstOrDefault(b => oldUA.Contains(b));
+        var newBrowser = browsers.FirstOrDefault(b => newUA.Contains(b));
+        if (oldBrowser != null && newBrowser != null && oldBrowser != newBrowser)
+        {
+            _logger.LogWarning("Browser changed: {OldBrowser} → {NewBrowser}", oldBrowser, newBrowser);
+            return true; // Browser change is significant
+        }
+
+        // Check for OS change
+        var operatingSystems = new[] { "windows", "mac os", "linux", "android", "ios" };
+        var oldOS = operatingSystems.FirstOrDefault(os => oldUA.Contains(os));
+        var newOS = operatingSystems.FirstOrDefault(os => newUA.Contains(os));
+        if (oldOS != null && newOS != null && oldOS != newOS)
+        {
+            _logger.LogWarning("OS changed: {OldOS} → {NewOS}", oldOS, newOS);
+            return true; // OS change is significant
+        }
+
+        // Check for device type change (mobile ↔ desktop)
+        var oldIsMobile = oldUA.Contains("mobile") || oldUA.Contains("android") || oldUA.Contains("iphone");
+        var newIsMobile = newUA.Contains("mobile") || newUA.Contains("android") || newUA.Contains("iphone");
+        if (oldIsMobile != newIsMobile)
+        {
+            _logger.LogWarning("Device type changed: mobile={OldMobile} → mobile={NewMobile}", oldIsMobile, newIsMobile);
+            return true; // Device type change is significant
+        }
+
+        // Minor version changes (e.g., Chrome 120 → Chrome 121) are not significant
+        return false;
+    }
+
+    /// <summary>
+    /// Recursively revokes an entire token chain (parents, children, and all descendants)
+    /// </summary>
+    /// <remarks>
+    /// Uses BFS (Breadth-First Search) to traverse the entire token graph:
+    /// - Follows ParentTokenHash links (upward)
+    /// - Follows ReplacedByTokenHash links (forward)
+    /// - Follows child tokens via ParentTokenHash (downward)
+    /// 
+    /// Handles complex chains like:
+    /// GrandParent → Parent → Current → Child → GrandChild
+    /// 
+    /// Prevents infinite loops with visited set.
+    /// </remarks>
+    private async Task RevokeTokenChainAsync(RefreshToken token, string reason, CancellationToken ct = default)
+    {
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var queue = new Queue<string>();
+        var tokensToRevoke = new List<RefreshToken>();
+
+        // Start with the initial token
+        queue.Enqueue(token.TokenHash);
+
+        _logger.LogInformation("Starting recursive token chain revocation from token {TokenId}", token.Id);
+
+        while (queue.Count > 0)
+        {
+            var currentHash = queue.Dequeue();
+            
+            // Skip if already visited (prevent infinite loops)
+            if (!visited.Add(currentHash))
+                continue;
+
+            // Find all tokens related to current hash:
+            // 1. Token with this hash (current)
+            // 2. Tokens with this as parent (children)
+            // 3. Tokens with this as ReplacedBy (previous in rotation)
+            var relatedTokens = await _context.RefreshTokens
+                .Where(t => (t.TokenHash == currentHash ||
+                            t.ParentTokenHash == currentHash ||
+                            t.ReplacedByTokenHash == currentHash) &&
+                            !t.IsRevoked)
+                .ToListAsync(ct);
+
+            foreach (var t in relatedTokens)
+            {
+                // Add to revoke list if not already revoked
+                if (!t.IsRevoked && !tokensToRevoke.Any(x => x.Id == t.Id))
+                {
+                    t.Revoke($"Chain revocation: {reason}");
+                    tokensToRevoke.Add(t);
+                    
+                    _logger.LogDebug("Marked token {TokenId} for revocation in chain", t.Id);
+                }
+
+                // ✅ Traverse upward: Follow parent link
+                if (!string.IsNullOrEmpty(t.ParentTokenHash) && !visited.Contains(t.ParentTokenHash))
+                {
+                    queue.Enqueue(t.ParentTokenHash);
+                }
+
+                // ✅ Traverse forward: Follow replacement link
+                if (!string.IsNullOrEmpty(t.ReplacedByTokenHash) && !visited.Contains(t.ReplacedByTokenHash))
+                {
+                    queue.Enqueue(t.ReplacedByTokenHash);
+                }
+
+                // ✅ Traverse downward: Find direct children
+                var children = await _context.RefreshTokens
+                    .Where(c => c.ParentTokenHash == t.TokenHash && 
+                               !c.IsRevoked &&
+                               !visited.Contains(c.TokenHash))
+                    .Select(c => c.TokenHash)
+                    .ToListAsync(ct);
+
+                foreach (var childHash in children)
+                {
+                    if (!visited.Contains(childHash))
+                    {
+                        queue.Enqueue(childHash);
+                    }
+                }
+            }
+        }
+
+        // Save all revoked tokens
         if (tokensToRevoke.Any())
         {
             _context.RefreshTokens.UpdateRange(tokensToRevoke);
             await _context.SaveChangesAsync(ct);
-            _logger.LogInformation("Revoked token chain with {Count} tokens for security violation", tokensToRevoke.Count);
+            
+            _logger.LogWarning(
+                "Recursively revoked token chain: {Count} tokens across {Levels} levels for reason: {Reason}",
+                tokensToRevoke.Count,
+                visited.Count,
+                reason);
+        }
+        else
+        {
+            _logger.LogInformation("No tokens to revoke in chain (all already revoked)");
         }
     }
 
@@ -854,6 +1153,7 @@ public class JwtTokenService : IJwtTokenService
 
         var uid = Guid.Parse(userId);
         var tokens = await _context.RefreshTokens
+            .AsNoTracking()
             .Where(rt => rt.UserId == uid)
             .OrderByDescending(rt => rt.CreatedAt)
             .ToListAsync(ct);

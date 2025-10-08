@@ -30,7 +30,7 @@ namespace DigiTekShop.Identity.Models
         public DateTime? LastUsedAt { get; private set; }
 
         // Metadata
-        public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; private set; } 
         public string? CreatedByIp { get; private set; }
         public string? DeviceId { get; private set; }
         public string? UserAgent { get; private set; }
@@ -38,6 +38,9 @@ namespace DigiTekShop.Identity.Models
         // User
         public Guid UserId { get; private set; }
         public User User { get; private set; } = default!;
+
+        // ✅ Optimistic Concurrency Control (prevents race conditions in token rotation)
+        public byte[] RowVersion { get; private set; } = default!;
 
         // Private constructor for EF Core
         private RefreshToken() { }

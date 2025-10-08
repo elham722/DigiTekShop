@@ -13,6 +13,7 @@ namespace DigiTekShop.Identity.Options.Security
         public bool RequiredForNewDevices { get; init; } = true;
 
         public bool RequiredForSensitiveOperations { get; init; } = true;
+        public bool RequiredForAnomalousActivity { get; init; } = true;
 
         public TimeSpan StepUpValidityDuration { get; init; } = TimeSpan.FromHours(1);
 
