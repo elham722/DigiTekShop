@@ -12,7 +12,6 @@ using System.Text;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options.PhoneVerification;
-using DigiTekShop.Identity.Services.Auth;
 using DigiTekShop.Identity.Services.Tokens;
 using DigiTekShop.Identity.Options.Security;
 
@@ -94,7 +93,6 @@ public static class IdentityServicesRegistration
 
         #region AddServices
 
-        services.AddScoped<IAuthService, AuthService>();
 
         services.AddScoped<ILoginService, LoginService>();
 

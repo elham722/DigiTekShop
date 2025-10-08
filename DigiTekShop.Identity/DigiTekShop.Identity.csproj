@@ -30,4 +30,8 @@
     <ProjectReference Include="..\DigiTekShop.SharedKernel\DigiTekShop.SharedKernel.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Services\Auth\" />
+  </ItemGroup>
+
 </Project>

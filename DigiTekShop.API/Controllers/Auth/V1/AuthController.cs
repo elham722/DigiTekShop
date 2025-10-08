@@ -3,6 +3,7 @@ using DigiTekShop.API.Common;
 using DigiTekShop.API.Controllers.Common.V1;
 using DigiTekShop.API.Models;
 using DigiTekShop.Contracts.DTOs.Auth.Login;
+using DigiTekShop.Contracts.DTOs.Auth.Logout;
 using DigiTekShop.Contracts.DTOs.Auth.Register;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
@@ -29,7 +30,7 @@ public sealed class AuthController : ApiControllerBase
     }
 
 
-    #region Authentication
+    #region Login
 
     [HttpPost("login")]
     [AllowAnonymous]
@@ -44,12 +45,16 @@ public sealed class AuthController : ApiControllerBase
         return this.ToActionResult(result);
     }
 
+
+    #endregion
+
+    #region Refresh Token
+
     [HttpPost("refresh")]
     [AllowAnonymous]
     [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(typeof(ApiResponse<TokenResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequestDto request, CancellationToken cancellationToken = default)
     {
 
@@ -57,8 +62,41 @@ public sealed class AuthController : ApiControllerBase
         var result = await _loginService.RefreshAsync(enriched, cancellationToken);
         return this.ToActionResult(result);
     }
+
     #endregion
 
- 
+    #region Logout
 
+    [HttpPost("logout")]
+    [Authorize]
+    [EnableRateLimiting("AuthPolicy")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequestDto request, CancellationToken ct)
+    {
+       
+        var result = await _loginService.LogoutAsync(request, ct);
+        return this.ToActionResult(result);
+    }
+
+    #endregion
+
+    #region Logout-all
+
+    [HttpPost("logout-all")]
+    [Authorize]
+    [EnableRateLimiting("AuthPolicy")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> LogoutAll(CancellationToken ct)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Problem("UserId not found in token", statusCode: StatusCodes.Status401Unauthorized, title: "UNAUTHORIZED");
+
+        var result = await _loginService.LogoutAllDevicesAsync(userId, ct);
+        return this.ToActionResult(result);
+    }
+
+    #endregion
 }
