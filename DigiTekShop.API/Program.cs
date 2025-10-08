@@ -136,6 +136,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
+builder.Services.AddMemoryCache();
+
 
 var app = builder.Build();
 

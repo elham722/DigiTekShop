@@ -53,7 +53,7 @@ public class LoginAttemptConfiguration : IEntityTypeConfiguration<LoginAttempt>
             .IncludeProperties(la => new { la.Status, la.IpAddress });
 
         builder.HasIndex(la => la.LoginNameOrEmailNormalized)
-            .HasFilter("[LoginNameOrEmailNormalized] IS NOT NULL")
+            .HasFilter("[LoginNameOrEmail] IS NOT NULL") 
             .HasDatabaseName("IX_LoginAttempts_LoginNameOrEmailNorm");
 
         builder.HasIndex(la => la.IpAddress)
