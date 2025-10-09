@@ -1,7 +1,4 @@
-﻿using System.Diagnostics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace DigiTekShop.SharedKernel.Results;
+﻿namespace DigiTekShop.SharedKernel.Results;
 
 [DebuggerDisplay("IsSuccess = {IsSuccess}, Value = {Value}, Errors = {Errors.Count}")]
 public sealed class Result<T> : Result
@@ -13,14 +10,35 @@ public sealed class Result<T> : Result
     private Result(IEnumerable<string> errors, string? errorCode = null)
         : base(false, errors, errorCode) => Value = default;
 
+    public void Deconstruct(out bool isSuccess, out T? value, out IReadOnlyList<string> errors)
+    { isSuccess = IsSuccess; value = Value; errors = Errors; }
+
     #region Static Factories
-    public static Result<T> Success(T value) => new(value);
-    public static new Result<T> Failure(string error) => new(new[] { error });
-    public static new Result<T> Failure(IEnumerable<string> errors) => new(errors);
-    public static new Result<T> Failure(string error, string errorCode) => new(new[] { error }, errorCode);
-    public static new Result<T> Failure(IEnumerable<string> errors, string errorCode) => new(errors, errorCode);
+    public static Result<T> Success(T value)
+    {
+        if (value is null)
+            throw new ArgumentNullException(nameof(value), "Success value cannot be null. Use SuccessAllowNull if null is acceptable.");
+        return new(value);
+    }
+
+    public static Result<T> SuccessAllowNull(T? value) => new(value!);
+    public static new Result<T> Failure(string error, string? errorCode = null) => new(new[] { error }, errorCode);
+    public static new Result<T> Failure(IEnumerable<string> errors, string? errorCode = null) => new(errors, errorCode);
+
     public static Result<T> FromException(Exception ex, string? errorCode = null)
         => Failure(ex.Message, errorCode ?? ex.GetType().Name);
+
+    public static Result<T> Try(Func<T> func, string? errorCode = null)
+    {
+        try { return Success(func()); }
+        catch (Exception ex) { return FromException(ex, errorCode); }
+    }
+
+    public static async Task<Result<T>> TryAsync(Func<Task<T>> func, string? errorCode = null)
+    {
+        try { return Success(await func()); }
+        catch (Exception ex) { return FromException(ex, errorCode); }
+    }
     #endregion
 
     #region Implicit Conversions
@@ -49,12 +67,11 @@ public sealed class Result<T> : Result
         if (IsFailure) action(Errors);
         return this;
     }
+    public Result<T> Ensure(Func<T, bool> predicate, string error, string? errorCode = null)
+        => IsFailure ? this : (predicate(Value!) ? this : Failure(error, errorCode));
 
-    public Result<T> Filter(Func<T, bool> predicate, string errorMessage)
-        => IsFailure ? this : (predicate(Value!) ? this : Failure(errorMessage));
-
-    public Result<T> Filter(Func<T, bool> predicate, string errorMessage, string errorCode)
-        => IsFailure ? this : (predicate(Value!) ? this : Failure(errorMessage, errorCode));
+    public Result<T> Filter(Func<T, bool> predicate, string errorMessage, string? errorCode = null)
+        => Ensure(predicate, errorMessage, errorCode);
     #endregion
 
     #region Matching

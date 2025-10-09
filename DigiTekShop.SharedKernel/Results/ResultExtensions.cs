@@ -7,19 +7,19 @@ public static class ResultExtensions
     public static async Task<Result<T>> UnwrapAsync<T>(this Task<Result<T>> task) => await task;
     public static async Task<Result> UnwrapAsync(this Task<Result> task) => await task;
 
-    // Combine عمومی
-    public static Result Combine(this IEnumerable<Result> results)
+    public static Result Combine(this IEnumerable<Result> results, string? errorCode = null)
     {
-        var errors = results.Where(r => r.IsFailure).SelectMany(r => r.Errors).ToList();
-        return errors.Any() ? Result.Failure(errors) : Result.Success();
+        var errs = results.Where(r => r.IsFailure).SelectMany(r => r.Errors).ToArray();
+        return errs.Length > 0 ? Result.Failure(errs, errorCode ?? "COMBINED_ERROR") : Result.Success();
     }
 
-    public static Result<IEnumerable<T>> Combine<T>(this IEnumerable<Result<T>> results)
+    public static Result<IEnumerable<T>> Combine<T>(this IEnumerable<Result<T>> results, string? errorCode = null)
     {
-        var errors = results.Where(r => r.IsFailure).SelectMany(r => r.Errors).ToList();
-        if (errors.Any()) return Result<IEnumerable<T>>.Failure(errors);
-        var values = results.Where(r => r.IsSuccess).Select(r => r.Value);
-        return Result<IEnumerable<T>>.Success(values);
+        var arr = results as Result<T>[] ?? results.ToArray();
+        var errs = arr.Where(r => r.IsFailure).SelectMany(r => r.Errors).ToArray();
+        if (errs.Length > 0) return Result<IEnumerable<T>>.Failure(errs, errorCode ?? "COMBINED_ERROR");
+        var vals = arr.Where(r => r.IsSuccess).Select(r => r.Value!);
+        return Result<IEnumerable<T>>.Success(vals);
     }
 
     // Nullable و predicate

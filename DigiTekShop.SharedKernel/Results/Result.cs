@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace DigiTekShop.SharedKernel.Results;
 
@@ -14,22 +15,32 @@ public class Result
     protected Result(bool isSuccess, IEnumerable<string>? errors, string? errorCode = null)
     {
         IsSuccess = isSuccess;
-        Errors = (errors ?? Array.Empty<string>()).ToList().AsReadOnly();
+
+        var list = (errors ?? Array.Empty<string>()).Where(e => !string.IsNullOrWhiteSpace(e)).ToArray();
+
+        if (!isSuccess && list.Length == 0)
+            throw new ArgumentException("Failure result must contain at least one error.", nameof(errors));
+
+        Errors = list.ToImmutableArray();
         ErrorCode = errorCode;
         Timestamp = DateTimeOffset.UtcNow;
     }
 
+    public void Deconstruct(out bool isSuccess, out IReadOnlyList<string> errors)
+    { isSuccess = IsSuccess; errors = Errors; }
+
     #region Static Factories
     public static Result Success() => new(true, Array.Empty<string>());
-    public static Result Failure(string error) => new(false, new[] { error });
-    public static Result Failure(IEnumerable<string> errors) => new(false, errors);
-    public static Result Failure(string error, string errorCode) => new(false, new[] { error }, errorCode);
-    public static Result Failure(IEnumerable<string> errors, string errorCode) => new(false, errors, errorCode);
+    public static Result Failure(string error, string? errorCode = null) => new(false, new[] { error }, errorCode);
+    public static Result Failure(IEnumerable<string> errors, string? errorCode = null) => new(false, errors, errorCode);
 
-    // ✅ مفید وقتی استثنا را مستقیم تبدیل می‌کنی
     public static Result FromException(Exception ex, string? errorCode = null)
         => Failure(ex.Message, errorCode ?? ex.GetType().Name);
+
+    public static Result From(bool ok, string? errorIfFalse = null, string? errorCode = null)
+        => ok ? Success() : Failure(errorIfFalse ?? "Operation failed.", errorCode);
     #endregion
+
 
     #region Implicit Conversions
     public static implicit operator Result(string error) => Failure(error);

@@ -37,6 +37,7 @@ public sealed class RegistrationController : ApiControllerBase
     [ProducesResponseType(typeof(ApiResponse<RegisterResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto request, CancellationToken ct)
     {
         var enriched = request with
