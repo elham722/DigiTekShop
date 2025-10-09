@@ -2,9 +2,11 @@
 using DigiTekShop.API.Common;
 using DigiTekShop.API.Controllers.Common.V1;
 using DigiTekShop.API.Models;
+using DigiTekShop.Application.Auth.Register.Command;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 using DigiTekShop.Contracts.DTOs.Auth.Register;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -18,14 +20,12 @@ namespace DigiTekShop.API.Controllers.Auth.V1;
 [Consumes("application/json")]
 public sealed class RegistrationController : ApiControllerBase
 {
-    private readonly IRegistrationService _registrationService;
-    private readonly IEmailConfirmationService _emailConfirmationService;
+    private readonly IMediator _mediator;
     private readonly ILogger<RegistrationController> _logger;
 
-    public RegistrationController(IRegistrationService registrationService, IEmailConfirmationService emailConfirmationService, ILogger<RegistrationController> logger)
+    public RegistrationController(IMediator mediator, ILogger<RegistrationController> logger)
     {
-        _registrationService = registrationService ?? throw new ArgumentNullException(nameof(registrationService));
-        _emailConfirmationService= emailConfirmationService ?? throw new ArgumentNullException(nameof(emailConfirmationService));
+        _mediator = mediator;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -45,42 +45,42 @@ public sealed class RegistrationController : ApiControllerBase
             IpAddress = request.IpAddress ?? ClientIp
         };
 
-        var result = await _registrationService.RegisterAsync(enriched, ct);
+        var result = await _mediator.Send(new RegisterUserCommand(request), ct);
         return this.ToActionResult(result);
     }
 
     #endregion
 
 
-    #region Email_Confirm
+    //#region Email_Confirm
 
-    [HttpPost("confirm-email")]
-    [AllowAnonymous]
-    [EnableRateLimiting("AuthPolicy")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequestDto request, CancellationToken ct)
-    {
-        var result = await _emailConfirmationService.ConfirmEmailAsync(request, ct);
-        return this.ToActionResult(result);
-    }
+    //[HttpPost("confirm-email")]
+    //[AllowAnonymous]
+    //[EnableRateLimiting("AuthPolicy")]
+    //[ProducesResponseType(StatusCodes.Status204NoContent)]
+    //[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    //public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequestDto request, CancellationToken ct)
+    //{
+    //    var result = await _mediator.Send(new RegisterUserCommand(request), ct);
+    //    return this.ToActionResult(result);
+    //}
 
-    #endregion
+    //#endregion
 
 
-    #region Email_Confirm_Resend
+    //#region Email_Confirm_Resend
 
-    [HttpPost("resend-confirmation")]
-    [AllowAnonymous]
-    [EnableRateLimiting("AuthPolicy")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ResendConfirmation([FromBody] ResendEmailConfirmationRequestDto request, CancellationToken ct)
-    {
-        var result = await _emailConfirmationService.ResendAsync(request, ct);
-        return this.ToActionResult(result);
-    }
+    //[HttpPost("resend-confirmation")]
+    //[AllowAnonymous]
+    //[EnableRateLimiting("AuthPolicy")]
+    //[ProducesResponseType(StatusCodes.Status204NoContent)]
+    //[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    //public async Task<IActionResult> ResendConfirmation([FromBody] ResendEmailConfirmationRequestDto request, CancellationToken ct)
+    //{
+    //    var result = await _mediator.Send(new RegisterUserCommand(request), ct);
+    //    return this.ToActionResult(result);
+    //}
 
-    #endregion
+    //#endregion
 
 }

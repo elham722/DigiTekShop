@@ -61,7 +61,10 @@ builder.Services.AddCors(options =>
 
 #region Controllers & JSON Configuration
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.ModelBinderProviders.Insert(0, new TrimmingModelBinderProvider(convertEmptyToNull: true));
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
