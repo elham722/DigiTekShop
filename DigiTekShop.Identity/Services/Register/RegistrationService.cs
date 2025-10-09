@@ -2,24 +2,28 @@
 using DigiTekShop.Contracts.Interfaces.Caching;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options.PhoneVerification;
+using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
-using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using DigiTekShop.Contracts.Enums.Auth;
+using DigiTekShop.Identity.Options;
 
 namespace DigiTekShop.Identity.Services.Register;
 
-public class RegistrationService : IRegistrationService
+public sealed class RegistrationService : IRegistrationService
 {
     private const string RATE_LIMIT_TAG = "[RATE_LIMIT]";
 
     private readonly UserManager<User> _userManager;
-    private readonly IEmailConfirmationService _emailConfirmationService;   
-    private readonly IPhoneVerificationService _phoneVerificationService;   
+    private readonly IEmailConfirmationService _emailConfirmationService;
+    private readonly IPhoneVerificationService _phoneVerificationService;
     private readonly IRateLimiter _rateLimiter;
     private readonly ILogger<RegistrationService> _logger;
     private readonly PhoneVerificationSettings _phoneSettings;
     private readonly DigiTekShopIdentityDbContext _context;
+    private readonly EmailConfirmationSettings _emailSettings;
 
     public RegistrationService(
         UserManager<User> userManager,
@@ -27,6 +31,7 @@ public class RegistrationService : IRegistrationService
         IPhoneVerificationService phoneVerificationService,
         IRateLimiter rateLimiter,
         IOptions<PhoneVerificationSettings> phoneOptions,
+        IOptions<EmailConfirmationSettings> emailOptions, 
         DigiTekShopIdentityDbContext context,
         ILogger<RegistrationService> logger)
     {
@@ -35,137 +40,140 @@ public class RegistrationService : IRegistrationService
         _phoneVerificationService = phoneVerificationService ?? throw new ArgumentNullException(nameof(phoneVerificationService));
         _rateLimiter = rateLimiter ?? throw new ArgumentNullException(nameof(rateLimiter));
         _phoneSettings = phoneOptions?.Value ?? throw new ArgumentNullException(nameof(phoneOptions));
+        _emailSettings = emailOptions?.Value ?? new EmailConfirmationSettings { RequireEmailConfirmation = true };
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-   
     public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default)
     {
         try
         {
-
-            var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-            var normalizedEmailUpper = normalizedEmail.ToUpperInvariant();
-
-           
-            var rateLimitResult = await CheckRateLimitsAsync(normalizedEmail, ipAddress: request.IpAddress);
-            if (rateLimitResult.IsFailure)
-                return Result<RegisterResponseDto>.Failure(rateLimitResult.Errors);
-
             
+            var rl = await CheckRateLimitsAsync(request.Email, request.IpAddress, ct);
+            if (rl.IsFailure)
+                return Result<RegisterResponseDto>.Failure(rl.Errors, rl.ErrorCode);
+
             var existsAny = await _context.Users
+                .AsNoTracking()
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.NormalizedEmail == normalizedEmailUpper, ct);
+                .AnyAsync(u => u.NormalizedEmail == request.Email, ct);
 
             if (existsAny)
             {
-                _logger.LogWarning("Registration attempt with existing (any-state) email: {Email}", normalizedEmail);
-                return Result<RegisterResponseDto>.Failure("Email already registered.");
+                _logger.LogWarning("Registration attempt with existing email: {Email}", request.Email);
+                return Result<RegisterResponseDto>.Failure(
+                    new[] { "email: Email already registered." },
+                    ErrorCodes.Identity.UserExists
+                );
             }
 
-            
-            var user = User.Create(normalizedEmail, normalizedEmail);
+           
+            var user = User.Create(request.Email,request.Email);
 
-            if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-                user.PhoneNumber = request.PhoneNumber.Trim();
+            if (request.PhoneNumber is not null)
+                user.PhoneNumber = request.PhoneNumber;
 
             var createResult = await _userManager.CreateAsync(user, request.Password);
             if (!createResult.Succeeded)
             {
-                var errors = createResult.Errors.Select(e => e.Description);
-                _logger.LogWarning("User creation failed for email {Email}. Errors: {Errors}",
-                    normalizedEmail, string.Join(", ", errors));
-                return Result<RegisterResponseDto>.Failure($"Registration failed: {string.Join(", ", errors)}");
+                var errors = createResult.Errors.Select(e => $"password: {e.Description}").ToList();
+                _logger.LogWarning("User creation failed for {Email}. Errors: {Errors}", request.Email, string.Join(" | ", errors));
+                return Result<RegisterResponseDto>.Failure(errors, ErrorCodes.Common.OperationFailed);
             }
 
-           
+            var requireEmail = _emailSettings.RequireEmailConfirmation;
             var emailSent = false;
-            try
-            {
-                var emailResult = await _emailConfirmationService.SendAsync(user.Id.ToString(), ct);
-                emailSent = emailResult.IsSuccess;
-
-                if (emailResult.IsFailure)
-                    _logger.LogWarning("Failed to send email confirmation to {Email}: {Error}",
-                        user.Email, emailResult.GetFirstError());
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Exception while sending email confirmation to {Email}", user.Email);
-            }
-
-           
-            var phoneCodeSent = false;
-            if (_phoneSettings.RequirePhoneConfirmation && !string.IsNullOrWhiteSpace(user.PhoneNumber))
+            if (requireEmail)
             {
                 try
                 {
-                    var phoneResult = await _phoneVerificationService.SendVerificationCodeAsync(user.Id, user.PhoneNumber);
-                    phoneCodeSent = phoneResult.IsSuccess;
-
-                    if (phoneResult.IsFailure)
-                        _logger.LogWarning("Failed to send phone verification code to {Phone}: {Error}",
-                            user.PhoneNumber, phoneResult.GetFirstError());
+                    var emailRes = await _emailConfirmationService.SendAsync(user.Id.ToString(), ct);
+                    emailSent = emailRes.IsSuccess;
+                    if (emailRes.IsFailure)
+                        _logger.LogWarning("Email confirmation send failed for {Email}: {Err}", request.Email, emailRes.GetFirstError());
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Exception while sending phone verification code to {Phone}", user.PhoneNumber);
+                    _logger.LogError(ex, "Email confirmation exception for {Email}", request.Email);
                 }
             }
 
+            // 6) Phone verification (optional, best effort)
+            var requirePhone = _phoneSettings.RequirePhoneConfirmation && !string.IsNullOrWhiteSpace(user.PhoneNumber);
+            var phoneCodeSent = false;
+            if (requirePhone)
+            {
+                try
+                {
+                    var phoneRes = await _phoneVerificationService.SendVerificationCodeAsync(user.Id, user.PhoneNumber!, ct);
+                    phoneCodeSent = phoneRes.IsSuccess;
+                    if (phoneRes.IsFailure)
+                        _logger.LogWarning("Phone verification send failed for {Phone}: {Err}", user.PhoneNumber, phoneRes.GetFirstError());
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Phone verification exception for {Phone}", user.PhoneNumber);
+                }
+            }
+
+            // 7) Next step
+            var next = RegisterNextStep.None;
+            if (requireEmail && !user.EmailConfirmed) next = RegisterNextStep.ConfirmEmail;
+            else if (requirePhone && !user.PhoneNumberConfirmed) next = RegisterNextStep.VerifyPhone;
+
             var response = new RegisterResponseDto(
                 UserId: user.Id,
-                RequireEmailConfirmation: true,
+                RequireEmailConfirmation: requireEmail,
                 EmailSent: emailSent,
-                RequirePhoneConfirmation: _phoneSettings.RequirePhoneConfirmation,
-                PhoneCodeSent: phoneCodeSent
+                RequirePhoneConfirmation: requirePhone,
+                PhoneCodeSent: phoneCodeSent,
+                NextStep: next
             );
 
-            _logger.LogInformation("User {UserId} registered. EmailSent={EmailSent}, PhoneCodeSent={PhoneCodeSent}",
-                user.Id, emailSent, phoneCodeSent);
+            _logger.LogInformation("User {UserId} registered. EmailSent={EmailSent}, PhoneCodeSent={PhoneCodeSent} | DevId={DeviceId} UA={UA} IP={IP}",
+                user.Id, emailSent, phoneCodeSent, request.DeviceId, request.UserAgent, request.IpAddress);
 
             return Result<RegisterResponseDto>.Success(response);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error during registration for email {Email}", request.Email);
-            return Result<RegisterResponseDto>.Failure("An unexpected error occurred during registration.");
+            return Result<RegisterResponseDto>.Failure(
+                new[] { "general: An unexpected error occurred during registration." },
+                ErrorCodes.Common.OperationFailed
+            );
         }
     }
 
-
     #region Private Helpers
 
-    private async Task<Result> CheckRateLimitsAsync(string normalizedEmail, string? ipAddress)
+    private async Task<Result> CheckRateLimitsAsync(string email, string? ip, CancellationToken ct)
     {
         try
         {
-            var ipKey = $"reg:ip:{ipAddress ?? "unknown"}";
-            var ipAllowed = await _rateLimiter.ShouldAllowAsync(ipKey, 5, TimeSpan.FromMinutes(10));
-            if (!ipAllowed)
-            {
-                _logger.LogWarning("Registration rate limit exceeded for IP: {Ip}", ipAddress);
-                return Result.Failure($"{RATE_LIMIT_TAG} Too many registration attempts from this IP. Please try again later.");
-            }
+            var normEmailLower = _userManager.NormalizeEmail(email)?.ToLowerInvariant() ?? email.ToLowerInvariant();
 
-            var emailKey = $"reg:email:{normalizedEmail}";
-            var emailAllowed = await _rateLimiter.ShouldAllowAsync(emailKey, 3, TimeSpan.FromMinutes(10));
-            if (!emailAllowed)
-            {
-                _logger.LogWarning("Registration rate limit exceeded for email: {Email}", normalizedEmail);
-                return Result.Failure($"{RATE_LIMIT_TAG} Too many registration attempts for this email. Please try again later.");
-            }
+            var tasks = new List<Task<bool>>();
+            if (!string.IsNullOrWhiteSpace(ip))
+                tasks.Add(_rateLimiter.ShouldAllowAsync($"reg:ip:{ip}", 5, TimeSpan.FromMinutes(10), ct));
+            tasks.Add(_rateLimiter.ShouldAllowAsync($"reg:email:{normEmailLower}", 3, TimeSpan.FromMinutes(10), ct));
+
+            var results = await Task.WhenAll(tasks);
+            if (results.Any(allowed => allowed == false))
+                return Result.Failure(
+                    new[] { "[RATE_LIMIT] Too many registration attempts. Please try again later." },
+                    ErrorCodes.Common.RateLimitExceeded);
 
             return Result.Success();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking rate limits for email {Email}, IP {Ip}", normalizedEmail, ipAddress);
-            
-            return Result.Success();
+            _logger.LogError(ex, "RateLimit check failed");
+            return Result.Success(); // fail-open
         }
     }
+
 
     #endregion
 }
