@@ -10,6 +10,7 @@ using System.Text;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+using FluentValidation;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -19,6 +20,8 @@ public class EmailConfirmationService : IEmailConfirmationService
     private readonly IEmailSender _emailSender;
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly EmailConfirmationSettings _settings;
+    private readonly IValidator<ConfirmEmailRequestDto> _confirmEmailValidator;
+    private readonly IValidator<ResendEmailConfirmationRequestDto> _resendEmailValidator;
     private readonly ILogger<EmailConfirmationService> _logger;
 
     public EmailConfirmationService(
@@ -26,12 +29,16 @@ public class EmailConfirmationService : IEmailConfirmationService
         IEmailSender emailSender,
         DigiTekShopIdentityDbContext context,
         IOptions<EmailConfirmationSettings> settings,
+        IValidator<ConfirmEmailRequestDto> confirmEmailValidator,
+        IValidator<ResendEmailConfirmationRequestDto> resendEmailValidator,
         ILogger<EmailConfirmationService> logger)
     {
         _userManager = userManager;
         _emailSender = emailSender;
         _context = context;
         _settings = settings.Value;
+        _confirmEmailValidator = confirmEmailValidator;
+        _resendEmailValidator = resendEmailValidator;
         _logger = logger;
     }
 
@@ -47,8 +54,13 @@ public class EmailConfirmationService : IEmailConfirmationService
 
     public async Task<Result> ConfirmEmailAsync(ConfirmEmailRequestDto request, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.Token))
-            return Result.Failure("Invalid confirm request");
+        // ✅ Validate با FluentValidation
+        var validationResult = await _confirmEmailValidator.ValidateAsync(request, ct);
+        if (!validationResult.IsValid)
+        {
+            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return Result.Failure(errors);
+        }
 
         var user = await _userManager.FindByIdAsync(request.UserId);
         if (user is null) return Result.Failure("Invalid user ID.");
@@ -74,8 +86,13 @@ public class EmailConfirmationService : IEmailConfirmationService
 
     public async Task<Result> ResendAsync(ResendEmailConfirmationRequestDto request, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Email))
-            return Result.Failure("Email is required.");
+        // ✅ Validate با FluentValidation
+        var validationResult = await _resendEmailValidator.ValidateAsync(request, ct);
+        if (!validationResult.IsValid)
+        {
+            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return Result.Failure(errors);
+        }
 
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user is null) return Result.Success(); 

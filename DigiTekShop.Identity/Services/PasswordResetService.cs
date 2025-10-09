@@ -15,6 +15,7 @@ using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+using FluentValidation;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -25,7 +26,10 @@ public sealed class PasswordResetService : IPasswordService
     private readonly IEmailSender _emailSender;
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly PasswordResetSettings _settings;
-    private readonly IPasswordHistoryService _passwordHistory; 
+    private readonly IPasswordHistoryService _passwordHistory;
+    private readonly IValidator<ForgotPasswordRequestDto> _forgotPasswordValidator;
+    private readonly IValidator<ResetPasswordRequestDto> _resetPasswordValidator;
+    private readonly IValidator<ChangePasswordRequestDto> _changePasswordValidator;
     private readonly ILogger<PasswordResetService> _logger;
 
     public PasswordResetService(
@@ -33,7 +37,10 @@ public sealed class PasswordResetService : IPasswordService
         IEmailSender emailSender,
         DigiTekShopIdentityDbContext context,
         IOptions<PasswordResetSettings> settings,
-        IPasswordHistoryService passwordHistory,            
+        IPasswordHistoryService passwordHistory,
+        IValidator<ForgotPasswordRequestDto> forgotPasswordValidator,
+        IValidator<ResetPasswordRequestDto> resetPasswordValidator,
+        IValidator<ChangePasswordRequestDto> changePasswordValidator,
         ILogger<PasswordResetService> logger)
     {
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
@@ -41,6 +48,9 @@ public sealed class PasswordResetService : IPasswordService
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _settings = settings?.Value ?? throw new ArgumentNullException(nameof(settings));
         _passwordHistory = passwordHistory ?? throw new ArgumentNullException(nameof(passwordHistory));
+        _forgotPasswordValidator = forgotPasswordValidator ?? throw new ArgumentNullException(nameof(forgotPasswordValidator));
+        _resetPasswordValidator = resetPasswordValidator ?? throw new ArgumentNullException(nameof(resetPasswordValidator));
+        _changePasswordValidator = changePasswordValidator ?? throw new ArgumentNullException(nameof(changePasswordValidator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -48,6 +58,14 @@ public sealed class PasswordResetService : IPasswordService
 
     public async Task<Result> ForgotPasswordAsync(ForgotPasswordRequestDto request, CancellationToken ct = default)
     {
+        // ✅ Validate با FluentValidation
+        var validationResult = await _forgotPasswordValidator.ValidateAsync(request, ct);
+        if (!validationResult.IsValid)
+        {
+            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return Result.Failure(errors);
+        }
+
         return await SendResetLinkCoreAsync(request, ipAddress: null, userAgent: null, ct);
     }
 
@@ -55,13 +73,17 @@ public sealed class PasswordResetService : IPasswordService
     {
         try
         {
+            // ✅ Validate با FluentValidation
+            var validationResult = await _resetPasswordValidator.ValidateAsync(request, ct);
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+                return Result.Failure(errors);
+            }
+
             if (!_settings.IsEnabled)
                 return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.PASSWORD_RESET_DISABLED),
                                       IdentityErrorCodes.PASSWORD_RESET_DISABLED);
-
-            Guard.AgainstNullOrEmpty(request.UserId, nameof(request.UserId));
-            Guard.AgainstNullOrEmpty(request.Token, nameof(request.Token));
-            Guard.AgainstNullOrEmpty(request.NewPassword, nameof(request.NewPassword));
 
             if (!Guid.TryParse(request.UserId, out var userId))
                 return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_USER_FOR_PASSWORD_RESET),
@@ -164,10 +186,13 @@ public sealed class PasswordResetService : IPasswordService
     {
         try
         {
-            Guard.AgainstEmpty(request.UserId, nameof(request.UserId));
-            Guard.AgainstNullOrEmpty(request.CurrentPassword, nameof(request.CurrentPassword));
-            Guard.AgainstNullOrEmpty(request.NewPassword, nameof(request.NewPassword));
-
+            // ✅ Validate با FluentValidation
+            var validationResult = await _changePasswordValidator.ValidateAsync(request, ct);
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+                return Result.Failure(errors);
+            }
 
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
             if (user is null || user.IsDeleted)
@@ -219,8 +244,7 @@ public sealed class PasswordResetService : IPasswordService
                 return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.PASSWORD_RESET_DISABLED),
                                       IdentityErrorCodes.PASSWORD_RESET_DISABLED);
 
-            Guard.AgainstNullOrEmpty(request.Email, nameof(request.Email));
-            Guard.AgainstInvalidEmail(request.Email);
+            // Validation قبلاً در ForgotPasswordAsync انجام شده است
 
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null || user.IsDeleted || !user.EmailConfirmed)

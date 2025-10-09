@@ -12,6 +12,7 @@ using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using FluentValidation;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -22,6 +23,7 @@ public sealed class LoginService : ILoginService
     private readonly IJwtTokenService _jwtTokenService;
     private readonly ILoginAttemptService _loginAttemptService;
     private readonly ISecurityEventService _securityEventService;
+    private readonly IValidator<LoginRequestDto> _loginValidator;
     private readonly SecuritySettings _securitySettings;
     private readonly ILogger<LoginService> _logger;
 
@@ -31,6 +33,7 @@ public sealed class LoginService : ILoginService
         IJwtTokenService jwtTokenService,
         ILoginAttemptService loginAttemptService,
         ISecurityEventService securityEventService,
+        IValidator<LoginRequestDto> loginValidator,
         IOptions<SecuritySettings> securitySettings,
         ILogger<LoginService> logger)
     {
@@ -39,14 +42,20 @@ public sealed class LoginService : ILoginService
         _jwtTokenService = jwtTokenService ?? throw new ArgumentNullException(nameof(jwtTokenService));
         _loginAttemptService = loginAttemptService ?? throw new ArgumentNullException(nameof(loginAttemptService));
         _securityEventService = securityEventService ?? throw new ArgumentNullException(nameof(securityEventService));
+        _loginValidator = loginValidator ?? throw new ArgumentNullException(nameof(loginValidator));
         _securitySettings = securitySettings?.Value ?? throw new ArgumentNullException(nameof(securitySettings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<Result<TokenResponseDto>> LoginAsync(LoginRequestDto request, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-            return Result<TokenResponseDto>.Failure("Email and password are required.");
+        // ✅ Validate با FluentValidation
+        var validationResult = await _loginValidator.ValidateAsync(request, ct);
+        if (!validationResult.IsValid)
+        {
+            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return Result<TokenResponseDto>.Failure(errors);
+        }
 
         // به‌جای throw، دلیل بلاک را برگردان
         var blockReason = await GetBruteForceBlockReasonAsync(request.Ip, request.DeviceId, ct);

@@ -11,6 +11,7 @@ using DigiTekShop.Contracts.DTOs.Auth.Register;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options.PhoneVerification;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+using FluentValidation;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -22,6 +23,7 @@ public class RegistrationService : IRegistrationService
     private readonly IEmailConfirmationService _emailConfirmationService;   
     private readonly IPhoneVerificationService _phoneVerificationService;   
     private readonly IRateLimiter _rateLimiter;
+    private readonly IValidator<RegisterRequestDto> _validator;
     private readonly ILogger<RegistrationService> _logger;
     private readonly PhoneVerificationSettings _phoneSettings;
     private readonly DigiTekShopIdentityDbContext _context;
@@ -31,6 +33,7 @@ public class RegistrationService : IRegistrationService
         IEmailConfirmationService emailConfirmationService,
         IPhoneVerificationService phoneVerificationService,
         IRateLimiter rateLimiter,
+        IValidator<RegisterRequestDto> validator,
         IOptions<PhoneVerificationSettings> phoneOptions,
         DigiTekShopIdentityDbContext context,
         ILogger<RegistrationService> logger)
@@ -39,6 +42,7 @@ public class RegistrationService : IRegistrationService
         _emailConfirmationService = emailConfirmationService ?? throw new ArgumentNullException(nameof(emailConfirmationService));
         _phoneVerificationService = phoneVerificationService ?? throw new ArgumentNullException(nameof(phoneVerificationService));
         _rateLimiter = rateLimiter ?? throw new ArgumentNullException(nameof(rateLimiter));
+        _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _phoneSettings = phoneOptions?.Value ?? throw new ArgumentNullException(nameof(phoneOptions));
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -49,10 +53,13 @@ public class RegistrationService : IRegistrationService
     {
         try
         {
-           
-            var validationResult = ValidateRegistrationRequest(request);
-            if (validationResult.IsFailure)
-                return Result<RegisterResponseDto>.Failure(validationResult.Errors);
+            // ✅ Validate با FluentValidation
+            var validationResult = await _validator.ValidateAsync(request, ct);
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+                return Result<RegisterResponseDto>.Failure(errors);
+            }
 
             var normalizedEmail = request.Email.Trim().ToLowerInvariant();
             var normalizedEmailUpper = normalizedEmail.ToUpperInvariant();
@@ -145,50 +152,6 @@ public class RegistrationService : IRegistrationService
 
 
     #region Private Helpers
-
-    private Result ValidateRegistrationRequest(RegisterRequestDto request)
-    {
-        var errors = new List<string>();
-
-        // Email
-        if (string.IsNullOrWhiteSpace(request.Email))
-            errors.Add("Email is required.");
-        else
-        {
-            try { Guard.AgainstInvalidEmail(request.Email); }
-            catch (DigiTekShop.SharedKernel.Exceptions.Validation.DomainValidationException)
-            { errors.Add("Invalid email format."); }
-        }
-
-        // Passwords
-        if (string.IsNullOrWhiteSpace(request.Password))
-            errors.Add("Password is required.");
-
-        if (string.IsNullOrWhiteSpace(request.ConfirmPassword))
-            errors.Add("ConfirmPassword is required.");
-
-        if (!string.IsNullOrWhiteSpace(request.Password) &&
-            !string.IsNullOrWhiteSpace(request.ConfirmPassword) &&
-            request.Password != request.ConfirmPassword)
-            errors.Add("Passwords do not match.");
-
-        // Terms
-        if (!request.AcceptTerms)
-            errors.Add("You must accept the terms and conditions.");
-
-        // Phone
-        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-        {
-            try { Guard.AgainstInvalidPhoneNumber(request.PhoneNumber); }
-            catch (DigiTekShop.SharedKernel.Exceptions.Validation.DomainValidationException)
-            { errors.Add("Invalid phone number format."); }
-
-            if (!Regex.IsMatch(request.PhoneNumber, _phoneSettings.Security.AllowedPhonePattern))
-                errors.Add("Invalid phone number format.");
-        }
-
-        return errors.Count == 0 ? Result.Success() : Result.Failure(errors);
-    }
 
     private async Task<Result> CheckRateLimitsAsync(string normalizedEmail, string? ipAddress)
     {
