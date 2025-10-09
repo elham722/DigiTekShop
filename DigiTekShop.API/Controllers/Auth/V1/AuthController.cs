@@ -1,6 +1,6 @@
 using Asp.Versioning;
-using DigiTekShop.API.Common;
 using DigiTekShop.API.Controllers.Common.V1;
+using DigiTekShop.API.Extensions;
 using DigiTekShop.API.Models;
 using DigiTekShop.Contracts.DTOs.Auth.Login;
 using DigiTekShop.Contracts.DTOs.Auth.Logout;

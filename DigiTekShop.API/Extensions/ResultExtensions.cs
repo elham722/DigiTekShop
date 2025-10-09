@@ -1,10 +1,9 @@
-﻿
-using DigiTekShop.API.Models;
+﻿using DigiTekShop.API.Models;
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DigiTekShop.API.Common;
+namespace DigiTekShop.API.Extensions;
 
 public static class ResultToActionResultExtensions
 {
@@ -34,16 +33,26 @@ public static class ResultToActionResultExtensions
         return (info.HttpStatus, info.Code, info.DefaultMessage);
     }
 
-    private static ProblemDetails BuildProblemDetails(HttpContext http, int status, string code, string userFacingDetail, IEnumerable<string>? errors)
+    private static ProblemDetails BuildProblemDetails(
+        HttpContext http, int status, string code, string defaultMessage, IEnumerable<string>? errors)
     {
         var env = http.RequestServices.GetRequiredService<IWebHostEnvironment>();
+
+        string detail = defaultMessage;
+        if (env.IsDevelopment() && errors is not null)
+        {
+            var first = errors.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(first)) detail = first;
+        }
+
         var pd = new ProblemDetails
         {
             Title = code,
             Status = status,
-            Detail = env.IsDevelopment() ? userFacingDetail : userFacingDetail,
+            Detail = detail,
             Instance = http.TraceIdentifier
         };
+
         if (errors is not null && errors.Any())
         {
             var grouped = errors
@@ -59,6 +68,8 @@ public static class ResultToActionResultExtensions
 
             pd.Extensions["errors"] = grouped;
         }
+
         return pd;
     }
+
 }

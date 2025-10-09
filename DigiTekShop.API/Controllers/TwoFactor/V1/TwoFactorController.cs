@@ -1,11 +1,11 @@
 ﻿using Asp.Versioning;
-using DigiTekShop.API.Common;
 using DigiTekShop.API.Controllers.Common.V1;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Contracts.DTOs.Auth.TwoFactor;
+using DigiTekShop.API.Extensions;
 
 namespace DigiTekShop.API.Controllers.TwoFactor.V1;
 

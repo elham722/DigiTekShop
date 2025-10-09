@@ -15,6 +15,10 @@ namespace DigiTekShop.API.Controllers.Common.V1
             Request.Headers["X-Forwarded-For"].FirstOrDefault()
             ?? Request.Headers["X-Real-IP"].FirstOrDefault()
             ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        protected string? CorrelationId =>
+            Request.Headers["X-Request-ID"].FirstOrDefault() ?? HttpContext.TraceIdentifier;
+
     }
 
 }
