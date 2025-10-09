@@ -1,16 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DigiTekShop.Contracts.Enums.Auth;
 
 namespace DigiTekShop.Contracts.DTOs.Auth.Register
 {
-    public record RegisterResponseDto( 
+    public record RegisterResponseDto(
         Guid UserId,
         bool RequireEmailConfirmation,
         bool EmailSent,
         bool RequirePhoneConfirmation,
-        bool PhoneCodeSent
+        bool PhoneCodeSent,
+        RegisterNextStep NextStep = RegisterNextStep.None,
+        string? TraceId = null 
     );
 }

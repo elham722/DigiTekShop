@@ -42,7 +42,7 @@ public sealed class RegistrationController : ApiControllerBase
         {
             DeviceId = request.DeviceId ?? ClientDeviceId,
             UserAgent = request.UserAgent ?? UserAgentHeader,
-            Ip = request.Ip ?? ClientIp
+            IpAddress = request.IpAddress ?? ClientIp
         };
 
         var result = await _registrationService.RegisterAsync(enriched, ct);
