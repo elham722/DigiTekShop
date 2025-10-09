@@ -87,11 +87,14 @@ public sealed class RegisterUserCommandValidator : AbstractValidator<RegisterUse
                 .WithMessage("{PropertyName} نباید بیش از {MaxLength} کاراکتر باشد.");
         });
 
-        // IP (optional)
         When(x => !string.IsNullOrWhiteSpace(x.Dto.IpAddress), () =>
         {
             RuleFor(x => x.Dto.IpAddress!)
-                .Must(ip => IPAddress.TryParse(ip, out _))
+                .Must(ip =>
+                {
+                    var first = ip.Split(',')[0].Trim();
+                    return IPAddress.TryParse(first, out _);
+                })
                 .WithName("آدرس IP")
                 .WithMessage("{PropertyName} معتبر نیست.");
         });

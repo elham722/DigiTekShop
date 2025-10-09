@@ -113,6 +113,7 @@ For issues or questions, contact our support team.
             // ✅ Schema customization
             c.SchemaFilter<EnumSchemaFilter>();
             c.OperationFilter<SecurityRequirementsOperationFilter>();
+            c.OperationFilter<AddDeviceIdHeaderOperationFilter>();
         });
 
         return services;

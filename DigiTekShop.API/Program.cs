@@ -6,12 +6,16 @@ using DigiTekShop.Application.DependencyInjection;
 using DigiTekShop.ExternalServices.DependencyInjection;
 using DigiTekShop.Identity.DependencyInjection;
 using DigiTekShop.Infrastructure.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ✅ غیرفعال کردن Developer Exception Page در تمام Environmentها
+builder.WebHost.UseSetting(WebHostDefaults.DetailedErrorsKey, "false");
 
 const string CorrelationHeader = "X-Request-ID"; 
 
@@ -240,7 +244,8 @@ app.UseForwardedHeadersSupport(builder.Configuration);
 
 #region Exception Handling
 
-
+// ✅ همیشه از custom exception handler استفاده کن (حتی در Development)
+// تا response به صورت JSON برگردد، نه صفحه HTML
 app.UseExceptionHandler();
 
 #endregion
