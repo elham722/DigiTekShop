@@ -36,6 +36,7 @@ public sealed class RegistrationController : ApiControllerBase
     [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(typeof(ApiResponse<RegisterResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto request, CancellationToken ct)
     {
         var enriched = request with
@@ -45,7 +46,7 @@ public sealed class RegistrationController : ApiControllerBase
             IpAddress = request.IpAddress ?? ClientIp
         };
 
-        var result = await _mediator.Send(new RegisterUserCommand(request), ct);
+        var result = await _mediator.Send(new RegisterUserCommand(enriched), ct);
         return this.ToActionResult(result);
     }
 

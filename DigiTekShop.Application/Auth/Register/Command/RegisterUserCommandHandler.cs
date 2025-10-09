@@ -14,8 +14,13 @@ namespace DigiTekShop.Application.Auth.Register.Command
         : IRequestHandler<RegisterUserCommand, Result<RegisterResponseDto>>
     {
         private readonly IRegistrationService _registration;
-        public RegisterUserCommandHandler(IRegistrationService registration) => _registration = registration;
-        public Task<Result<RegisterResponseDto>> Handle(RegisterUserCommand request, CancellationToken ct)
+
+        public RegisterUserCommandHandler(IRegistrationService registration)
+            => _registration = registration;
+
+        public Task<Result<RegisterResponseDto>> Handle(
+            RegisterUserCommand request,
+            CancellationToken ct)
             => _registration.RegisterAsync(request.Dto, ct);
     }
 }

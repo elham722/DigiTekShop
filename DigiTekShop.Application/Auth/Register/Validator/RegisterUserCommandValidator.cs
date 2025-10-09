@@ -19,7 +19,8 @@ public sealed class RegisterUserCommandValidator : AbstractValidator<RegisterUse
 
         // Email
         RuleFor(x => x.Dto.Email)
-            .NotEmpty().WithMessage("{PropertyName} الزامی است.")
+            .NotEmpty().WithName("ایمیل")
+            .WithMessage("{PropertyName} الزامی است.")
             .MaximumLength(254).WithMessage("{PropertyName} نباید بیش از {MaxLength} کاراکتر باشد.")
             .EmailAddress().WithMessage("{PropertyName} معتبر نیست.")
             .Must(v => v == null || v == v.Trim()).WithMessage("{PropertyName} نباید فاصله‌ی ابتدا/پایان داشته باشد.");

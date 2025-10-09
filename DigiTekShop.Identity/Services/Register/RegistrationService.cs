@@ -17,7 +17,6 @@ public class RegistrationService : IRegistrationService
     private readonly IEmailConfirmationService _emailConfirmationService;   
     private readonly IPhoneVerificationService _phoneVerificationService;   
     private readonly IRateLimiter _rateLimiter;
-    private readonly IValidator<RegisterRequestDto> _validator;
     private readonly ILogger<RegistrationService> _logger;
     private readonly PhoneVerificationSettings _phoneSettings;
     private readonly DigiTekShopIdentityDbContext _context;
@@ -27,7 +26,6 @@ public class RegistrationService : IRegistrationService
         IEmailConfirmationService emailConfirmationService,
         IPhoneVerificationService phoneVerificationService,
         IRateLimiter rateLimiter,
-        IValidator<RegisterRequestDto> validator,
         IOptions<PhoneVerificationSettings> phoneOptions,
         DigiTekShopIdentityDbContext context,
         ILogger<RegistrationService> logger)
@@ -36,7 +34,6 @@ public class RegistrationService : IRegistrationService
         _emailConfirmationService = emailConfirmationService ?? throw new ArgumentNullException(nameof(emailConfirmationService));
         _phoneVerificationService = phoneVerificationService ?? throw new ArgumentNullException(nameof(phoneVerificationService));
         _rateLimiter = rateLimiter ?? throw new ArgumentNullException(nameof(rateLimiter));
-        _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _phoneSettings = phoneOptions?.Value ?? throw new ArgumentNullException(nameof(phoneOptions));
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -47,13 +44,6 @@ public class RegistrationService : IRegistrationService
     {
         try
         {
-            // ✅ Validate با FluentValidation
-            var validationResult = await _validator.ValidateAsync(request, ct);
-            if (!validationResult.IsValid)
-            {
-                var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                return Result<RegisterResponseDto>.Failure(errors);
-            }
 
             var normalizedEmail = request.Email.Trim().ToLowerInvariant();
             var normalizedEmailUpper = normalizedEmail.ToUpperInvariant();
