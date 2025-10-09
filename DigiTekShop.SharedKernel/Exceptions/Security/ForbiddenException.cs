@@ -1,50 +1,34 @@
-﻿namespace DigiTekShop.SharedKernel.Exceptions.Security;
-public class ForbiddenException : DomainException
+﻿#nullable enable
+using DigiTekShop.SharedKernel.Errors;
+using DigiTekShop.SharedKernel.Exceptions.Common;
+
+namespace DigiTekShop.SharedKernel.Exceptions.Security;
+
+public sealed class ForbiddenException : DomainException
 {
-    #region Simple + InnerExcepion
-
-    public ForbiddenException(string? message)
-        : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.Forbidden),
-            DomainErrorCodes.Forbidden)
-    {
-    }
-
-    public ForbiddenException(string? message, Exception innerException)
-        : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.Forbidden),
-            DomainErrorCodes.Forbidden,
-            innerException)
-    {
-    }
-
-    #endregion
-
-    #region MetaData + InnerException
-
+    public ForbiddenException(string? message = null)
+        : base(ErrorCodes.Common.Forbidden, message) { }
 
     public ForbiddenException(string action, object userId)
         : base(
-            $"User '{userId}' is not authorized to perform '{action}'",
-            DomainErrorCodes.Forbidden,
-            new Dictionary<string, object>
+            code: ErrorCodes.Common.Forbidden,
+            message: $"User '{userId}' is not authorized to perform '{action}'.",
+            metadata: new Dictionary<string, object>
             {
-                { "EntityName", action },
-                { "Id", userId }
+                ["Action"] = action,
+                ["UserId"] = userId
             })
-    {
-    }
+    { }
 
-    public ForbiddenException(string action, object userId, Exception innerException)
+    public ForbiddenException(string action, object userId, Exception inner)
         : base(
-            $"User '{userId}' is not authorized to perform '{action}'",
-            DomainErrorCodes.Forbidden,
-            innerException,
-            new Dictionary<string, object>
+            code: ErrorCodes.Common.Forbidden,
+            message: $"User '{userId}' is not authorized to perform '{action}'.",
+            innerException: inner,
+            metadata: new Dictionary<string, object>
             {
-                { "EntityName", action },
-                { "Id", userId }
+                ["Action"] = action,
+                ["UserId"] = userId
             })
-    {
-    }
-
-    #endregion
+    { }
 }

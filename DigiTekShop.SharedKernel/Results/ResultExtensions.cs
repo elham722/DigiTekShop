@@ -31,4 +31,17 @@ public static class ResultExtensions
 
     public static Result<T> ToResult<T>(this T? value, string errorMessage, string errorCode)
         => value is not null ? Result<T>.Success(value) : Result<T>.Failure(errorMessage, errorCode);
+
+    public static Result WithCode(this Result result, string errorCode)
+    {
+        if (result.IsSuccess) return result; 
+       
+        return Result.Failure(result.Errors, errorCode);
+    }
+
+    public static Result<T> WithCode<T>(this Result<T> result, string errorCode)
+    {
+        if (result.IsSuccess) return result;
+        return Result<T>.Failure(result.Errors, errorCode);
+    }
 }

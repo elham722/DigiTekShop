@@ -15,5 +15,4 @@ global using Microsoft.Extensions.DependencyInjection;
 global using DigiTekShop.SharedKernel.Exceptions.Common;
 global using DigiTekShop.Identity.Enums;
 global using DigiTekShop.SharedKernel.Guards;
-global using DigiTekShop.Identity.Exceptions.PhoneVerification;
 

@@ -1,51 +1,34 @@
-﻿namespace DigiTekShop.SharedKernel.Exceptions.NotFound;
+﻿#nullable enable
+using DigiTekShop.SharedKernel.Errors;
+using DigiTekShop.SharedKernel.Exceptions.Common;
 
-public class NotFoundException : DomainException
+namespace DigiTekShop.SharedKernel.Exceptions.NotFound;
+
+public sealed class NotFoundException : DomainException
 {
-    #region Simple + InnerExcepion
-
-    public NotFoundException(string? message) : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.EntityNotFound),
-        DomainErrorCodes.EntityNotFound)
-    {
-
-    }
-
-    public NotFoundException(string? message, Exception innerException) : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.EntityNotFound),
-        DomainErrorCodes.EntityNotFound, innerException)
-    {
-
-    }
-
-    #endregion
-
-    #region MetaData + InnerException
-
+    public NotFoundException(string? message = null)
+        : base(ErrorCodes.Domain.EntityNotFound, message) { }
 
     public NotFoundException(string entityName, object id)
         : base(
-            $"{entityName} with id '{id}' was not found.",
-            DomainErrorCodes.EntityNotFound,
-            new Dictionary<string, object>
+            code: ErrorCodes.Domain.EntityNotFound,
+            message: $"{entityName} with id '{id}' was not found.",
+            metadata: new Dictionary<string, object>
             {
-                { "EntityName", entityName },
-                { "Id", id }
+                ["EntityName"] = entityName,
+                ["Id"] = id
             })
-    {
-    }
+    { }
 
-    public NotFoundException(string entityName, object id, Exception innerException)
+    public NotFoundException(string entityName, object id, Exception inner)
         : base(
-            $"{entityName} with id '{id}' was not found.",
-            DomainErrorCodes.EntityNotFound,
-            innerException,
-            new Dictionary<string, object>
+            code: ErrorCodes.Domain.EntityNotFound,
+            message: $"{entityName} with id '{id}' was not found.",
+            innerException: inner,
+            metadata: new Dictionary<string, object>
             {
-                { "EntityName", entityName },
-                { "Id", id }
+                ["EntityName"] = entityName,
+                ["Id"] = id
             })
-    {
-    }
-
-    #endregion
-
+    { }
 }

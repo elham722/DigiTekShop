@@ -1,24 +1,21 @@
 ﻿
 
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Security.Cryptography;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
 using DigiTekShop.Contracts.Interfaces.Caching;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
-using DigiTekShop.Identity.Exceptions.Common;
-using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Identity.Options.Security;
 using DigiTekShop.SharedKernel.Enums;
-using DigiTekShop.SharedKernel.Exceptions.Common;
 using DigiTekShop.SharedKernel.Exceptions.Validation;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using DigiTekShop.SharedKernel.Errors;
 
 namespace DigiTekShop.Identity.Services.Tokens;
 
@@ -60,11 +57,12 @@ public class JwtTokenService : IJwtTokenService
         string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default)
     {
         if (!Guid.TryParse(userId, out var userGuid))
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.UserNotFound);
+
 
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.UserNotFound);
 
         await ManageUserDeviceAsync(user, deviceId, ipAddress, userAgent, ct);
 
@@ -174,7 +172,7 @@ public class JwtTokenService : IJwtTokenService
                 user.AddDevice(newDevice, _deviceLimits.MaxActiveDevicesPerUser, _deviceLimits.MaxTrustedDevicesPerUser);
                 _context.UserDevices.Add(newDevice);
             }
-            catch (InvalidDomainOperationException ex) when (ex.ErrorCode == IdentityErrorCodes.MaxActiveDevicesExceeded)
+            catch (InvalidDomainOperationException ex) when (ex.Code == ErrorCodes.Identity.MaxActiveDevices)
             {
                 var oldestDevice = user.Devices
                     .Where(d => d.IsActive)
@@ -271,7 +269,7 @@ public class JwtTokenService : IJwtTokenService
       string refreshToken, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.InvalidToken);
 
         var refreshHash = HashToken(refreshToken);
 
@@ -279,9 +277,11 @@ public class JwtTokenService : IJwtTokenService
             .FirstOrDefaultAsync(rt => rt.TokenHash == refreshHash,ct);
 
         if (existing == null)
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_NOT_FOUND));
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.TokenNotFound);
+
         if (existing.IsRevoked)
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_REVOKED));
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.TokenRevoked);
+
         if (existing.IsRotated)
         {
             
@@ -305,15 +305,19 @@ public class JwtTokenService : IJwtTokenService
 
            
             await RevokeTokenChainAsync(existing, "Token replay attack - rotated token reused", ct);
-            
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_USED), IdentityErrorCodes.TOKEN_ALREADY_USED);
+
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.InvalidToken);
+
+
         }
         if (existing.ExpiresAt <= DateTime.UtcNow)
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_EXPIRED));
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.TokenExpired);
+
 
         var user = await _userManager.FindByIdAsync(existing.UserId.ToString());
         if (user == null)
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.UserNotFound);
+
 
         // ✅ Device Integrity Check: Prevent device hijacking via token refresh
         var boundDeviceId = existing.DeviceId;
@@ -337,7 +341,7 @@ public class JwtTokenService : IJwtTokenService
                 deviceId: deviceId,
                 ct: ct);
 
-            return Result<TokenResponseDto>.Failure("Device mismatch. Please re-authenticate.", IdentityErrorCodes.INVALID_TOKEN);
+            return Result<TokenResponseDto>.Failure("Device mismatch. Please re-authenticate.", ErrorCodes.Identity.InvalidToken);
         }
 
         // ✅ IP/UserAgent Anomaly Detection (optional but recommended)
@@ -453,13 +457,14 @@ public class JwtTokenService : IJwtTokenService
             // Treat concurrency conflict as token already used (similar to replay attack)
             return Result<TokenResponseDto>.Failure(
                 "This token has already been used. Please use the latest token or re-authenticate.",
-                IdentityErrorCodes.TOKEN_ALREADY_USED);
+                ErrorCodes.Identity.InvalidToken);
         }
         catch (Exception ex)
         {
             await tx.RollbackAsync(ct);
             _logger.LogError(ex, "Error rotating refresh token for user {UserId}", existing.UserId);
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.InvalidToken);
+
         }
     }
 
@@ -860,7 +865,7 @@ public class JwtTokenService : IJwtTokenService
     public async Task<Result> RevokeRefreshTokenAsync(string refreshToken, string? reason = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
-            return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+            return ResultFactories.Fail(ErrorCodes.Identity.InvalidToken);
 
         var refreshHash = HashToken(refreshToken);
         var existing = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == refreshHash, ct);
@@ -879,10 +884,10 @@ public class JwtTokenService : IJwtTokenService
 
     public async Task<Result> RevokeAllUserTokensAsync(string userId, string? reason = null, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(userId)) return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+        if (string.IsNullOrWhiteSpace(userId))  return ResultFactories.Fail(ErrorCodes.Identity.UserNotFound);
 
         if (!Guid.TryParse(userId, out var userGuid))
-            return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.USER_NOT_FOUND));
+            return ResultFactories.Fail(ErrorCodes.Identity.UserNotFound);
 
         var tokens = await _context.RefreshTokens.Where(rt => rt.UserId == userGuid && !rt.IsRevoked).ToListAsync(ct);
         if (!tokens.Any()) return Result.Success();
@@ -906,7 +911,7 @@ public class JwtTokenService : IJwtTokenService
     public async Task<Result> RevokeAccessTokenAsync(string accessToken, string? reason = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(accessToken))
-            return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+            return ResultFactories.Fail(ErrorCodes.Identity.InvalidToken);
 
         try
         {
@@ -914,7 +919,7 @@ public class JwtTokenService : IJwtTokenService
             var tokenHandler = new JwtSecurityTokenHandler();
             
             if (!tokenHandler.CanReadToken(accessToken))
-                return Result.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+                return ResultFactories.Fail(ErrorCodes.Identity.InvalidToken);
 
             var jwtToken = tokenHandler.ReadJwtToken(accessToken);
             
@@ -966,7 +971,7 @@ public class JwtTokenService : IJwtTokenService
 
     public async Task<Result<ClaimsPrincipal>> ValidateAccessTokenAsync(string accessToken, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(accessToken)) return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+        if (string.IsNullOrWhiteSpace(accessToken)) return ResultFactories.Fail<ClaimsPrincipal>(ErrorCodes.Identity.InvalidToken);
 
         try
         {
@@ -993,14 +998,14 @@ public class JwtTokenService : IJwtTokenService
             // Validate JTI claim exists
             var jti = principal.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
             if (string.IsNullOrEmpty(jti))
-                return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+                return ResultFactories.Fail<ClaimsPrincipal>(ErrorCodes.Identity.InvalidToken);
 
             // Check if token is revoked (JTI blacklist)
             var isJtiRevoked = await _tokenBlacklist.IsTokenRevokedAsync(jti, ct);
             if (isJtiRevoked)
             {
                 _logger.LogWarning("Access denied: Blacklisted token JTI {Jti}", jti);
-                return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
+                return ResultFactories.Fail<ClaimsPrincipal>(ErrorCodes.Identity.InvalidToken);
             }
 
             // Check user-level revocation (all user tokens revoked after password change, etc.)
@@ -1016,7 +1021,7 @@ public class JwtTokenService : IJwtTokenService
                 if (isUserRevoked)
                 {
                     _logger.LogWarning("Access denied: User-level token revocation for UserId {UserId}", userId);
-                    return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_ALREADY_REVOKED));
+                    return ResultFactories.Fail<ClaimsPrincipal>(ErrorCodes.Identity.InvalidToken);
                 }
             }
 
@@ -1024,17 +1029,17 @@ public class JwtTokenService : IJwtTokenService
         }
         catch (SecurityTokenExpiredException)
         {
-            return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.TOKEN_EXPIRED));
+            return ResultFactories.Fail<ClaimsPrincipal>(ErrorCodes.Identity.InvalidToken);
         }
         catch (SecurityTokenInvalidSignatureException)
         {
             _logger.LogWarning("Invalid token signature");
-            return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+            return ResultFactories.Fail<ClaimsPrincipal>(ErrorCodes.Identity.InvalidToken);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Token validation failed");
-            return Result<ClaimsPrincipal>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN));
+            return ResultFactories.Fail<ClaimsPrincipal>(ErrorCodes.Identity.InvalidToken);
         }
     }
 

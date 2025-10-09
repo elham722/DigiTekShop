@@ -1,30 +1,32 @@
-﻿namespace DigiTekShop.SharedKernel.Exceptions.Conflict;
-public class ConcurrencyException : DomainException
+﻿
+using DigiTekShop.SharedKernel.Errors;
+
+namespace DigiTekShop.SharedKernel.Exceptions.Conflict;
+
+public sealed class ConcurrencyException : DomainException
 {
     public ConcurrencyException(object aggregateId, int expectedVersion, int actualVersion)
         : base(
-            $"Concurrency conflict for Aggregate '{aggregateId}'. Expected Version: {expectedVersion},but Actual Version is : {actualVersion}.",
-            DomainErrorCodes.ConcurrencyConflict,
-            new Dictionary<string, object>
+            code: ErrorCodes.Common.ConcurrencyConflict,
+            message: $"Concurrency conflict for Aggregate '{aggregateId}'. Expected Version: {expectedVersion}, but Actual Version is: {actualVersion}.",
+            metadata: new Dictionary<string, object>
             {
-                { "AggregateId", aggregateId },
-                { "ExpectedVersion", expectedVersion },
-                { "ActualVersion", actualVersion }
+                ["AggregateId"] = aggregateId,
+                ["ExpectedVersion"] = expectedVersion,
+                ["ActualVersion"] = actualVersion
             })
-    {
-    }
+    { }
 
-    public ConcurrencyException(object aggregateId, int expectedVersion, int actualVersion, Exception innerException)
+    public ConcurrencyException(object aggregateId, int expectedVersion, int actualVersion, Exception inner)
         : base(
-            $"Concurrency conflict for Aggregate '{aggregateId}'. Expected Version: {expectedVersion},but Actual Version is : {actualVersion}.",
-            DomainErrorCodes.ConcurrencyConflict,
-            innerException,
-            new Dictionary<string, object>
+            code: ErrorCodes.Common.ConcurrencyConflict,
+            message: $"Concurrency conflict for Aggregate '{aggregateId}'. Expected Version: {expectedVersion}, but Actual Version is: {actualVersion}.",
+            innerException: inner,
+            metadata: new Dictionary<string, object>
             {
-                { "AggregateId", aggregateId },
-                { "ExpectedVersion", expectedVersion },
-                { "ActualVersion", actualVersion }
+                ["AggregateId"] = aggregateId,
+                ["ExpectedVersion"] = expectedVersion,
+                ["ActualVersion"] = actualVersion
             })
-    {
-    }
+    { }
 }

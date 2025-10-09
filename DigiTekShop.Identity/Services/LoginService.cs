@@ -1,18 +1,14 @@
-﻿using System.Security.Claims;
-using DigiTekShop.Contracts.DTOs.Auth.Login;
+﻿using DigiTekShop.Contracts.DTOs.Auth.Login;
 using DigiTekShop.Contracts.DTOs.Auth.Logout;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
-using DigiTekShop.Contracts.Interfaces.Identity;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
-using DigiTekShop.Identity.Exceptions.Common;
-using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Options.Security;
 using DigiTekShop.SharedKernel.Enums;
+using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
-using Microsoft.AspNetCore.Identity;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using FluentValidation;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -66,14 +62,16 @@ public sealed class LoginService : ILoginService
         if (user is null)
         {
             await _loginAttemptService.RecordLoginAttemptAsync(null, LoginStatus.Failed, request.Ip, request.UserAgent, request.Email, ct);
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_CREDENTIALS), IdentityErrorCodes.INVALID_CREDENTIALS);
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.InvalidCredentials);
+
         }
 
         if (user.IsDeleted)
             return Result<TokenResponseDto>.Failure("User not found or inactive.");
 
         if (await _userManager.IsLockedOutAsync(user))
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.ACCOUNT_LOCKED), IdentityErrorCodes.ACCOUNT_LOCKED);
+        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.AccountLocked);
+
 
         var signIn = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
 
@@ -82,7 +80,8 @@ public sealed class LoginService : ILoginService
             await _loginAttemptService.RecordLoginAttemptAsync(user.Id, LoginStatus.Success, request.Ip, request.UserAgent, request.Email, ct);
 
             if (await _userManager.GetTwoFactorEnabledAsync(user))
-                return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.REQUIRES_TWO_FACTOR), IdentityErrorCodes.REQUIRES_TWO_FACTOR);
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.RequiresTwoFactor);
+
 
             // Step-Up بر اساس دستگاه
             if (_securitySettings.StepUp.Enabled && _securitySettings.StepUp.RequiredForNewDevices && !string.IsNullOrWhiteSpace(request.DeviceId))
@@ -108,13 +107,15 @@ public sealed class LoginService : ILoginService
         await CheckBruteForceAfterFailureAsync(request.Ip, request.DeviceId, user.Id, ct);
 
         if (signIn.IsLockedOut)
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.ACCOUNT_LOCKED), IdentityErrorCodes.ACCOUNT_LOCKED);
-        if (signIn.RequiresTwoFactor)
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.REQUIRES_TWO_FACTOR), IdentityErrorCodes.REQUIRES_TWO_FACTOR);
-        if (signIn.IsNotAllowed)
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.SIGNIN_NOT_ALLOWED), IdentityErrorCodes.SIGNIN_NOT_ALLOWED);
+        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.AccountLocked);
 
-        return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_CREDENTIALS), IdentityErrorCodes.INVALID_CREDENTIALS);
+        if (signIn.RequiresTwoFactor)
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.RequiresTwoFactor);
+        if (signIn.IsNotAllowed)
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.SignInNotAllowed);
+
+        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.InvalidCredentials);
+
     }
 
     #region Brute Force Detection
@@ -245,7 +246,7 @@ public sealed class LoginService : ILoginService
     public async Task<Result<TokenResponseDto>> RefreshAsync(RefreshRequestDto request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
-            return Result<TokenResponseDto>.Failure(IdentityErrorMessages.GetMessage(IdentityErrorCodes.INVALID_TOKEN), IdentityErrorCodes.INVALID_TOKEN);
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.InvalidToken);
 
         var result = await _jwtTokenService.RefreshTokensAsync(
             refreshToken: request.RefreshToken,

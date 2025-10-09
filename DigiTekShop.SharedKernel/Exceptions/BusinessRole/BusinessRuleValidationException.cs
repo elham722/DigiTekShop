@@ -1,20 +1,14 @@
-﻿namespace DigiTekShop.SharedKernel.Exceptions.BusinessRole;
-public class BusinessRuleValidationException : DomainException
+﻿using DigiTekShop.SharedKernel.Errors;
+
+namespace DigiTekShop.SharedKernel.Exceptions.BusinessRole;
+
+public sealed class BusinessRuleValidationException : DomainException
 {
-    #region Simple + InnerExcepion
+    public BusinessRuleValidationException(string? message = null,
+        IReadOnlyDictionary<string, object>? metadata = null)
+        : base(ErrorCodes.Domain.BusinessRuleViolation, message, null, metadata) { }
 
-    public BusinessRuleValidationException(string? message) : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.BusinessRuleValidation),
-        DomainErrorCodes.BusinessRuleValidation)
-    {
-
-    }
-
-    public BusinessRuleValidationException(string? message, Exception innerException)
-        : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.BusinessRuleValidation),
-        DomainErrorCodes.BusinessRuleValidation, innerException)
-    {
-
-    }
-
-    #endregion
+    public BusinessRuleValidationException(string? message, Exception inner,
+        IReadOnlyDictionary<string, object>? metadata = null)
+        : base(ErrorCodes.Domain.BusinessRuleViolation, message, inner, metadata) { }
 }

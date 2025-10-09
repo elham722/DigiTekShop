@@ -1,50 +1,35 @@
-﻿namespace DigiTekShop.SharedKernel.Exceptions.Conflict;
+﻿#nullable enable
+using DigiTekShop.SharedKernel.Errors;
+using DigiTekShop.SharedKernel.Exceptions.Common;
 
-public class EntityAlreadyExistsException : DomainException
+namespace DigiTekShop.SharedKernel.Exceptions.Conflict;
+
+public sealed class EntityAlreadyExistsException : DomainException
 {
-    #region Simple + InnerExcepion
-
-    public EntityAlreadyExistsException(string? message)
-        : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.EntityAlreadyExists),
-            DomainErrorCodes.EntityAlreadyExists)
-    {
-    }
-
-    public EntityAlreadyExistsException(string? message, Exception innerException)
-        : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.EntityAlreadyExists),
-            DomainErrorCodes.EntityAlreadyExists,
-            innerException)
-    {
-    }
-
-    #endregion
-
-    #region MetaData + InnerException
+    // پیام سفارشی یا پیش‌فرض از ErrorCatalog
+    public EntityAlreadyExistsException(string? message = null)
+        : base(ErrorCodes.Domain.EntityExists, message) { }
 
     public EntityAlreadyExistsException(string entityName, object entityKey)
         : base(
-            $"{entityName} with id '{entityKey}' already exists.",
-            DomainErrorCodes.EntityAlreadyExists,
-            new Dictionary<string, object>
+            code: ErrorCodes.Domain.EntityExists,
+            message: $"{entityName} with id '{entityKey}' already exists.",
+            metadata: new Dictionary<string, object>
             {
-                { "EntityName", entityName },
-                { "Id", entityKey }
+                ["EntityName"] = entityName,
+                ["Id"] = entityKey
             })
-    {
-    }
+    { }
 
-    public EntityAlreadyExistsException(string entityName, object entityKey, Exception innerException)
+    public EntityAlreadyExistsException(string entityName, object entityKey, Exception inner)
         : base(
-            $"{entityName} with id '{entityKey}' already exists.",
-            DomainErrorCodes.EntityAlreadyExists,
-            innerException,
-            new Dictionary<string, object>
+            code: ErrorCodes.Domain.EntityExists,
+            message: $"{entityName} with id '{entityKey}' already exists.",
+            innerException: inner,
+            metadata: new Dictionary<string, object>
             {
-                { "EntityName", entityName },
-                { "Id", entityKey }
+                ["EntityName"] = entityName,
+                ["Id"] = entityKey
             })
-    {
-    }
-
-    #endregion
+    { }
 }

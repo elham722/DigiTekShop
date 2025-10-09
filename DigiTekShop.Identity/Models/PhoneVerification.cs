@@ -1,4 +1,7 @@
-﻿public class PhoneVerification
+﻿using DigiTekShop.SharedKernel.Exceptions.BusinessRole;
+using DigiTekShop.SharedKernel.Exceptions.Validation;
+
+public class PhoneVerification
 {
     public Guid Id { get; private set; } = Guid.NewGuid();
     public Guid UserId { get; private set; }
@@ -53,7 +56,7 @@
     public void IncrementAttempts(int maxAttempts = 5)
     {
         if (Attempts >= maxAttempts)
-            throw new MaxAttemptsExceededException(UserId, maxAttempts);
+            throw new BusinessRuleValidationException();
 
         Attempts++;
     }

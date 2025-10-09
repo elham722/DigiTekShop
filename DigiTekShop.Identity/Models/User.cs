@@ -1,4 +1,5 @@
-﻿using DigiTekShop.Identity.Exceptions.Common;
+﻿
+using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Exceptions.NotFound;
 using DigiTekShop.SharedKernel.Exceptions.Validation;
 
@@ -96,7 +97,7 @@ public class User : IdentityUser<Guid>
         {
             throw new InvalidDomainOperationException(
                 $"Maximum active devices limit ({maxActiveDevices}) exceeded",
-                IdentityErrorCodes.MaxActiveDevicesExceeded);
+                ErrorCodes.Identity.MaxActiveDevices);
         }
         
        
@@ -107,7 +108,7 @@ public class User : IdentityUser<Guid>
             {
                 throw new InvalidDomainOperationException(
                     $"Maximum trusted devices limit ({maxTrustedDevices}) exceeded",
-                    IdentityErrorCodes.MaxTrustedDevicesExceeded);
+                    ErrorCodes.Identity.MaxTrustedDevices);
             }
         }
         
@@ -160,10 +161,10 @@ public class User : IdentityUser<Guid>
     {
         var device = Devices.FirstOrDefault(d => d.Id == deviceId);
         if (device == null)
-            throw new NotFoundException("Device not found", IdentityErrorCodes.DeviceNotFound);
+            throw new NotFoundException("Device not found", ErrorCodes.Identity.DeviceNotFound);
 
         if (!device.IsActive)
-            throw new InvalidDomainOperationException("Cannot trust inactive device", IdentityErrorCodes.DeviceInactive);
+            throw new InvalidDomainOperationException("Cannot trust inactive device", ErrorCodes.Identity.DeviceInactive);
 
        
         var trustedDevices = Devices.Count(d => d.IsTrusted);
@@ -171,7 +172,7 @@ public class User : IdentityUser<Guid>
         {
             throw new InvalidDomainOperationException(
                 $"Maximum trusted devices limit ({maxTrustedDevices}) exceeded",
-                IdentityErrorCodes.MaxTrustedDevicesExceeded);
+                ErrorCodes.Identity.MaxTrustedDevices);
         }
 
         device.MarkAsTrusted();
@@ -183,7 +184,7 @@ public class User : IdentityUser<Guid>
     {
         var device = Devices.FirstOrDefault(d => d.Id == deviceId);
         if (device == null)
-            throw new NotFoundException("Device not found", IdentityErrorCodes.DeviceNotFound);
+            throw new NotFoundException("Device not found", ErrorCodes.Identity.DeviceNotFound);
 
         device.MarkAsUntrusted();
         Touch();

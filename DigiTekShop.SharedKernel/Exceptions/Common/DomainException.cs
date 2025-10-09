@@ -1,40 +1,36 @@
-﻿namespace DigiTekShop.SharedKernel.Exceptions.Common;
+﻿using DigiTekShop.SharedKernel.Errors;
+using DigiTekShop.SharedKernel.Guards;
+
+namespace DigiTekShop.SharedKernel.Exceptions.Common;
 
 public class DomainException : Exception
 {
-    public string? ErrorCode { get; }
-    public Dictionary<string, object>? Metadata { get; }
+    public string Code { get; }
+    public IReadOnlyDictionary<string, object>? Metadata { get; }
+    public ErrorInfo Info => ErrorCatalog.Resolve(Code);
 
-    public DomainException(string message) : base(message) { }
-
-    public DomainException(string message, string errorCode, Dictionary<string, object>? metadata = null) : base(message)
+    protected DomainException(
+        string code,
+        string? message = null,
+        Exception? innerException = null,
+        IReadOnlyDictionary<string, object>? metadata = null)
+        : base(message ?? ErrorCatalog.Resolve(code).DefaultMessage, innerException)
     {
-        ErrorCode = errorCode;
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            Guard.AgainstNullOrEmpty(code, nameof(code));
+        }
+        
+        Code = code;
         Metadata = metadata;
-    }
-
-    public DomainException(string message, Exception innerException) : base(message, innerException) { }
-
-    public DomainException(string message, string errorCode, Exception innerException, Dictionary<string, object>? metadata = null)
-        : base(message, innerException)
-    {
-        ErrorCode = errorCode;
-        Metadata = metadata;
-    }
-
-  
-    public static DomainException FromCode(string errorCode)
-    {
-        var message = DomainErrorMessages.GetMessage(errorCode);
-        return new DomainException(message, errorCode);
     }
 
     public override string ToString()
     {
-        var meta = Metadata is { Count: > 0 }
-            ? $" Metadata: {string.Join(", ", Metadata.Select(kvp => $"{kvp.Key}={kvp.Value}"))}"
+        var meta = (Metadata is { Count: > 0 })
+            ? $" | Meta: {string.Join(", ", Metadata.Select(kvp => $"{kvp.Key}={kvp.Value}"))}"
             : string.Empty;
 
-        return $"{GetType().Name}: {Message} (ErrorCode: {ErrorCode}){meta}";
+        return $"{GetType().Name} [{Code}] {Message}{meta}";
     }
 }

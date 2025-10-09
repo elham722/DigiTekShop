@@ -1,50 +1,35 @@
+﻿#nullable enable
+using DigiTekShop.SharedKernel.Errors;
+using DigiTekShop.SharedKernel.Exceptions.Common;
+
 namespace DigiTekShop.SharedKernel.Exceptions.Security;
 
-public class AuthenticationFailedException : DomainException
+public sealed class AuthenticationFailedException : DomainException
 {
-
-    #region Simple + InnerExcepion
-    public AuthenticationFailedException(string? message)
-        : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.AuthenticationFailed),
-            DomainErrorCodes.AuthenticationFailed)
-    {
-    }
-
-    public AuthenticationFailedException(string? message, Exception innerException)
-        : base(message ?? DomainErrorMessages.GetMessage(DomainErrorCodes.AuthenticationFailed),
-            DomainErrorCodes.AuthenticationFailed,
-            innerException)
-    {
-    }
-    #endregion
-
-    #region MetaData + InnerException
-
+    // 401 با پیام کاتالوگ یا سفارشی
+    public AuthenticationFailedException(string? message = null)
+        : base(ErrorCodes.Common.Unauthorized, message) { }
 
     public AuthenticationFailedException(string userName, object id)
         : base(
-            $"{userName} with id '{id}' has login failed.",
-            DomainErrorCodes.AuthenticationFailed,
-            new Dictionary<string, object>
+            code: ErrorCodes.Common.Unauthorized,
+            message: $"Authentication failed for '{userName}' (Id='{id}').",
+            metadata: new Dictionary<string, object>
             {
-                { "EntityName", userName },
-                { "Id", id }
+                ["UserName"] = userName,
+                ["Id"] = id
             })
-    {
-    }
+    { }
 
-    public AuthenticationFailedException(string userName, object id, Exception innerException)
+    public AuthenticationFailedException(string userName, object id, Exception inner)
         : base(
-            $"{userName} with id '{id}' has login failed.",
-            DomainErrorCodes.AuthenticationFailed,
-            innerException,
-            new Dictionary<string, object>
+            code: ErrorCodes.Common.Unauthorized,
+            message: $"Authentication failed for '{userName}' (Id='{id}').",
+            innerException: inner,
+            metadata: new Dictionary<string, object>
             {
-                { "EntityName", userName },
-                { "Id", id }
+                ["UserName"] = userName,
+                ["Id"] = id
             })
-    {
-    }
-
-    #endregion
+    { }
 }
