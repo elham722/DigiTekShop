@@ -1,6 +1,4 @@
-﻿using DigiTekShop.Contracts.Enums.Auth;
-
-namespace DigiTekShop.Contracts.DTOs.Auth.Register
+﻿namespace DigiTekShop.Contracts.DTOs.Auth.Register
 {
     public record RegisterResponseDto(
         Guid UserId,

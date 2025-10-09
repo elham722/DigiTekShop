@@ -14,6 +14,7 @@ using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options.PhoneVerification;
 using DigiTekShop.Identity.Services.Tokens;
 using DigiTekShop.Identity.Options.Security;
+using DigiTekShop.Identity.Services.Register;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 

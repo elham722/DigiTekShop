@@ -1,19 +1,13 @@
-﻿using DigiTekShop.Contracts.Interfaces.Caching;
-using DigiTekShop.Identity.Models;
-using DigiTekShop.SharedKernel.Results;
-using DigiTekShop.SharedKernel.Guards;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
-using DigiTekShop.Contracts.DTOs.Auth.Register;
+﻿using DigiTekShop.Contracts.DTOs.Auth.Register;
+using DigiTekShop.Contracts.Interfaces.Caching;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options.PhoneVerification;
-using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+using DigiTekShop.SharedKernel.Results;
 using FluentValidation;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
-namespace DigiTekShop.Identity.Services;
+namespace DigiTekShop.Identity.Services.Register;
 
 public class RegistrationService : IRegistrationService
 {
