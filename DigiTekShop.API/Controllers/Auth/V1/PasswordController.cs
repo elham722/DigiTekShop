@@ -35,7 +35,13 @@ public sealed class PasswordController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Forgot([FromBody] ForgotPasswordRequestDto request, CancellationToken ct)
     {
-        var result = await _passwordService.ForgotPasswordAsync(request, ct);
+        var enriched = request with
+        {
+            IpAddress = request.IpAddress ?? ClientIp,
+            UserAgent = request.UserAgent ?? UserAgentHeader
+        };
+        
+        var result = await _passwordService.ForgotPasswordAsync(enriched, ct);
         return this.ToActionResult(result);
     }
 
@@ -50,7 +56,13 @@ public sealed class PasswordController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Reset([FromBody] ResetPasswordRequestDto request, CancellationToken ct)
     {
-        var result = await _passwordService.ResetPasswordAsync(request, ct);
+        var enriched = request with
+        {
+            IpAddress = request.IpAddress ?? ClientIp,
+            UserAgent = request.UserAgent ?? UserAgentHeader
+        };
+        
+        var result = await _passwordService.ResetPasswordAsync(enriched, ct);
         return this.ToActionResult(result);
     }
 

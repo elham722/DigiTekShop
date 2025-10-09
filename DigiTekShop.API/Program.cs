@@ -234,6 +234,9 @@ builder.Services.AddHttpClientOptimized();
 
 var app = builder.Build();
 
+// ✅ ForwardedHeaders باید اول از همه اجرا شود
+app.UseForwardedHeadersSupport(builder.Configuration);
+
 
 #region Exception Handling
 
@@ -241,9 +244,6 @@ var app = builder.Build();
 app.UseExceptionHandler();
 
 #endregion
-
-
-app.UseForwardedHeadersSupport(builder.Configuration);
 
 
 app.UseCorrelationId(headerName: CorrelationHeader);

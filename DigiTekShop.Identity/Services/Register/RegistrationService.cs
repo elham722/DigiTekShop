@@ -49,7 +49,7 @@ public class RegistrationService : IRegistrationService
             var normalizedEmailUpper = normalizedEmail.ToUpperInvariant();
 
            
-            var rateLimitResult = await CheckRateLimitsAsync(normalizedEmail, ipAddress: null);
+            var rateLimitResult = await CheckRateLimitsAsync(normalizedEmail, ipAddress: request.IpAddress);
             if (rateLimitResult.IsFailure)
                 return Result<RegisterResponseDto>.Failure(rateLimitResult.Errors);
 

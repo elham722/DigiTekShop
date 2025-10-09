@@ -10,10 +10,13 @@ public static class ResultToActionResultExtensions
     public static IActionResult ToActionResult<T>(this ControllerBase c, Result<T> result, int okStatus = StatusCodes.Status200OK)
     {
         if (result.IsSuccess)
-            return c.StatusCode(okStatus, new ApiResponse<T>(result.Value!, c.HttpContext.TraceIdentifier));
+        {
+            var traceId = c.HttpContext?.TraceIdentifier ?? Guid.NewGuid().ToString();
+            return c.StatusCode(okStatus, new ApiResponse<T>(result.Value!, TraceId: traceId));
+        }
 
         var (status, title, defaultMsg) = MapError(result.ErrorCode);
-        var pd = BuildProblemDetails(c.HttpContext, status, title, defaultMsg, result.Errors);
+        var pd = BuildProblemDetails(c.HttpContext!, status, title, defaultMsg, result.Errors);
         return c.StatusCode(status, pd);
     }
 
@@ -22,7 +25,7 @@ public static class ResultToActionResultExtensions
         if (result.IsSuccess) return c.StatusCode(okStatus);
 
         var (status, title, defaultMsg) = MapError(result.ErrorCode);
-        var pd = BuildProblemDetails(c.HttpContext, status, title, defaultMsg, result.Errors);
+        var pd = BuildProblemDetails(c.HttpContext!, status, title, defaultMsg, result.Errors);
         return c.StatusCode(status, pd);
     }
 
@@ -56,6 +59,7 @@ public static class ResultToActionResultExtensions
         if (errors is not null && errors.Any())
         {
             var grouped = errors
+                .Where(e => !string.IsNullOrWhiteSpace(e)) // ✅ فیلتر کردن null ها
                 .Select(e =>
                 {
                     var idx = e.IndexOf(':');
@@ -66,7 +70,8 @@ public static class ResultToActionResultExtensions
                 .GroupBy(x => x.Field)
                 .ToDictionary(g => g.Key, g => g.Select(x => x.Message).ToArray());
 
-            pd.Extensions["errors"] = grouped;
+            if (grouped.Any())
+                pd.Extensions["errors"] = grouped;
         }
 
         return pd;

@@ -66,7 +66,7 @@ public sealed class PasswordResetService : IPasswordService
             return Result.Failure(errors);
         }
 
-        return await SendResetLinkCoreAsync(request, ipAddress: null, userAgent: null, ct);
+        return await SendResetLinkCoreAsync(request, ipAddress: request.IpAddress, userAgent: request.UserAgent, ct);
     }
 
     public async Task<Result> ResetPasswordAsync(ResetPasswordRequestDto request, CancellationToken ct = default)
@@ -146,7 +146,7 @@ public sealed class PasswordResetService : IPasswordService
                 return ResultFactories.Fail(ErrorCodes.Identity.PasswordResetFailed);
             }
 
-            storedToken.MarkAsUsed(ipAddress: null); 
+            storedToken.MarkAsUsed(ipAddress: request.IpAddress); 
             _context.PasswordResetTokens.Update(storedToken);
 
             
