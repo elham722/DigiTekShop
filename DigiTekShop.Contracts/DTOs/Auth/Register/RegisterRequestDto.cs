@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DigiTekShop.Contracts.DTOs.Auth.Register
+﻿namespace DigiTekShop.Contracts.DTOs.Auth.Register
 {
-    public record RegisterRequestDto(
-        string Email,
-        string Password,
-        string ConfirmPassword,
-        string? PhoneNumber,
-        bool AcceptTerms,
-        string? DeviceId = null,
-        string? UserAgent = null,
-        string? Ip = null
-    );
+    public sealed record RegisterRequestDto
+    {
+        public required string Email { get; init; }
+        public required string Password { get; init; }
+        public required string ConfirmPassword { get; init; }
+        public string? PhoneNumber { get; init; }          
+        public required bool AcceptTerms { get; init; }   
+        public string? DeviceId { get; init; }          
+        public string? UserAgent { get; init; }         
+        public string? Ip { get; init; }             
+    }
 }
