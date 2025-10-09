@@ -3,14 +3,9 @@ using System.IO.Compression;
 
 namespace DigiTekShop.API.Extensions;
 
-/// <summary>
-/// Extensions for performance optimization
-/// </summary>
 public static class PerformanceExtensions
 {
-    /// <summary>
-    /// Add response compression (Gzip, Brotli)
-    /// </summary>
+   
     public static IServiceCollection AddResponseCompressionOptimized(this IServiceCollection services)
     {
         services.AddResponseCompression(options =>
@@ -48,38 +43,38 @@ public static class PerformanceExtensions
         return services;
     }
 
-    /// <summary>
-    /// Add output caching (ASP.NET Core 7+)
-    /// </summary>
+   
     public static IServiceCollection AddOutputCachingOptimized(this IServiceCollection services)
     {
         services.AddOutputCache(options =>
         {
-            // Default policy: cache for 60 seconds
+           
             options.AddBasePolicy(builder => builder
+                .With(ctx =>
+                {
+                    var path = ctx.HttpContext.Request.Path.Value ?? string.Empty;
+                    return !System.Text.RegularExpressions.Regex.IsMatch(
+                        path, @"^/api/v\d+/(auth|registration|password|twofactor)/",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                })
                 .Expire(TimeSpan.FromSeconds(60))
-                .Tag("default"));
+                .Tag("default")
+            );
 
-            // Policy for static content (cache for 1 hour)
-            options.AddPolicy("StaticContent", builder => builder
+            options.AddPolicy("StaticContent", b => b
                 .Expire(TimeSpan.FromHours(1))
                 .Tag("static")
                 .SetVaryByHeader("Accept-Encoding"));
 
-            // Policy for API responses (cache for 5 minutes)
-            options.AddPolicy("ApiResponse", builder => builder
+            options.AddPolicy("ApiResponse", b => b
                 .Expire(TimeSpan.FromMinutes(5))
                 .Tag("api")
                 .SetVaryByQuery("page", "pageSize", "sort")
                 .SetVaryByHeader("Authorization"));
         });
-
         return services;
     }
 
-    /// <summary>
-    /// Configure HTTP client optimizations
-    /// </summary>
     public static IServiceCollection AddHttpClientOptimized(this IServiceCollection services)
     {
         services.AddHttpClient("default", client =>

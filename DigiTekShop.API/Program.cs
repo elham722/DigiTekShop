@@ -248,6 +248,8 @@ app.UseForwardedHeadersSupport(builder.Configuration);
 
 app.UseCorrelationId(headerName: CorrelationHeader);
 
+app.UseApiKey();
+
 #region Logging
 
 
@@ -331,7 +333,7 @@ app.UseModernSwagger(app.Environment);
 
 #region Endpoints
 
-
+app.UseMiddleware<NoStoreAuthMiddleware>();
 app.MapControllers();
 
 // ✅ Health check endpoints

@@ -3,9 +3,6 @@ using StackExchange.Redis;
 
 namespace DigiTekShop.API.HealthChecks;
 
-/// <summary>
-/// Custom health check for Redis connectivity
-/// </summary>
 public class RedisHealthCheck : IHealthCheck
 {
     private readonly IConnectionMultiplexer _redis;
@@ -17,39 +14,47 @@ public class RedisHealthCheck : IHealthCheck
         _logger = logger;
     }
 
-    public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context,
-        CancellationToken cancellationToken = default)
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext hc, CancellationToken ct = default)
     {
         try
         {
             var db = _redis.GetDatabase();
-            
-            // Test write
-            var testKey = "health:check:ping";
-            await db.StringSetAsync(testKey, DateTime.UtcNow.ToString("O"), TimeSpan.FromSeconds(10));
-            
-            // Test read
-            var value = await db.StringGetAsync(testKey);
-            
+            await db.PingAsync(); 
+
+            var key = "health:check:ping";
+            var now = DateTime.UtcNow.ToString("O");
+            await db.StringSetAsync(key, now, TimeSpan.FromSeconds(10));
+            var value = await db.StringGetAsync(key);
+
             if (!value.HasValue)
             {
-                _logger.LogWarning("Redis health check failed: Unable to read test key");
+                _logger.LogWarning("Redis health: set/get failed.");
                 return HealthCheckResult.Degraded("Redis read/write test failed");
             }
-
-            // Get Redis info
-            var endpoints = _redis.GetEndPoints();
-            var server = _redis.GetServer(endpoints.First());
-            var info = await server.InfoAsync();
 
             var data = new Dictionary<string, object>
             {
                 { "status", "Connected" },
-                { "endpoints", string.Join(", ", endpoints.Select(e => e.ToString())) },
-                { "connected_clients", server.ClientList().Length },
-                { "uptime_seconds", info.FirstOrDefault(i => i.Key == "Server")?.FirstOrDefault(s => s.Key == "uptime_in_seconds").Value ?? "N/A" }
+                { "endpoints", string.Join(", ", _redis.GetEndPoints().Select(e => e.ToString())) }
             };
+
+            try
+            {
+                var ep = _redis.GetEndPoints();
+                if (ep.Length > 0)
+                {
+                    var server = _redis.GetServer(ep[0]);
+                    if (server != null && server.IsConnected)
+                    {
+                        data["isServerConnected"] = true;
+                        
+                    }
+                }
+            }
+            catch (Exception inner)
+            {
+                _logger.LogDebug(inner, "Redis server info not available (non-admin).");
+            }
 
             return HealthCheckResult.Healthy("Redis is healthy", data);
         }
@@ -60,4 +65,5 @@ public class RedisHealthCheck : IHealthCheck
         }
     }
 }
+
 
