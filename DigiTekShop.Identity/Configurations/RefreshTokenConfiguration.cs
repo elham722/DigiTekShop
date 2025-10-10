@@ -62,12 +62,13 @@ namespace DigiTekShop.Identity.Configurations;
             builder.HasOne(rt => rt.User)
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(rt => rt.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
 
-            // Configure indexes
-            
-            // ✅ Unique index on TokenHash (critical for security)
-            builder.HasIndex(rt => rt.TokenHash)
+        // Configure indexes
+
+        // ✅ Unique index on TokenHash (critical for security)
+        builder.HasIndex(rt => rt.TokenHash)
                 .IsUnique()
                 .HasDatabaseName("IX_RefreshTokens_Token");
 

@@ -52,10 +52,11 @@ namespace DigiTekShop.Identity.Configurations;
             builder.HasOne(ud => ud.User)
                 .WithMany(u => u.Devices)
                 .HasForeignKey(ud => ud.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
 
-            // Configure indexes
-            builder.HasIndex(ud => ud.UserId)
+        // Configure indexes
+        builder.HasIndex(ud => ud.UserId)
                 .HasDatabaseName("IX_UserDevices_UserId");
 
             builder.HasIndex(ud => ud.IpAddress)

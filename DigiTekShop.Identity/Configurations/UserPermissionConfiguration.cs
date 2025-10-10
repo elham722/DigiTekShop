@@ -20,9 +20,10 @@ namespace DigiTekShop.Identity.Configurations;
             builder.HasOne(up => up.User)
                 .WithMany(u => u.UserPermissions)
                 .HasForeignKey(up => up.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
 
-            builder.HasOne(up => up.Permission)
+        builder.HasOne(up => up.Permission)
                 .WithMany(p => p.UserPermissions)
                 .HasForeignKey(up => up.PermissionId)
                 .OnDelete(DeleteBehavior.Cascade);

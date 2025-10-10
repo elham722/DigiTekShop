@@ -45,10 +45,11 @@ namespace DigiTekShop.Identity.Configurations;
             builder.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(pv => pv.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
 
-            // Configure indexes
-            builder.HasIndex(pv => pv.UserId)
+        // Configure indexes
+        builder.HasIndex(pv => pv.UserId)
                 .HasDatabaseName("IX_PhoneVerifications_UserId");
 
             builder.HasIndex(pv => pv.ExpiresAt)

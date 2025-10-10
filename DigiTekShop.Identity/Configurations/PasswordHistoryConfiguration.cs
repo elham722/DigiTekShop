@@ -13,7 +13,8 @@ internal class PasswordHistoryConfiguration : IEntityTypeConfiguration<PasswordH
         builder.HasOne(x => x.User)
                .WithMany(u => u.PasswordHistories)
                .HasForeignKey(x => x.UserId)
-               .OnDelete(DeleteBehavior.Cascade);
+               .OnDelete(DeleteBehavior.Cascade)
+               .IsRequired(false);
 
         builder.HasIndex(x => new { x.UserId, x.ChangedAt })
                .HasDatabaseName("IX_PasswordHistory_User_ChangedAt");

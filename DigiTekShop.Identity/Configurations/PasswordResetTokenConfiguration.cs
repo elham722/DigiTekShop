@@ -49,7 +49,8 @@ namespace DigiTekShop.Identity.Configurations
             builder.HasOne(x => x.User)
                 .WithMany(u => u.PasswordResetTokens) 
                 .HasForeignKey(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
 
         }
     }
