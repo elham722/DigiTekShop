@@ -4,13 +4,18 @@ using DigiTekShop.Infrastructure.Caching;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
 
 namespace DigiTekShop.Infrastructure.DependencyInjection;
 
+// InfrastructureRegistration.cs
 public static class InfrastructureRegistration
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration config,
+        IHostEnvironment env) 
     {
         var redisCs = config.GetConnectionString("Redis")
                       ?? throw new InvalidOperationException("Missing ConnectionStrings:Redis");
@@ -26,19 +31,27 @@ public static class InfrastructureRegistration
             o.InstanceName = config["RedisCache:InstanceName"] ?? "digitek:";
         });
 
-        // 3) DataProtection key ring -> Redis
-        services.AddDataProtection()
+        // 3) DataProtection: Dev = فایل / Prod = Redis
+        var dp = services.AddDataProtection()
             .SetApplicationName("DigiTekShop")
-            .SetDefaultKeyLifetime(TimeSpan.FromDays(90))
-            .PersistKeysToStackExchangeRedis(mux, "DataProtection-Keys");
+            .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
 
+        if (env.IsDevelopment())
+        {
+            var keysPath = Path.Combine(AppContext.BaseDirectory, "dp-keys");
+            dp.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+        }
+        else
+        {
+            dp.PersistKeysToStackExchangeRedis(mux, "DataProtection-Keys");
+        }
 
         // 4) خدمات کش و ریت‌لیمیت
         services.AddScoped<ICacheService, DistributedCacheService>();
         services.AddSingleton<IRateLimiter, RedisRateLimiter>();
         services.AddSingleton<ITokenBlacklistService, RedisTokenBlacklistService>();
 
-        // 5) (اختیاری) HealthCheck
+        // 5) HealthCheck
         services.AddHealthChecks().AddRedis(redisCs, name: "redis");
 
         return services;

@@ -10,6 +10,7 @@ using DigiTekShop.Identity.Data;
 using DigiTekShop.Identity.DependencyInjection;
 using DigiTekShop.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
@@ -144,10 +145,11 @@ builder.Services.AddRateLimiter(options =>
 
 #endregion
 
+
 #region Infrastructure & Application Services
 
 
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration,builder.Environment);
 
 
 builder.Services
@@ -221,6 +223,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddComprehensiveHealthChecks();
 builder.Services.AddHealthChecks().AddCheck<SmtpHealthCheck>("smtp_config");
+
 
 #endregion
 
