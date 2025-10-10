@@ -10,11 +10,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DigiTekShop.ExternalServices.Sms.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using DigiTekShop.Contracts.DTOs.Auth.EmailSender;
+using DigiTekShop.Contracts.DTOs.SMS;
 
 
 namespace DigiTekShop.ExternalServices.DependencyInjection
@@ -30,13 +30,20 @@ namespace DigiTekShop.ExternalServices.DependencyInjection
             services.AddTransient<IEmailSender, Email.SmtpEmailSender>();
             services.AddSingleton<IEmailTemplateService, EmailTemplateService>();
             services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
-           
-           
 
 
-            // SMS (Kavenegar)
+
+
             services.Configure<KavenegarSettings>(configuration.GetSection("Kavenegar"));
-            services.AddHttpClient<IPhoneSender, Sms.KavenegarSmsSender>(); 
+            services.AddHttpClient<IPhoneSender, Sms.KavenegarSmsSender>((sp, client) =>
+            {
+                var cfg = sp.GetRequiredService<IOptions<KavenegarSettings>>().Value;
+                
+                client.BaseAddress = new Uri($"{cfg.BaseUrl.TrimEnd('/')}/{cfg.ApiKey}/");
+                client.Timeout = TimeSpan.FromSeconds(cfg.TimeoutSeconds > 0 ? cfg.TimeoutSeconds : 10);
+            });
+
+
 
             #endregion
             return services;

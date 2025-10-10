@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DigiTekShop.ExternalServices.Sms.Models
+namespace DigiTekShop.Contracts.DTOs.SMS
 {
     public class KavenegarAccountInfo
     {

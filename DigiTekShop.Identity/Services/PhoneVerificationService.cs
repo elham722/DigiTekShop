@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
+using DigiTekShop.Contracts.DTOs.SMS;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -20,6 +21,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly PhoneVerificationSettings _settings;
     private readonly IRateLimiter _rateLimiter;
+    private readonly KavenegarSettings _smsCfg;
     private readonly ILogger<PhoneVerificationService> _logger;
 
     public PhoneVerificationService(
@@ -28,6 +30,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         DigiTekShopIdentityDbContext context,
         IOptions<PhoneVerificationSettings> settings,
         IRateLimiter rateLimiter,
+        IOptions<KavenegarSettings> smsOptions,
         ILogger<PhoneVerificationService> logger)
     {
         _userManager = userManager;
@@ -35,6 +38,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         _context = context;
         _settings = settings.Value;
         _rateLimiter = rateLimiter;
+        _smsCfg = smsOptions.Value;
         _logger = logger;
     }
 
@@ -102,8 +106,8 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
 
         await GetOrCreateAndPersistVerificationAsync(user.Id, hash, expires, phoneNumber, ct);
 
-        var message = BuildMessage(code);
-        var sendResult = await _phoneSender.SendCodeAsync(phoneNumber, code, message);
+        var sendResult = await _phoneSender.SendCodeAsync(phoneNumber, code, _smsCfg.OtpTemplate);
+
         if (sendResult.IsFailure) return Result.Failure("Failed to send SMS.");
 
         _logger.LogInformation("Verification code sent to {Phone} for user {UserId}", phoneNumber, user.Id);
