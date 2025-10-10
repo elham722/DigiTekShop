@@ -209,7 +209,7 @@ builder.Services.AddApiVersioning(options =>
 builder.Services.AddAuthorization(options =>
 {
     
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+    options.DefaultPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
 });
