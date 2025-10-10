@@ -1,13 +1,10 @@
-﻿using FluentValidation;
+﻿using DigiTekShop.Application.Common.Behaviors;
+using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using DigiTekShop.Application.Common.Behaviors;
+using DigiTekShop.Application.Authorization;
 
 namespace DigiTekShop.Application.DependencyInjection
 {
@@ -29,6 +26,8 @@ namespace DigiTekShop.Application.DependencyInjection
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
 
+            services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+            services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 
             return services;

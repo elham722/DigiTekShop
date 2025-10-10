@@ -4,8 +4,11 @@ using DigiTekShop.API.Extensions;
 using DigiTekShop.API.Middleware;
 using DigiTekShop.Application.DependencyInjection;
 using DigiTekShop.ExternalServices.DependencyInjection;
+using DigiTekShop.Identity.Context;
+using DigiTekShop.Identity.Data;
 using DigiTekShop.Identity.DependencyInjection;
 using DigiTekShop.Infrastructure.DependencyInjection;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
@@ -14,7 +17,7 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ غیرفعال کردن Developer Exception Page در تمام Environmentها
+
 builder.WebHost.UseSetting(WebHostDefaults.DetailedErrorsKey, "false");
 
 const string CorrelationHeader = "X-Request-ID"; 
@@ -201,6 +204,18 @@ builder.Services.AddApiVersioning(options =>
 
 #endregion
 
+#region Authorization Policies
+
+builder.Services.AddAuthorization(options =>
+{
+    
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
+#endregion
+
 #region Health Checks
 
 builder.Services.AddComprehensiveHealthChecks();
@@ -238,14 +253,12 @@ builder.Services.AddHttpClientOptimized();
 
 var app = builder.Build();
 
-// ✅ ForwardedHeaders باید اول از همه اجرا شود
+
 app.UseForwardedHeadersSupport(builder.Configuration);
 
 
 #region Exception Handling
 
-// ✅ همیشه از custom exception handler استفاده کن (حتی در Development)
-// تا response به صورت JSON برگردد، نه صفحه HTML
 app.UseExceptionHandler();
 
 #endregion
