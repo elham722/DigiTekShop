@@ -150,9 +150,11 @@ public class SmtpEmailSender : IEmailSender
             Host = _settings.Host,
             Port = _settings.Port,
             EnableSsl = _settings.EnableSsl,
+            DeliveryMethod = SmtpDeliveryMethod.Network,
             UseDefaultCredentials = _settings.UseDefaultCredentials,
             Timeout = _settings.TimeoutMs
         };
+
 
         if (!_settings.UseDefaultCredentials)
             smtpClient.Credentials = new NetworkCredential(_settings.Username, _settings.Password);
@@ -166,6 +168,9 @@ public class SmtpEmailSender : IEmailSender
         {
             From = new MailAddress(_settings.FromEmail, _settings.FromName),
             Subject = subject,
+            SubjectEncoding = System.Text.Encoding.UTF8,
+            BodyEncoding = System.Text.Encoding.UTF8,
+            // اگر فقط html داری:
             IsBodyHtml = !string.IsNullOrWhiteSpace(htmlContent),
             Body = !string.IsNullOrWhiteSpace(htmlContent) ? htmlContent : plainTextContent ?? string.Empty
         };
@@ -175,11 +180,16 @@ public class SmtpEmailSender : IEmailSender
         if (!string.IsNullOrWhiteSpace(_settings.ReplyToEmail))
             message.ReplyToList.Add(_settings.ReplyToEmail);
 
+        // اگر هر دو قالب را داری، استاندارد: multipart/alternative
         if (!string.IsNullOrWhiteSpace(htmlContent) && !string.IsNullOrWhiteSpace(plainTextContent))
         {
-            var alternateView = AlternateView.CreateAlternateViewFromString(
-                plainTextContent, null, "text/plain");
-            message.AlternateViews.Add(alternateView);
+            message.AlternateViews.Clear();
+            var plain = AlternateView.CreateAlternateViewFromString(plainTextContent, null, "text/plain");
+            var html = AlternateView.CreateAlternateViewFromString(htmlContent, null, "text/html");
+            message.AlternateViews.Add(plain);
+            message.AlternateViews.Add(html);
+            message.Body = plainTextContent; // بدنه پیش‌فرض plain؛ کلاینت‌ها html را ترجیح می‌دهند
+            message.IsBodyHtml = false;
         }
 
         return message;

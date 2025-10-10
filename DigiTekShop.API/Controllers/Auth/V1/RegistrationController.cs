@@ -11,33 +11,28 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace DigiTekShop.API.Controllers.Auth.V1;
-
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-[Produces("application/json")]
-[Consumes("application/json")]
 public sealed class RegistrationController : ApiControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IEmailConfirmationService _emailConfirm;
     private readonly ILogger<RegistrationController> _logger;
 
-    public RegistrationController(IMediator mediator, ILogger<RegistrationController> logger)
+    public RegistrationController(IMediator mediator,
+                                  IEmailConfirmationService emailConfirm,
+                                  ILogger<RegistrationController> logger)
     {
         _mediator = mediator;
+        _emailConfirm = emailConfirm;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-
-    #region Register
 
     [HttpPost("register")]
     [AllowAnonymous]
     [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(typeof(ApiResponse<RegisterResponseDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto request, CancellationToken ct)
     {
         var enriched = request with
@@ -51,38 +46,27 @@ public sealed class RegistrationController : ApiControllerBase
         return this.ToActionResult(result);
     }
 
-    #endregion
+    [HttpPost("confirm-email")]
+    [AllowAnonymous]
+    [EnableRateLimiting("AuthPolicy")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequestDto dto, CancellationToken ct)
+    {
+        var result = await _emailConfirm.ConfirmEmailAsync(dto, ct);
+        if (result.IsFailure) return this.ToActionResult(result); // تبدیل به 400 با ProblemDetails
+        return NoContent();
+    }
 
-
-    //#region Email_Confirm
-
-    //[HttpPost("confirm-email")]
-    //[AllowAnonymous]
-    //[EnableRateLimiting("AuthPolicy")]
-    //[ProducesResponseType(StatusCodes.Status204NoContent)]
-    //[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    //public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequestDto request, CancellationToken ct)
-    //{
-    //    var result = await _mediator.Send(new RegisterUserCommand(request), ct);
-    //    return this.ToActionResult(result);
-    //}
-
-    //#endregion
-
-
-    //#region Email_Confirm_Resend
-
-    //[HttpPost("resend-confirmation")]
-    //[AllowAnonymous]
-    //[EnableRateLimiting("AuthPolicy")]
-    //[ProducesResponseType(StatusCodes.Status204NoContent)]
-    //[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    //public async Task<IActionResult> ResendConfirmation([FromBody] ResendEmailConfirmationRequestDto request, CancellationToken ct)
-    //{
-    //    var result = await _mediator.Send(new RegisterUserCommand(request), ct);
-    //    return this.ToActionResult(result);
-    //}
-
-    //#endregion
-
+    [HttpPost("resend-confirmation")]
+    [AllowAnonymous]
+    [EnableRateLimiting("AuthPolicy")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResendConfirmation([FromBody] ResendEmailConfirmationRequestDto dto, CancellationToken ct)
+    {
+        var result = await _emailConfirm.ResendAsync(dto, ct);
+        if (result.IsFailure) return this.ToActionResult(result);
+        return NoContent();
+    }
 }

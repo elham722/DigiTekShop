@@ -25,13 +25,18 @@ namespace DigiTekShop.ExternalServices.DependencyInjection
         {
             #region Email&Phone
 
+
             // Email (SMTP)
-            services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
             services.AddTransient<IEmailSender, Email.SmtpEmailSender>();
+            services.AddSingleton<IEmailTemplateService, EmailTemplateService>();
+            services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
+           
+           
+
 
             // SMS (Kavenegar)
-            services.Configure<KavenegarSettings>(configuration.GetSection("KavenegarSettings"));
-            services.AddHttpClient<IPhoneSender, Sms.KavenegarSmsSender>(); // ✅ بدون IConfigurationSection
+            services.Configure<KavenegarSettings>(configuration.GetSection("Kavenegar"));
+            services.AddHttpClient<IPhoneSender, Sms.KavenegarSmsSender>(); 
 
             #endregion
             return services;

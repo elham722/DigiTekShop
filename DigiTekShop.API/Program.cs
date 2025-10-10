@@ -4,6 +4,7 @@ using DigiTekShop.API.Extensions;
 using DigiTekShop.API.Middleware;
 using DigiTekShop.Application.DependencyInjection;
 using DigiTekShop.ExternalServices.DependencyInjection;
+using DigiTekShop.ExternalServices.Email;
 using DigiTekShop.Identity.Context;
 using DigiTekShop.Identity.Data;
 using DigiTekShop.Identity.DependencyInjection;
@@ -219,6 +220,7 @@ builder.Services.AddAuthorization(options =>
 #region Health Checks
 
 builder.Services.AddComprehensiveHealthChecks();
+builder.Services.AddHealthChecks().AddCheck<SmtpHealthCheck>("smtp_config");
 
 #endregion
 
@@ -253,6 +255,23 @@ builder.Services.AddHttpClientOptimized();
 
 var app = builder.Build();
 
+// Seed permissions and roles on startup (Development only)
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<DigiTekShopIdentityDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        await PermissionSeeder.SeedAllAsync(context, logger);
+        logger.LogInformation("✅ Permissions and Roles seeded successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "❌ Error seeding permissions");
+    }
+}
 
 app.UseForwardedHeadersSupport(builder.Configuration);
 

@@ -54,10 +54,13 @@ public sealed class RegistrationService : IRegistrationService
             if (rl.IsFailure)
                 return Result<RegisterResponseDto>.Failure(rl.Errors, rl.ErrorCode);
 
+            var normalized = _userManager.NormalizeEmail(request.Email) ?? request.Email.ToUpperInvariant();
+
             var existsAny = await _context.Users
                 .AsNoTracking()
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.NormalizedEmail == request.Email, ct);
+                .AnyAsync(u => u.NormalizedEmail == normalized, ct);
+
 
             if (existsAny)
             {
@@ -84,6 +87,7 @@ public sealed class RegistrationService : IRegistrationService
 
             var requireEmail = _emailSettings.RequireEmailConfirmation;
             var emailSent = false;
+            string? emailError = null;
             if (requireEmail)
             {
                 try
@@ -91,10 +95,15 @@ public sealed class RegistrationService : IRegistrationService
                     var emailRes = await _emailConfirmationService.SendAsync(user.Id.ToString(), ct);
                     emailSent = emailRes.IsSuccess;
                     if (emailRes.IsFailure)
-                        _logger.LogWarning("Email confirmation send failed for {Email}: {Err}", request.Email, emailRes.GetFirstError());
+                    {
+                        emailError = emailRes.GetFirstError(); // کمک بزرگ برای دیباگ
+                        _logger.LogWarning("Email confirmation send failed for {Email}: {Err}",
+                            request.Email, emailError);
+                    }
                 }
                 catch (Exception ex)
                 {
+                    emailError = ex.Message;
                     _logger.LogError(ex, "Email confirmation exception for {Email}", request.Email);
                 }
             }
