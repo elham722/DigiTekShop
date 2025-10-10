@@ -51,16 +51,17 @@ public class KavenegarSmsSender : IPhoneSender
             Guard.AgainstInvalidPhoneNumber(phoneNumber);
             Guard.AgainstNullOrEmpty(code, nameof(code));
 
-            // 1) OTP Template via GET
+            // 1) Try OTP Template via GET (if provided)
             if (!string.IsNullOrWhiteSpace(templateName))
             {
                 // /v1/{apikey}/verify/lookup.json?receptor=...&token=...&template=...
                 var qs = $"verify/lookup.json?receptor={Uri.EscapeDataString(phoneNumber)}&token={Uri.EscapeDataString(code)}&template={Uri.EscapeDataString(templateName)}";
                 var resp = await GetWithRetryAsync(qs);
+                
                 if (resp.IsSuccess) return Result.Success();
 
-                _logger.LogError("Kavenegar OTP error: {Err}", resp.ErrorMessage);
-                return Result.Failure(resp.ErrorMessage);
+                // If template fails (HTTP 426 = not enabled), fallback to plain SMS
+                _logger.LogWarning("Kavenegar OTP template failed: {Err}, falling back to plain SMS", resp.ErrorMessage);
             }
 
             // 2) Fallback: Plain SMS via POST
@@ -127,7 +128,7 @@ public class KavenegarSmsSender : IPhoneSender
     {
         Guard.AgainstNullOrEmpty(_settings.ApiKey, nameof(_settings.ApiKey));
         Guard.AgainstNullOrEmpty(_settings.BaseUrl, nameof(_settings.BaseUrl));
-        // DefaultSender برای verify/lookup لازم نیست؛ برای sms/send بهتره داشته باشیم
+        Guard.AgainstNullOrEmpty(_settings.DefaultSender, nameof(_settings.DefaultSender));
     }
 
     private async Task<KavenegarResponse> GetWithRetryAsync(string relativeUrl)
