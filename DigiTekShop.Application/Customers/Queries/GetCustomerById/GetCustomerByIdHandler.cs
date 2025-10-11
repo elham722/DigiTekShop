@@ -1,5 +1,4 @@
 ﻿using DigiTekShop.Contracts.DTOs.Customer;
-using DigiTekShop.Domain.Customers.Entities;
 using MediatR;
 
 namespace DigiTekShop.Application.Customers.Queries.GetCustomerById;

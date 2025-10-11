@@ -1,6 +1,6 @@
 ﻿using DigiTekShop.SharedKernel.DomainShared;
 
-namespace DigiTekShop.Domain.Customers.Events;
+namespace DigiTekShop.Domain.Customer.Events;
 
 public sealed class CustomerEmailChanged : DomainEvent
 {

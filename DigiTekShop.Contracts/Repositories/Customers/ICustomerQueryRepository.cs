@@ -1,6 +1,6 @@
 ﻿// DigiTekShop.Contracts/Repositories/Customers/ICustomerQueryRepository.cs
 using DigiTekShop.Contracts.Repositories.Query;
-using DigiTekShop.Domain.Customers.Entities;
+using DigiTekShop.Domain.Customer.Entities;
 
 namespace DigiTekShop.Contracts.Repositories.Customers;
 

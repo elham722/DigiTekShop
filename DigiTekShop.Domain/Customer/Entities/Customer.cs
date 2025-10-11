@@ -1,11 +1,11 @@
-﻿using DigiTekShop.Domain.Customers.Events;
-using DigiTekShop.Domain.Customers.ValueObjects;
+﻿using DigiTekShop.Domain.Customer.Events;
+using DigiTekShop.Domain.Customer.ValueObjects;
 using DigiTekShop.SharedKernel.DomainShared;
 using DigiTekShop.SharedKernel.Exceptions.Validation;
 using DigiTekShop.SharedKernel.Guards;
 using DigiTekShop.SharedKernel.Results;
 
-namespace DigiTekShop.Domain.Customers.Entities;
+namespace DigiTekShop.Domain.Customer.Entities;
 
 public sealed class Customer : AggregateRoot<CustomerId>
 {

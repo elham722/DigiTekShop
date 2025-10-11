@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Domain.Customers.Entities
+﻿namespace DigiTekShop.Domain.Customer.Entities
 {
     public readonly record struct CustomerId(Guid Value)
     {

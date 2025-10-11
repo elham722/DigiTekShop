@@ -1,6 +1,6 @@
 ﻿using DigiTekShop.Contracts.Repositories.Customers;
-using DigiTekShop.Domain.Customers.Entities;
-using DigiTekShop.Domain.Customers.ValueObjects;
+using DigiTekShop.Domain.Customer.Entities;
+using DigiTekShop.Domain.Customer.ValueObjects;
 using DigiTekShop.SharedKernel.Results;
 using MediatR;
 

@@ -1,6 +1,6 @@
 ﻿// DigiTekShop.Contracts/Repositories/Customers/ICustomerCommandRepository.cs
 using DigiTekShop.Contracts.Repositories.Command;
-using DigiTekShop.Domain.Customers.Entities;
+using DigiTekShop.Domain.Customer.Entities;
 
 namespace DigiTekShop.Contracts.Repositories.Customers;
 

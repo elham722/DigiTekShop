@@ -4,6 +4,8 @@ using DigiTekShop.Contracts.Interfaces.Caching;
 using DigiTekShop.Infrastructure.Caching;
 using DigiTekShop.Infrastructure.Events;
 using DigiTekShop.Infrastructure.Pipeline;
+using DigiTekShop.Infrastructure.Time;
+using DigiTekShop.SharedKernel.Abstractions;
 using MediatR;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
@@ -64,6 +66,9 @@ public static class InfrastructureRegistration
 
         // 5) HealthCheck
         services.AddHealthChecks().AddRedis(redisCs, name: "redis");
+
+
+        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         return services;
     }
