@@ -1,4 +1,10 @@
-﻿global using System;
+﻿global using DigiTekShop.Domain.Customer.Events;
+global using DigiTekShop.Domain.Customer.ValueObjects;
+global using DigiTekShop.SharedKernel.DomainShared.Primitives;
+global using DigiTekShop.SharedKernel.Exceptions.Validation;
+global using DigiTekShop.SharedKernel.Guards;
+global using DigiTekShop.SharedKernel.Results;
+global using DigiTekShop.SharedKernel.DomainShared.Events;
+global using System;
 global using System.Collections.Generic;
 global using System.Linq;
-global using System.Text;

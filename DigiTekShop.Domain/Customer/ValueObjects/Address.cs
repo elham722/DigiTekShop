@@ -1,7 +1,4 @@
-﻿using DigiTekShop.SharedKernel.DomainShared.Primitives;
-using DigiTekShop.SharedKernel.Guards;
-
-namespace DigiTekShop.Domain.Customer.ValueObjects
+﻿namespace DigiTekShop.Domain.Customer.ValueObjects
 {
     public sealed class Address : ValueObject
     {
