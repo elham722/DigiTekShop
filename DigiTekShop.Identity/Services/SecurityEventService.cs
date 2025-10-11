@@ -1,8 +1,8 @@
 using DigiTekShop.Contracts.DTOs.Auth.SecurityEvent;
+using DigiTekShop.Contracts.Enums.Security;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Context;
 using DigiTekShop.Identity.Models;
-using DigiTekShop.SharedKernel.Enums;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

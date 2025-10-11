@@ -1,8 +1,4 @@
-﻿
-
-using DigiTekShop.Contracts.DTOs.Pagination;
-
-namespace DigiTekShop.Contracts.Paging;
+﻿namespace DigiTekShop.Contracts.Paging;
 
 public sealed record PageRequest(
     int PageNumber = 1,

@@ -1,4 +1,4 @@
-﻿using DigiTekShop.SharedKernel.DomainShared;
+﻿using DigiTekShop.SharedKernel.DomainShared.Primitives;
 using DigiTekShop.SharedKernel.Guards;
 
 namespace DigiTekShop.Domain.Customer.ValueObjects

@@ -1,9 +1,10 @@
 ﻿using DigiTekShop.Contracts.DTOs.Auth.Login;
 using DigiTekShop.Contracts.DTOs.Auth.Logout;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
+using DigiTekShop.Contracts.Enums.Auth;
+using DigiTekShop.Contracts.Enums.Security;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options.Security;
-using DigiTekShop.SharedKernel.Enums;
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
 using FluentValidation;

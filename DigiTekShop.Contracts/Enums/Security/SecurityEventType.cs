@@ -1,4 +1,4 @@
-namespace DigiTekShop.SharedKernel.Enums;
+namespace DigiTekShop.Contracts.Enums.Security;
 
 
 public enum SecurityEventType

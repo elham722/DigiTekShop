@@ -1,4 +1,4 @@
-using DigiTekShop.SharedKernel.Enums;
+using DigiTekShop.Contracts.Enums.Security;
 using DigiTekShop.SharedKernel.Guards;
 
 namespace DigiTekShop.Identity.Models;

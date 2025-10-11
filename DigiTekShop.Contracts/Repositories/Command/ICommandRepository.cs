@@ -1,6 +1,6 @@
 ﻿
 using DigiTekShop.Contracts.Repositories.Abstractions;
-using DigiTekShop.SharedKernel.DomainShared;
+using DigiTekShop.SharedKernel.DomainShared.Primitives;
 using System.Linq.Expressions;
 
 namespace DigiTekShop.Contracts.Repositories.Command;

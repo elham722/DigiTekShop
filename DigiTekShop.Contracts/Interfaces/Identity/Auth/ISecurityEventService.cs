@@ -1,5 +1,5 @@
 ﻿using DigiTekShop.Contracts.DTOs.Auth.SecurityEvent;
-using DigiTekShop.SharedKernel.Enums;
+using DigiTekShop.Contracts.Enums.Security;
 using DigiTekShop.SharedKernel.Results;
 using System;
 using System.Collections.Generic;

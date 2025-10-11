@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Identity.Models;
+﻿using DigiTekShop.Contracts.Enums.Audit;
+
+namespace DigiTekShop.Identity.Models;
 
 
 public class AuditLog

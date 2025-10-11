@@ -2,7 +2,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using DigiTekShop.Contracts.Repositories.Query;
-using DigiTekShop.SharedKernel.DomainShared;
+using DigiTekShop.SharedKernel.DomainShared.Primitives;
 
 namespace DigiTekShop.Persistence.Ef;
 

@@ -1,6 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Pagination;
-
-namespace DigiTekShop.Contracts.Paging
+﻿namespace DigiTekShop.Contracts.Paging
 {
     public interface IPagedRequest
     {

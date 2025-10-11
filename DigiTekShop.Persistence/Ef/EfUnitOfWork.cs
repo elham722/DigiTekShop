@@ -1,7 +1,7 @@
 ﻿using DigiTekShop.Contracts.Events;
 using DigiTekShop.Contracts.Repositories.Abstractions;
 using DigiTekShop.Persistence.Context;
-using DigiTekShop.SharedKernel.DomainShared;
+using DigiTekShop.SharedKernel.DomainShared.Events;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DigiTekShop.Persistence.Ef;

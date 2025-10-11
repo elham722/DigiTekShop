@@ -16,6 +16,7 @@ using DigiTekShop.Identity.Options;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 using FluentValidation;
 using DigiTekShop.SharedKernel.Errors;
+using DigiTekShop.Contracts.Enums.Audit;
 
 namespace DigiTekShop.Identity.Services;
 

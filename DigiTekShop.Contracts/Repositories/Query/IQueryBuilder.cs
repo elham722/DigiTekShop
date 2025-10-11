@@ -1,6 +1,6 @@
 ﻿
 using System.Linq.Expressions;
-using DigiTekShop.SharedKernel.DomainShared;
+using DigiTekShop.SharedKernel.DomainShared.Primitives;
 
 namespace DigiTekShop.Contracts.Repositories.Query;
 

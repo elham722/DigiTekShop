@@ -1,8 +1,9 @@
-﻿namespace DigiTekShop.Domain.Customer.Entities
+﻿using DigiTekShop.SharedKernel.DomainShared.Primitives;
+
+namespace DigiTekShop.Domain.Customer.Entities
 {
-    public readonly record struct CustomerId(Guid Value)
+    public sealed record CustomerId(Guid Value) : StronglyTypedId<Guid>(Value)
     {
         public static CustomerId New() => new(Guid.NewGuid());
-        public override string ToString() => Value.ToString();
     }
 }

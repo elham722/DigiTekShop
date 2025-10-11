@@ -1,4 +1,4 @@
-﻿using DigiTekShop.SharedKernel.DomainShared;
+﻿using DigiTekShop.SharedKernel.DomainShared.Events;
 
 namespace DigiTekShop.Contracts.Events;
 

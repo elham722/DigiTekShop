@@ -1,8 +1,11 @@
-﻿namespace DigiTekShop.SharedKernel.DomainShared;
+﻿using DigiTekShop.SharedKernel.DomainShared.Events;
+
+namespace DigiTekShop.SharedKernel.DomainShared.Primitives;
 
 public abstract class AggregateRoot<TId> : Entity<TId>, IHasDomainEvents
 {
     private readonly List<IDomainEvent> _domainEvents = new();
+
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     protected void RaiseDomainEvent(IDomainEvent @event)
@@ -17,8 +20,6 @@ public abstract class AggregateRoot<TId> : Entity<TId>, IHasDomainEvents
         _domainEvents.Clear();
         return snapshot;
     }
-
-    public void ClearDomainEvents() => _domainEvents.Clear();
 
     protected virtual void ValidateState() { }
     protected void EnsureInvariants() => ValidateState();

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DigiTekShop.Contracts.DTOs.Auth.LoginAttempt;
-using DigiTekShop.SharedKernel.Enums;
 
 namespace DigiTekShop.Contracts.Interfaces.Identity.Auth
 {

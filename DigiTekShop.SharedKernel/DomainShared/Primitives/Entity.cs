@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.SharedKernel.DomainShared;
+﻿namespace DigiTekShop.SharedKernel.DomainShared.Primitives;
 
 public abstract class Entity<TId>
 {

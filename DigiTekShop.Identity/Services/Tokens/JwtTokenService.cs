@@ -5,7 +5,6 @@ using DigiTekShop.Contracts.Interfaces.Caching;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Identity.Options.Security;
-using DigiTekShop.SharedKernel.Enums;
 using DigiTekShop.SharedKernel.Exceptions.Validation;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.WebUtilities;
@@ -16,6 +15,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using DigiTekShop.SharedKernel.Errors;
+using DigiTekShop.Contracts.Enums.Security;
 
 namespace DigiTekShop.Identity.Services.Tokens;
 

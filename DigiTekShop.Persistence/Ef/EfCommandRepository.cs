@@ -2,7 +2,7 @@
 using DigiTekShop.Contracts.Repositories.Abstractions;
 using DigiTekShop.Contracts.Repositories.Command;
 using DigiTekShop.Persistence.Context;
-using DigiTekShop.SharedKernel.DomainShared;
+using DigiTekShop.SharedKernel.DomainShared.Primitives;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 

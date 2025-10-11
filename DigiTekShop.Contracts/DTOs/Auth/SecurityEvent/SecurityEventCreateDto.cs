@@ -1,4 +1,4 @@
-﻿using DigiTekShop.SharedKernel.Enums;
+﻿using DigiTekShop.Contracts.Enums.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
