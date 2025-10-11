@@ -13,7 +13,7 @@ namespace DigiTekShop.Domain.Customer.ValueObjects
         public string Country { get; }
         public bool IsDefault { get; private set; }
 
-        private Address() { } // EF
+        private Address() { } 
 
         public Address(string line1, string? line2, string city, string? state, string postalCode, string country, bool isDefault = false)
         {

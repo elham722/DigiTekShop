@@ -9,6 +9,7 @@ public sealed class CustomerRegistered : DomainEvent
     public string Email { get; }
 
     public CustomerRegistered(Guid customerId, Guid userId, string email)
+        : base() 
     {
         CustomerId = customerId;
         UserId = userId;

@@ -2,40 +2,88 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace DigiTekShop.Persistence.Configurations
+namespace DigiTekShop.Persistence.Configurations;
+
+public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
-    public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
+    public void Configure(EntityTypeBuilder<Customer> b)
     {
-        public void Configure(EntityTypeBuilder<Customer> e)
+        
+        b.ToTable("Customers");
+
+        
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id)
+            .HasConversion(
+                id => id.Value,          
+                v => new CustomerId(v)) 
+            .ValueGeneratedNever();
+
+        
+        b.Property(x => x.UserId)
+            .IsRequired();
+
+        b.Property(x => x.FullName)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        b.Property(x => x.Email)
+            .IsRequired()
+            .HasMaxLength(256);
+
+        b.Property(x => x.Phone)
+            .HasMaxLength(30);
+
+        b.Property(x => x.IsActive)
+            .HasDefaultValue(true);
+
+        
+        b.Property(x => x.CreatedAtUtc)
+            .IsRequired();
+
+        b.Property(x => x.UpdatedAtUtc);
+
+      
+        b.Property(x => x.Version)
+            .IsRowVersion()
+            .IsConcurrencyToken();
+
+        
+        b.HasIndex(x => x.UserId);
+        b.HasIndex(x => x.Email).IsUnique();
+
+         b.Ignore(x => x.DomainEvents);
+
+       
+        b.Metadata.FindNavigation(nameof(Customer.Addresses))!
+            .SetPropertyAccessMode(PropertyAccessMode.Field);
+
+        b.OwnsMany(x => x.Addresses, a =>
         {
-           
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id)
-                .ValueGeneratedNever()
-                .HasConversion(v => v.Value, v => new CustomerId(v));
+            a.ToTable("CustomerAddresses");
 
-            e.Property(x => x.UserId).IsRequired();
-            e.Property(x => x.FullName).HasMaxLength(128).IsRequired();
-            e.Property(x => x.Email).HasMaxLength(256).IsUnicode(false).IsRequired();
-            e.Property(x => x.Phone).HasMaxLength(32).IsUnicode(false);
+            a.WithOwner().HasForeignKey("CustomerId");
 
-            e.HasIndex(x => x.UserId).IsUnique();
-            e.HasIndex(x => x.Email).IsUnique();
+          
+            a.Property<int>("Id");
+            a.HasKey("Id");
 
-            e.OwnsMany(x => x.Addresses, nav =>
-            {
-                nav.WithOwner().HasForeignKey("CustomerId");
-                nav.Property<int>("Id");
-                nav.HasKey("Id");
+            a.Property(p => p.Line1).IsRequired().HasMaxLength(200);
+            a.Property(p => p.Line2).HasMaxLength(200);
+            a.Property(p => p.City).IsRequired().HasMaxLength(100);
+            a.Property(p => p.State).HasMaxLength(100);
+            a.Property(p => p.PostalCode).IsRequired().HasMaxLength(20);
+            a.Property(p => p.Country).IsRequired().HasMaxLength(100);
+            a.Property(p => p.IsDefault).IsRequired();
 
-                nav.Property(a => a.Line1).HasMaxLength(256).IsRequired();
-                nav.Property(a => a.Line2).HasMaxLength(256);
-                nav.Property(a => a.City).HasMaxLength(128).IsRequired();
-                nav.Property(a => a.State).HasMaxLength(128);
-                nav.Property(a => a.PostalCode).HasMaxLength(32).IsRequired();
-                nav.Property(a => a.Country).HasMaxLength(64).IsRequired();
-                nav.Property(a => a.IsDefault).IsRequired();
-            });
-        }
+            
+            a.HasIndex("CustomerId");
+            a.HasIndex(p => new { p.PostalCode, p.City });
+
+            
+            a.HasIndex("CustomerId", nameof(DigiTekShop.Domain.Customer.ValueObjects.Address.IsDefault))
+             .IsUnique()
+             .HasFilter("[IsDefault] = 1");
+        });
     }
 }
