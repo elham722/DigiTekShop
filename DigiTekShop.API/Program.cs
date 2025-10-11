@@ -16,13 +16,14 @@ using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using DigiTekShop.Persistence.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
 
 builder.WebHost.UseSetting(WebHostDefaults.DetailedErrorsKey, "false");
 
-const string CorrelationHeader = "X-Request-ID"; 
+const string CorrelationHeader = "X-Request-ID";
 
 #region Logging Configuration
 
@@ -150,7 +151,7 @@ builder.Services.AddRateLimiter(options =>
 
 
 builder.Services.AddInfrastructure(builder.Configuration,builder.Environment);
-
+builder.Services.AddPersistenceServices(builder.Configuration);
 
 builder.Services
     .ConfigureIdentityCore(builder.Configuration)
@@ -160,6 +161,10 @@ builder.Services.AddExternalServices(builder.Configuration);
 
 
 builder.Services.ConfigureApplicationCore();
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssemblies();
+});
 
 #endregion
 

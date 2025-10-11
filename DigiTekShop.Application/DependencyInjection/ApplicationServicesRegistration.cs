@@ -14,7 +14,7 @@ namespace DigiTekShop.Application.DependencyInjection
         {
             var assembly = Assembly.GetExecutingAssembly();
 
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
+           
             services.AddAutoMapper(cfg =>
             {
                 cfg.AddMaps(assembly);

@@ -1,6 +1,10 @@
 ﻿
+using DigiTekShop.Contracts.Events;
 using DigiTekShop.Contracts.Interfaces.Caching;
 using DigiTekShop.Infrastructure.Caching;
+using DigiTekShop.Infrastructure.Events;
+using DigiTekShop.Infrastructure.Pipeline;
+using MediatR;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,6 +54,13 @@ public static class InfrastructureRegistration
         services.AddScoped<ICacheService, DistributedCacheService>();
         services.AddSingleton<IRateLimiter, RedisRateLimiter>();
         services.AddSingleton<ITokenBlacklistService, RedisTokenBlacklistService>();
+
+        // DomainEvent Publisher (in-process MediatR)
+        services.AddScoped<IDomainEventPublisher, MediatRDomainEventPublisher>();
+
+        // 🔹 UnitOfWork Behavior: orchestration تراکنش/SaveChanges/Dispatch
+        // به IUnitOfWork (از Contracts) وابسته است، نه به DbContext/Persistence
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavior<,>));
 
         // 5) HealthCheck
         services.AddHealthChecks().AddRedis(redisCs, name: "redis");
