@@ -3,6 +3,7 @@ using DigiTekShop.SharedKernel.Guards;
 
 namespace DigiTekShop.SharedKernel.Exceptions.Common;
 
+[Serializable]
 public class DomainException : Exception
 {
     public string Code { get; }
@@ -16,14 +17,12 @@ public class DomainException : Exception
         IReadOnlyDictionary<string, object>? metadata = null)
         : base(message ?? ErrorCatalog.Resolve(code).DefaultMessage, innerException)
     {
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            Guard.AgainstNullOrEmpty(code, nameof(code));
-        }
-        
+        Guard.AgainstNullOrEmpty(code, nameof(code));
         Code = code;
         Metadata = metadata;
     }
+
+
 
     public override string ToString()
     {

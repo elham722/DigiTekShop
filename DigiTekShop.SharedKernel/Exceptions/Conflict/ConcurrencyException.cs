@@ -29,4 +29,17 @@ public sealed class ConcurrencyException : DomainException
                 ["ActualVersion"] = actualVersion
             })
     { }
+
+    public ConcurrencyException(object aggregateId, byte[] expectedRowVersion, byte[] actualRowVersion)
+        : base(
+            code: ErrorCodes.Common.CONCURRENCY_CONFLICT,
+            message: $"Concurrency conflict for Aggregate '{aggregateId}'. Expected RV: {Convert.ToHexString(expectedRowVersion)}, Actual RV: {Convert.ToHexString(actualRowVersion)}.",
+            metadata: new Dictionary<string, object>
+            {
+                ["AggregateId"] = aggregateId.ToString(),
+                ["ExpectedRowVersion"] = Convert.ToHexString(expectedRowVersion),
+                ["ActualRowVersion"] = Convert.ToHexString(actualRowVersion)
+            })
+    { }
+
 }

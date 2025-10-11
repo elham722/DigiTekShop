@@ -12,7 +12,7 @@ public sealed class DomainTimeoutException : DomainException
         : base(
             code: ErrorCodes.Common.TIMEOUT,
             message: message ?? $"Operation timed out after {duration.TotalSeconds} seconds.",
-            metadata: new Dictionary<string, object> { ["Duration"] = duration })
+            metadata: new Dictionary<string, object> { ["Duration"] = duration.TotalSeconds })
     {
         Duration = duration;
     }
@@ -22,7 +22,7 @@ public sealed class DomainTimeoutException : DomainException
             code: ErrorCodes.Common.TIMEOUT,
             message: message ?? $"Operation timed out after {duration.TotalSeconds} seconds.",
             innerException: inner,
-            metadata: new Dictionary<string, object> { ["Duration"] = duration })
+            metadata: new Dictionary<string, object> { ["Duration"] = duration.TotalSeconds })
     {
         Duration = duration;
     }

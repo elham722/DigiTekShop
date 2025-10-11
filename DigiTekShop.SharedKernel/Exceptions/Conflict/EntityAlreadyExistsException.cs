@@ -1,6 +1,5 @@
 ﻿#nullable enable
 using DigiTekShop.SharedKernel.Errors;
-using DigiTekShop.SharedKernel.Exceptions.Common;
 
 namespace DigiTekShop.SharedKernel.Exceptions.Conflict;
 
