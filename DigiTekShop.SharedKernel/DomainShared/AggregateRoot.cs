@@ -19,4 +19,7 @@ public abstract class AggregateRoot<TId> : Entity<TId>
     }
 
     public void ClearDomainEvents() => _domainEvents.Clear();
+
+    protected virtual void ValidateState() { }
+    protected void EnsureInvariants() => ValidateState();
 }
