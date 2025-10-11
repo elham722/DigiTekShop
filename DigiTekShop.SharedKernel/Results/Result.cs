@@ -1,9 +1,8 @@
 ﻿using System.Collections.Immutable;
-using System.Diagnostics;
 
 namespace DigiTekShop.SharedKernel.Results;
 
-[DebuggerDisplay("IsSuccess = {IsSuccess}, Errors = {Errors.Count}")]
+[DebuggerDisplay("IsSuccess = {IsSuccess}, Errors = {Errors.Count}, Code = {ErrorCode}")]
 public class Result
 {
     public bool IsSuccess { get; }
@@ -16,7 +15,9 @@ public class Result
     {
         IsSuccess = isSuccess;
 
-        var list = (errors ?? Array.Empty<string>()).Where(e => !string.IsNullOrWhiteSpace(e)).ToArray();
+        var list = (errors ?? Array.Empty<string>())
+                   .Where(e => !string.IsNullOrWhiteSpace(e))
+                   .ToArray();
 
         if (!isSuccess && list.Length == 0)
             throw new ArgumentException("Failure result must contain at least one error.", nameof(errors));
@@ -26,10 +27,9 @@ public class Result
         Timestamp = DateTimeOffset.UtcNow;
     }
 
-    public void Deconstruct(out bool isSuccess, out IReadOnlyList<string> errors)
-    { isSuccess = IsSuccess; errors = Errors; }
+    public void Deconstruct(out bool ok, out IReadOnlyList<string> errors)
+    { ok = IsSuccess; errors = Errors; }
 
-    #region Static Factories
     public static Result Success() => new(true, Array.Empty<string>());
     public static Result Failure(string error, string? errorCode = null) => new(false, new[] { error }, errorCode);
     public static Result Failure(IEnumerable<string> errors, string? errorCode = null) => new(false, errors, errorCode);
@@ -39,15 +39,11 @@ public class Result
 
     public static Result From(bool ok, string? errorIfFalse = null, string? errorCode = null)
         => ok ? Success() : Failure(errorIfFalse ?? "Operation failed.", errorCode);
-    #endregion
 
-
-    #region Implicit Conversions
     public static implicit operator Result(string error) => Failure(error);
     public static implicit operator Result(List<string> errors) => Failure(errors);
-    #endregion
 
-    #region Functional Helpers
+   
     public Result<TOut> Map<TOut>(Func<TOut> mapper)
         => IsSuccess ? Result<TOut>.Success(mapper()) : Result<TOut>.Failure(Errors, ErrorCode);
 
@@ -65,9 +61,8 @@ public class Result
         if (IsFailure) action(Errors);
         return this;
     }
-    #endregion
 
-    #region Matching
+    
     public TResult Match<TResult>(Func<TResult> onSuccess, Func<IReadOnlyList<string>, TResult> onFailure)
         => IsSuccess ? onSuccess() : onFailure(Errors);
 
@@ -76,25 +71,28 @@ public class Result
         if (IsSuccess) onSuccess();
         else onFailure(Errors);
     }
-    #endregion
 
-    #region Safe Accessors
+   
     public string? GetFirstError() => Errors.FirstOrDefault();
-    public string GetErrorsAsString(string separator = "; ") => string.Join(separator, Errors);
-    public bool HasErrorCode(string errorCode) => ErrorCode == errorCode;
-    #endregion
+    public string GetErrorsAsString(string sep = "; ") => string.Join(sep, Errors);
+    public bool HasErrorCode(string code) => ErrorCode == code;
 
-    #region Overrides
-    public override string ToString() => IsSuccess ? "Success" : $"Failure: {GetErrorsAsString()}";
+    public override string ToString() => IsSuccess ? "Success" : $"Failure[{ErrorCode ?? "-"}]: {GetErrorsAsString()}";
 
     public override bool Equals(object? obj)
     {
         if (obj is not Result other) return false;
-        return IsSuccess == other.IsSuccess &&
-               Errors.SequenceEqual(other.Errors) &&
-               ErrorCode == other.ErrorCode;
+        return IsSuccess == other.IsSuccess
+            && ErrorCode == other.ErrorCode
+            && Errors.SequenceEqual(other.Errors);
     }
 
-    public override int GetHashCode() => HashCode.Combine(IsSuccess, Errors, ErrorCode);
-    #endregion
+    public override int GetHashCode()
+    {
+        var hc = new HashCode();
+        hc.Add(IsSuccess);
+        hc.Add(ErrorCode);
+        foreach (var e in Errors) hc.Add(e);
+        return hc.ToHashCode();
+    }
 }

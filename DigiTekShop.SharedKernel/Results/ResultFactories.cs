@@ -1,5 +1,4 @@
-﻿
-using DigiTekShop.SharedKernel.Errors;
+﻿using DigiTekShop.SharedKernel.Errors;
 
 namespace DigiTekShop.SharedKernel.Results;
 
@@ -10,4 +9,7 @@ public static class ResultFactories
 
     public static Result<T> Fail<T>(string code, string? message = null)
         => Result<T>.Failure(message ?? ErrorCatalog.Resolve(code).DefaultMessage, code);
+
+    public static Result<T> Ok<T>(T value) => Result<T>.Success(value);
+    public static Result Ok() => Result.Success();
 }

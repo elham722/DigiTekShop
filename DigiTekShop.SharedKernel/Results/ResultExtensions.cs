@@ -1,23 +1,27 @@
-﻿using DigiTekShop.SharedKernel.Results;
+﻿namespace DigiTekShop.SharedKernel.Results;
 
-namespace DigiTekShop.SharedKernel.Results;
 public static class ResultExtensions
 {
-    // Async unwrap عمومی
-    public static async Task<Result<T>> UnwrapAsync<T>(this Task<Result<T>> task) => await task;
-    public static async Task<Result> UnwrapAsync(this Task<Result> task) => await task;
-
-    public static Result Combine(this IEnumerable<Result> results, string? errorCode = null)
+    public static Result Combine(this IEnumerable<Result> results, string? fallbackCode = "COMBINED_ERROR")
     {
-        var errs = results.Where(r => r.IsFailure).SelectMany(r => r.Errors).ToArray();
-        return errs.Length > 0 ? Result.Failure(errs, errorCode ?? "COMBINED_ERROR") : Result.Success();
+        var arr = results as Result[] ?? results.ToArray();
+        var errs = arr.Where(r => r.IsFailure).SelectMany(r => r.Errors).ToArray();
+        if (errs.Length == 0) return Result.Success();
+
+        var code = arr.Select(r => r.ErrorCode).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c)) ?? fallbackCode;
+        return Result.Failure(errs, code);
     }
 
-    public static Result<IEnumerable<T>> Combine<T>(this IEnumerable<Result<T>> results, string? errorCode = null)
+    public static Result<IEnumerable<T>> Combine<T>(this IEnumerable<Result<T>> results, string? fallbackCode = "COMBINED_ERROR")
     {
         var arr = results as Result<T>[] ?? results.ToArray();
         var errs = arr.Where(r => r.IsFailure).SelectMany(r => r.Errors).ToArray();
-        if (errs.Length > 0) return Result<IEnumerable<T>>.Failure(errs, errorCode ?? "COMBINED_ERROR");
+        if (errs.Length > 0)
+        {
+            var code = arr.Select(r => r.ErrorCode).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c)) ?? fallbackCode;
+            return Result<IEnumerable<T>>.Failure(errs, code);
+        }
+
         var vals = arr.Where(r => r.IsSuccess).Select(r => r.Value!);
         return Result<IEnumerable<T>>.Success(vals);
     }
@@ -27,18 +31,11 @@ public static class ResultExtensions
             : predicate(result.Value!) ? Result.Success()
             : Result.Failure(errorMessage);
 
-    public static Result WithCode(this Result result, string errorCode)
-    {
-        if (result.IsSuccess) return result; 
-       
-        return Result.Failure(result.Errors, errorCode);
-    }
+    public static Result WithCode(this Result r, string errorCode)
+        => r.IsSuccess ? r : Result.Failure(r.Errors, errorCode);
 
-    public static Result<T> WithCode<T>(this Result<T> result, string errorCode)
-    {
-        if (result.IsSuccess) return result;
-        return Result<T>.Failure(result.Errors, errorCode);
-    }
+    public static Result<T> WithCode<T>(this Result<T> r, string errorCode)
+        => r.IsSuccess ? r : Result<T>.Failure(r.Errors, errorCode);
 
     public static Result<TOut> Map<TIn, TOut>(this Result<TIn> r, Func<TIn, TOut> f)
         => r.IsSuccess ? Result<TOut>.Success(f(r.Value!)) : Result<TOut>.Failure(r.Errors, r.ErrorCode);
@@ -48,5 +45,4 @@ public static class ResultExtensions
 
     public static Result Ensure(this Result r, Func<bool> predicate, string error, string? code = null)
         => r.IsSuccess && !predicate() ? Result.Failure(error, code) : r;
-
 }

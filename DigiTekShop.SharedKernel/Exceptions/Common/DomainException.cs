@@ -17,7 +17,7 @@ public class DomainException : Exception
         IReadOnlyDictionary<string, object>? metadata = null)
         : base(message ?? ErrorCatalog.Resolve(code).DefaultMessage, innerException)
     {
-        Guard.AgainstNullOrEmpty(code, nameof(code));
+        Guard.AgainstNullOrWhiteSpace(code, nameof(code));
         Code = code;
         Metadata = metadata;
     }

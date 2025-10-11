@@ -1,19 +1,20 @@
 ﻿namespace DigiTekShop.SharedKernel.Results;
 
-[DebuggerDisplay("IsSuccess = {IsSuccess}, Value = {Value}, Errors = {Errors.Count}")]
+[DebuggerDisplay("IsSuccess = {IsSuccess}, Value = {Value}, Errors = {Errors.Count}, Code = {ErrorCode}")]
 public sealed class Result<T> : Result
 {
     public T? Value { get; }
 
-    private Result(T value) : base(true, Array.Empty<string>()) => Value = value;
+    private Result(T? value) : base(true, Array.Empty<string>())
+        => Value = value;
 
     private Result(IEnumerable<string> errors, string? errorCode = null)
         : base(false, errors, errorCode) => Value = default;
 
-    public void Deconstruct(out bool isSuccess, out T? value, out IReadOnlyList<string> errors)
-    { isSuccess = IsSuccess; value = Value; errors = Errors; }
+    public void Deconstruct(out bool ok, out T? value, out IReadOnlyList<string> errors)
+    { ok = IsSuccess; value = Value; errors = Errors; }
 
-    #region Static Factories
+    
     public static Result<T> Success(T value)
     {
         if (value is null)
@@ -21,7 +22,8 @@ public sealed class Result<T> : Result
         return new(value);
     }
 
-    public static Result<T> SuccessAllowNull(T? value) => new(value!);
+    public static Result<T> SuccessAllowNull(T? value) => new(value);
+
     public static new Result<T> Failure(string error, string? errorCode = null) => new(new[] { error }, errorCode);
     public static new Result<T> Failure(IEnumerable<string> errors, string? errorCode = null) => new(errors, errorCode);
 
@@ -39,17 +41,14 @@ public sealed class Result<T> : Result
         try { return Success(await func()); }
         catch (Exception ex) { return FromException(ex, errorCode); }
     }
-    #endregion
 
-    #region Implicit Conversions
+   
     public static implicit operator Result<T>(T value) => Success(value);
-    public static implicit operator Result<T>(string error) => Failure(error);
-    public static implicit operator Result<T>(List<string> errors) => Failure(errors);
-    #endregion
 
-    #region Functional Helpers
+   
     public Result<TOut> Map<TOut>(Func<T, TOut> mapper)
         => IsSuccess ? Result<TOut>.Success(mapper(Value!)) : Result<TOut>.Failure(Errors, ErrorCode);
+
     public Result<TOut> Bind<TOut>(Func<T, Result<TOut>> binder)
         => IsSuccess ? binder(Value!) : Result<TOut>.Failure(Errors, ErrorCode);
 
@@ -67,14 +66,14 @@ public sealed class Result<T> : Result
         if (IsFailure) action(Errors);
         return this;
     }
+
     public Result<T> Ensure(Func<T, bool> predicate, string error, string? errorCode = null)
         => IsFailure ? this : (predicate(Value!) ? this : Failure(error, errorCode));
 
     public Result<T> Filter(Func<T, bool> predicate, string errorMessage, string? errorCode = null)
         => Ensure(predicate, errorMessage, errorCode);
-    #endregion
 
-    #region Matching
+   
     public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<IReadOnlyList<string>, TResult> onFailure)
         => IsSuccess ? onSuccess(Value!) : onFailure(Errors);
 
@@ -83,9 +82,8 @@ public sealed class Result<T> : Result
         if (IsSuccess) onSuccess(Value!);
         else onFailure(Errors);
     }
-    #endregion
 
-    #region Safe Accessors
+  
     public T GetValueOrThrow()
     {
         if (IsFailure)
@@ -99,9 +97,8 @@ public sealed class Result<T> : Result
 
     public T GetValueOrElse(Func<IReadOnlyList<string>, T> defaultValueFactory)
         => IsSuccess ? Value! : defaultValueFactory(Errors);
-    #endregion
 
-    #region Async Helpers
+  
     public async Task<Result<TOut>> MapAsync<TOut>(Func<T, Task<TOut>> mapper)
         => IsSuccess ? Result<TOut>.Success(await mapper(Value!)) : Result<TOut>.Failure(Errors, ErrorCode);
 
@@ -113,5 +110,4 @@ public sealed class Result<T> : Result
         if (IsSuccess) await action(Value!);
         return this;
     }
-    #endregion
 }
