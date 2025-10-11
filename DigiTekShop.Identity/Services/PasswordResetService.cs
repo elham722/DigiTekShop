@@ -83,15 +83,15 @@ public sealed class PasswordResetService : IPasswordService
             }
 
             if (!_settings.IsEnabled)
-                return ResultFactories.Fail(ErrorCodes.Identity.PasswordResetDisabled);
+                return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_DISABLED);
 
 
             if (!Guid.TryParse(request.UserId, out var userId))
-                return ResultFactories.Fail(ErrorCodes.Identity.InvalidUserForPasswordReset);
+                return ResultFactories.Fail(ErrorCodes.Identity.INVALID_USER_FOR_PASSWORD_RESET);
 
             var user = await _userManager.FindByIdAsync(request.UserId);
             if (user is null || user.IsDeleted)
-                return ResultFactories.Fail(ErrorCodes.Identity.InvalidUserForPasswordReset);
+                return ResultFactories.Fail(ErrorCodes.Identity.INVALID_USER_FOR_PASSWORD_RESET);
 
             string decodedToken;
             try
@@ -100,7 +100,7 @@ public sealed class PasswordResetService : IPasswordService
             }
             catch
             {
-                return ResultFactories.Fail(ErrorCodes.Identity.InvalidToken);
+                return ResultFactories.Fail(ErrorCodes.Identity.INVALID_TOKEN);
             }
 
            
@@ -110,13 +110,13 @@ public sealed class PasswordResetService : IPasswordService
                 .FirstOrDefaultAsync(ct);
 
             if (storedToken == null)
-                return ResultFactories.Fail(ErrorCodes.Identity.InvalidToken);
+                return ResultFactories.Fail(ErrorCodes.Identity.INVALID_TOKEN);
 
             if (storedToken.IsExpired)
-                return ResultFactories.Fail(ErrorCodes.Identity.TokenExpired);
+                return ResultFactories.Fail(ErrorCodes.Identity.TOKEN_EXPIRED);
 
             if (storedToken.IsUsed)
-                return ResultFactories.Fail(ErrorCodes.Identity.InvalidToken); 
+                return ResultFactories.Fail(ErrorCodes.Identity.INVALID_TOKEN); 
 
             if (storedToken.IsThrottled)
             {
@@ -124,7 +124,7 @@ public sealed class PasswordResetService : IPasswordService
                 _context.PasswordResetTokens.Update(storedToken);
                 await _context.SaveChangesAsync(ct);
                 
-                return ResultFactories.Fail(ErrorCodes.Identity.PasswordResetCooldownActive);
+                return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_COOLDOWN_ACTIVE);
             }
 
 
@@ -144,7 +144,7 @@ public sealed class PasswordResetService : IPasswordService
 
                 var errors = identityRes.Errors.Select(e => e.Description);
                 _logger.LogWarning("Password reset failed for user {UserId}. Errors: {Errors}", userId, string.Join(", ", errors));
-                return ResultFactories.Fail(ErrorCodes.Identity.PasswordResetFailed);
+                return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_FAILED);
             }
 
             storedToken.MarkAsUsed(ipAddress: request.IpAddress); 
@@ -170,7 +170,7 @@ public sealed class PasswordResetService : IPasswordService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error resetting password for user {UserId}", request.UserId);
-            return ResultFactories.Fail(ErrorCodes.Identity.PasswordResetFailed);
+            return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_FAILED);
         }
     }
 
@@ -233,7 +233,7 @@ public sealed class PasswordResetService : IPasswordService
         try
         {
             if (!_settings.IsEnabled)
-                return ResultFactories.Fail(ErrorCodes.Identity.PasswordResetDisabled);
+                return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_DISABLED);
 
             // Validation قبلاً در ForgotPasswordAsync انجام شده است
 
@@ -246,7 +246,7 @@ public sealed class PasswordResetService : IPasswordService
 
             if (!await CanRequestPasswordResetAsync(user.Id, ct))
             {
-                return ResultFactories.Fail(ErrorCodes.Identity.PasswordResetCooldownActive);
+                return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_COOLDOWN_ACTIVE);
             }
 
             var identityToken = await _userManager.GeneratePasswordResetTokenAsync(user);
@@ -268,7 +268,7 @@ public sealed class PasswordResetService : IPasswordService
             {
                 _context.PasswordResetTokens.Remove(resetTokenEntity);
                 await _context.SaveChangesAsync(ct);
-                return ResultFactories.Fail(ErrorCodes.Common.OperationFailed);
+                return ResultFactories.Fail(ErrorCodes.Common.OPERATION_FAILED);
             }
 
             await _context.SaveChangesAsync(ct);
@@ -283,7 +283,7 @@ public sealed class PasswordResetService : IPasswordService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending password reset email to {Email}", request.Email);
-            return ResultFactories.Fail(ErrorCodes.Common.OperationFailed);
+            return ResultFactories.Fail(ErrorCodes.Common.OPERATION_FAILED);
         }
     }
 

@@ -7,11 +7,11 @@ namespace DigiTekShop.SharedKernel.Exceptions.Security;
 public sealed class ForbiddenException : DomainException
 {
     public ForbiddenException(string? message = null)
-        : base(ErrorCodes.Common.Forbidden, message) { }
+        : base(ErrorCodes.Common.FORBIDDEN, message) { }
 
     public ForbiddenException(string action, object userId)
         : base(
-            code: ErrorCodes.Common.Forbidden,
+            code: ErrorCodes.Common.FORBIDDEN,
             message: $"User '{userId}' is not authorized to perform '{action}'.",
             metadata: new Dictionary<string, object>
             {
@@ -22,7 +22,7 @@ public sealed class ForbiddenException : DomainException
 
     public ForbiddenException(string action, object userId, Exception inner)
         : base(
-            code: ErrorCodes.Common.Forbidden,
+            code: ErrorCodes.Common.FORBIDDEN,
             message: $"User '{userId}' is not authorized to perform '{action}'.",
             innerException: inner,
             metadata: new Dictionary<string, object>

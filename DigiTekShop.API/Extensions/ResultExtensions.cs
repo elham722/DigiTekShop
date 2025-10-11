@@ -12,54 +12,55 @@ public static class ResultToActionResultExtensions
         if (result.IsSuccess)
         {
             var traceId = c.HttpContext?.TraceIdentifier ?? Guid.NewGuid().ToString();
-            return c.StatusCode(okStatus, new ApiResponse<T>(result.Value!, TraceId: traceId));
+            // اگر T می‌تونه null باشه، اینجا هندل کن:
+            var payload = result.Value is null ? default : result.Value;
+            return c.StatusCode(okStatus, new ApiResponse<T?>(payload, TraceId: traceId));
         }
 
-        var (status, title, defaultMsg) = MapError(result.ErrorCode);
-        var pd = BuildProblemDetails(c.HttpContext!, status, title, defaultMsg, result.Errors);
-        return c.StatusCode(status, pd);
+        var info = ErrorCatalog.Resolve(result.ErrorCode);
+        var pd = BuildProblemDetails(c.HttpContext!, info.HttpStatus, info.Code, info.DefaultMessage, result.Errors);
+        return c.StatusCode(info.HttpStatus, pd).WithProblemContentType();
     }
 
     public static IActionResult ToActionResult(this ControllerBase c, Result result, int okStatus = StatusCodes.Status204NoContent)
     {
         if (result.IsSuccess) return c.StatusCode(okStatus);
 
-        var (status, title, defaultMsg) = MapError(result.ErrorCode);
-        var pd = BuildProblemDetails(c.HttpContext!, status, title, defaultMsg, result.Errors);
-        return c.StatusCode(status, pd);
-    }
-
-
-    private static (int Status, string Title, string DefaultMessage) MapError(string? code)
-    {
-        var info = ErrorCatalog.Resolve(code);
-        return (info.HttpStatus, info.Code, info.DefaultMessage);
+        var info = ErrorCatalog.Resolve(result.ErrorCode);
+        var pd = BuildProblemDetails(c.HttpContext!, info.HttpStatus, info.Code, info.DefaultMessage, result.Errors);
+        return c.StatusCode(info.HttpStatus, pd).WithProblemContentType();
     }
 
     private static ProblemDetails BuildProblemDetails(
         HttpContext http, int status, string code, string defaultMessage, IEnumerable<string>? errors)
     {
         var env = http.RequestServices.GetRequiredService<IWebHostEnvironment>();
+        var path = http.Request.Path.HasValue ? http.Request.Path.Value : null;
+        var traceId = http.TraceIdentifier;
 
         string detail = defaultMessage;
         if (env.IsDevelopment() && errors is not null)
         {
             var first = errors.FirstOrDefault();
-            if (!string.IsNullOrWhiteSpace(first)) detail = first;
+            if (!string.IsNullOrWhiteSpace(first)) detail = first!;
         }
 
         var pd = new ProblemDetails
         {
+            Type = $"urn:problem:{code}",
             Title = code,
             Status = status,
             Detail = detail,
-            Instance = http.TraceIdentifier
+            Instance = path // ← مسیر درخواست
         };
+
+        // TraceId + errors در extensions
+        pd.Extensions["traceId"] = traceId;
 
         if (errors is not null && errors.Any())
         {
             var grouped = errors
-                .Where(e => !string.IsNullOrWhiteSpace(e)) // ✅ فیلتر کردن null ها
+                .Where(e => !string.IsNullOrWhiteSpace(e))
                 .Select(e =>
                 {
                     var idx = e.IndexOf(':');
@@ -70,11 +71,21 @@ public static class ResultToActionResultExtensions
                 .GroupBy(x => x.Field)
                 .ToDictionary(g => g.Key, g => g.Select(x => x.Message).ToArray());
 
-            if (grouped.Any())
+            if (grouped.Count > 0)
                 pd.Extensions["errors"] = grouped;
         }
 
         return pd;
     }
 
+    /// <summary>Ensure RFC 7807 content-type.</summary>
+    private static IActionResult WithProblemContentType(this IActionResult result)
+    {
+        if (result is ObjectResult or)
+        {
+            or.ContentTypes.Clear();
+            or.ContentTypes.Add("application/problem+json");
+        }
+        return result;
+    }
 }

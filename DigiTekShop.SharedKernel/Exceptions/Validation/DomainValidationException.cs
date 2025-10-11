@@ -10,7 +10,7 @@ public sealed class DomainValidationException : DomainException
 
     public DomainValidationException(IEnumerable<string> errors, string? message = null)
         : base(
-            code: ErrorCodes.Common.ValidationFailed,
+            code: ErrorCodes.Common.VALIDATION_FAILED,
             message: message ?? "One or more validation errors occurred.")
     {
         Errors = errors.ToList().AsReadOnly();
@@ -18,7 +18,7 @@ public sealed class DomainValidationException : DomainException
 
     public DomainValidationException(IEnumerable<string> errors, Exception inner, string? message = null)
         : base(
-            code: ErrorCodes.Common.ValidationFailed,
+            code: ErrorCodes.Common.VALIDATION_FAILED,
             message: message ?? "One or more validation errors occurred.",
             innerException: inner)
     {
@@ -27,7 +27,7 @@ public sealed class DomainValidationException : DomainException
 
     public DomainValidationException(IEnumerable<string> errors, string entityName, object id, Exception? inner = null)
         : base(
-            code: ErrorCodes.Common.ValidationFailed,
+            code: ErrorCodes.Common.VALIDATION_FAILED,
             message: "One or more validation errors occurred.",
             innerException: inner,
             metadata: new Dictionary<string, object>
@@ -41,7 +41,7 @@ public sealed class DomainValidationException : DomainException
 
     public DomainValidationException(IEnumerable<string> errors, string propertyName, object? currentValue)
         : base(
-            code: ErrorCodes.Common.ValidationFailed,
+            code: ErrorCodes.Common.VALIDATION_FAILED,
             message: "One or more validation errors occurred.",
             metadata: BuildPropertyMetadata(propertyName, currentValue))
     {

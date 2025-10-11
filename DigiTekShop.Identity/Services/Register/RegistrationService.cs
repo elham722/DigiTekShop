@@ -67,7 +67,7 @@ public sealed class RegistrationService : IRegistrationService
                 _logger.LogWarning("Registration attempt with existing email: {Email}", request.Email);
                 return Result<RegisterResponseDto>.Failure(
                     new[] { "email: Email already registered." },
-                    ErrorCodes.Identity.UserExists
+                    ErrorCodes.Identity.USER_EXISTS
                 );
             }
 
@@ -82,7 +82,7 @@ public sealed class RegistrationService : IRegistrationService
             {
                 var errors = createResult.Errors.Select(e => $"password: {e.Description}").ToList();
                 _logger.LogWarning("User creation failed for {Email}. Errors: {Errors}", request.Email, string.Join(" | ", errors));
-                return Result<RegisterResponseDto>.Failure(errors, ErrorCodes.Common.OperationFailed);
+                return Result<RegisterResponseDto>.Failure(errors, ErrorCodes.Common.OPERATION_FAILED);
             }
 
             var requireEmail = _emailSettings.RequireEmailConfirmation;
@@ -150,7 +150,7 @@ public sealed class RegistrationService : IRegistrationService
             _logger.LogError(ex, "Unexpected error during registration for email {Email}", request.Email);
             return Result<RegisterResponseDto>.Failure(
                 new[] { "general: An unexpected error occurred during registration." },
-                ErrorCodes.Common.OperationFailed
+                ErrorCodes.Common.OPERATION_FAILED
             );
         }
     }
@@ -172,7 +172,7 @@ public sealed class RegistrationService : IRegistrationService
             if (results.Any(allowed => allowed == false))
                 return Result.Failure(
                     new[] { "[RATE_LIMIT] Too many registration attempts. Please try again later." },
-                    ErrorCodes.Common.RateLimitExceeded);
+                    ErrorCodes.Common.RATE_LIMIT_EXCEEDED);
 
             return Result.Success();
         }

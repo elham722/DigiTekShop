@@ -7,7 +7,7 @@ public sealed class ConcurrencyException : DomainException
 {
     public ConcurrencyException(object aggregateId, int expectedVersion, int actualVersion)
         : base(
-            code: ErrorCodes.Common.ConcurrencyConflict,
+            code: ErrorCodes.Common.CONCURRENCY_CONFLICT,
             message: $"Concurrency conflict for Aggregate '{aggregateId}'. Expected Version: {expectedVersion}, but Actual Version is: {actualVersion}.",
             metadata: new Dictionary<string, object>
             {
@@ -19,7 +19,7 @@ public sealed class ConcurrencyException : DomainException
 
     public ConcurrencyException(object aggregateId, int expectedVersion, int actualVersion, Exception inner)
         : base(
-            code: ErrorCodes.Common.ConcurrencyConflict,
+            code: ErrorCodes.Common.CONCURRENCY_CONFLICT,
             message: $"Concurrency conflict for Aggregate '{aggregateId}'. Expected Version: {expectedVersion}, but Actual Version is: {actualVersion}.",
             innerException: inner,
             metadata: new Dictionary<string, object>

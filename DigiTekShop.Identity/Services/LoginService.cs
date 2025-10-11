@@ -63,7 +63,7 @@ public sealed class LoginService : ILoginService
         if (user is null)
         {
             await _loginAttemptService.RecordLoginAttemptAsync(null, LoginStatus.Failed, request.Ip, request.UserAgent, request.Email, ct);
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.InvalidCredentials);
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.INVALID_CREDENTIALS);
 
         }
 
@@ -71,7 +71,7 @@ public sealed class LoginService : ILoginService
             return Result<TokenResponseDto>.Failure("User not found or inactive.");
 
         if (await _userManager.IsLockedOutAsync(user))
-        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.AccountLocked);
+        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.ACCOUNT_LOCKED);
 
 
         var signIn = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
@@ -81,7 +81,7 @@ public sealed class LoginService : ILoginService
             await _loginAttemptService.RecordLoginAttemptAsync(user.Id, LoginStatus.Success, request.Ip, request.UserAgent, request.Email, ct);
 
             if (await _userManager.GetTwoFactorEnabledAsync(user))
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.RequiresTwoFactor);
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
 
 
             // Step-Up بر اساس دستگاه
@@ -108,14 +108,14 @@ public sealed class LoginService : ILoginService
         await CheckBruteForceAfterFailureAsync(request.Ip, request.DeviceId, user.Id, ct);
 
         if (signIn.IsLockedOut)
-        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.AccountLocked);
+        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.ACCOUNT_LOCKED);
 
         if (signIn.RequiresTwoFactor)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.RequiresTwoFactor);
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
         if (signIn.IsNotAllowed)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.SignInNotAllowed);
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.SIGNIN_NOT_ALLOWED);
 
-        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.InvalidCredentials);
+        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.INVALID_CREDENTIALS);
 
     }
 
@@ -247,7 +247,7 @@ public sealed class LoginService : ILoginService
     public async Task<Result<TokenResponseDto>> RefreshAsync(RefreshRequestDto request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.InvalidToken);
+            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.INVALID_TOKEN);
 
         var result = await _jwtTokenService.RefreshTokensAsync(
             refreshToken: request.RefreshToken,

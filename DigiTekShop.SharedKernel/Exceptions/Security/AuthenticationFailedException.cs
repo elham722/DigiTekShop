@@ -8,11 +8,11 @@ public sealed class AuthenticationFailedException : DomainException
 {
     // 401 با پیام کاتالوگ یا سفارشی
     public AuthenticationFailedException(string? message = null)
-        : base(ErrorCodes.Common.Unauthorized, message) { }
+        : base(ErrorCodes.Common.UNAUTHORIZED, message) { }
 
     public AuthenticationFailedException(string userName, object id)
         : base(
-            code: ErrorCodes.Common.Unauthorized,
+            code: ErrorCodes.Common.UNAUTHORIZED,
             message: $"Authentication failed for '{userName}' (Id='{id}').",
             metadata: new Dictionary<string, object>
             {
@@ -23,7 +23,7 @@ public sealed class AuthenticationFailedException : DomainException
 
     public AuthenticationFailedException(string userName, object id, Exception inner)
         : base(
-            code: ErrorCodes.Common.Unauthorized,
+            code: ErrorCodes.Common.UNAUTHORIZED,
             message: $"Authentication failed for '{userName}' (Id='{id}').",
             innerException: inner,
             metadata: new Dictionary<string, object>

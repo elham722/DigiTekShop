@@ -97,7 +97,7 @@ public class User : IdentityUser<Guid>
         {
             throw new InvalidDomainOperationException(
                 $"Maximum active devices limit ({maxActiveDevices}) exceeded",
-                ErrorCodes.Identity.MaxActiveDevices);
+                ErrorCodes.Identity.MAX_ACTIVE_DEVICES_EXCEEDED);
         }
         
        
@@ -108,7 +108,7 @@ public class User : IdentityUser<Guid>
             {
                 throw new InvalidDomainOperationException(
                     $"Maximum trusted devices limit ({maxTrustedDevices}) exceeded",
-                    ErrorCodes.Identity.MaxTrustedDevices);
+                    ErrorCodes.Identity.MAX_TRUSTED_DEVICES_EXCEEDED);
             }
         }
         
@@ -161,10 +161,10 @@ public class User : IdentityUser<Guid>
     {
         var device = Devices.FirstOrDefault(d => d.Id == deviceId);
         if (device == null)
-            throw new NotFoundException("Device not found", ErrorCodes.Identity.DeviceNotFound);
+            throw new NotFoundException("Device not found", ErrorCodes.Identity.DEVICE_NOT_FOUND);
 
         if (!device.IsActive)
-            throw new InvalidDomainOperationException("Cannot trust inactive device", ErrorCodes.Identity.DeviceInactive);
+            throw new InvalidDomainOperationException("Cannot trust inactive device", ErrorCodes.Identity.DEVICE_INACTIVE);
 
        
         var trustedDevices = Devices.Count(d => d.IsTrusted);
@@ -172,7 +172,7 @@ public class User : IdentityUser<Guid>
         {
             throw new InvalidDomainOperationException(
                 $"Maximum trusted devices limit ({maxTrustedDevices}) exceeded",
-                ErrorCodes.Identity.MaxTrustedDevices);
+                ErrorCodes.Identity.MAX_TRUSTED_DEVICES_EXCEEDED);
         }
 
         device.MarkAsTrusted();
@@ -184,7 +184,7 @@ public class User : IdentityUser<Guid>
     {
         var device = Devices.FirstOrDefault(d => d.Id == deviceId);
         if (device == null)
-            throw new NotFoundException("Device not found", ErrorCodes.Identity.DeviceNotFound);
+            throw new NotFoundException("Device not found", ErrorCodes.Identity.DEVICE_NOT_FOUND);
 
         device.MarkAsUntrusted();
         Touch();
