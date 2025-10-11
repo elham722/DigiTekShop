@@ -130,7 +130,7 @@ public class SmtpEmailSender : IEmailSender
         Guard.AgainstNullOrEmpty(_settings.Host, nameof(_settings.Host));
         Guard.AgainstOutOfRange(_settings.Port, 1, 65535, nameof(_settings.Port));
         Guard.AgainstNullOrEmpty(_settings.FromEmail, nameof(_settings.FromEmail));
-        Guard.AgainstInvalidEmail(_settings.FromEmail);
+        Guard.AgainstEmail(_settings.FromEmail, nameof(_settings.FromEmail));
 
         if (!_settings.UseDefaultCredentials)
             Guard.AgainstNullOrEmpty(_settings.Username, nameof(_settings.Username));
@@ -139,7 +139,7 @@ public class SmtpEmailSender : IEmailSender
     private static void ValidateInput(string toEmail, string subject)
     {
         Guard.AgainstNullOrEmpty(toEmail, nameof(toEmail));
-        Guard.AgainstInvalidEmail(toEmail);
+        Guard.AgainstEmail(toEmail, nameof(toEmail));
         Guard.AgainstNullOrEmpty(subject, nameof(subject));
     }
 

@@ -30,6 +30,26 @@ namespace DigiTekShop.SharedKernel.Guards
 
         #endregion
 
+        #region Email
+
+        public static void AgainstEmail(string? email, string propertyName)
+        {
+            var invalid = string.IsNullOrWhiteSpace(email) || email!.Length > 256;
+            if (!invalid)
+            {
+                try
+                {
+                    var addr = new MailAddress(email);
+                    invalid = addr.Address != email;
+                }
+                catch { invalid = true; }
+            }
+            ThrowIf(invalid, $"{propertyName} must be a valid email.", propertyName, email);
+        }
+
+
+        #endregion
+
         #region Numeric / Range / TimeSpan
 
         public static void AgainstNegative<T>(T value, string propertyName) where T : IComparable<T>
@@ -59,28 +79,13 @@ namespace DigiTekShop.SharedKernel.Guards
                 $"{propertyName} has invalid format.",
                 propertyName, value);
 
-        public static void AgainstInvalidEmail(string email)
-        {
-            var isInvalid = false;
-            try
-            {
-                var addr = new MailAddress(email);
-                isInvalid = addr.Address != email;
-            }
-            catch
-            {
-                isInvalid = true;
-            }
-
-            ThrowIf(isInvalid, "Invalid email format.", "Email", email);
-        }
-
+      
         public static void AgainstInvalidPhoneNumber(string phoneNumber, int minLength = 10)
         {
             var isInvalid = string.IsNullOrWhiteSpace(phoneNumber) ||
                            !Regex.IsMatch(phoneNumber, @"^\+?\d+$") ||
                            phoneNumber.Length < minLength;
-            
+
             ThrowIf(isInvalid, "Invalid phone number format.", "PhoneNumber", phoneNumber);
         }
 
