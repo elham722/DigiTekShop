@@ -3,8 +3,10 @@ using DigiTekShop.API.Controllers.Common.V1;
 using DigiTekShop.API.Extensions;
 using DigiTekShop.API.Models;
 using DigiTekShop.Application.Auth.Register.Command;
+using DigiTekShop.Application.Customers.Commands.RegisterCustomer;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 using DigiTekShop.Contracts.DTOs.Auth.Register;
+using DigiTekShop.Contracts.DTOs.Customer;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -43,6 +45,10 @@ public sealed class RegistrationController : ApiControllerBase
         };
 
         var result = await _mediator.Send(new RegisterUserCommand(enriched), ct);
+        //await _mediator.Send(new RegisterCustomerCommand(
+        //    new RegisterCustomerDto(userId, model.FullName ?? model.Email, model.Email, model.PhoneNumber)
+        //), ct);
+
         return this.ToActionResult(result);
     }
 
