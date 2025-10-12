@@ -43,13 +43,12 @@ public sealed class RedisTokenBlacklistService : ITokenBlacklistService
                 return;
             }
 
-            var data = new TokenRevocationData
-            {
-                Jti = jti,
-                RevokedAt = DateTime.UtcNow,
-                Reason = reason ?? "Token revoked",
-                ExpiresAt = expiresAt
-            };
+            var data = new TokenRevocationData(
+                jti,
+                DateTime.UtcNow,
+                reason ?? "Token revoked",
+                expiresAt
+            );
 
             var json = JsonSerializer.Serialize(data);
             await _db.StringSetAsync(key, json, ttl);
@@ -99,12 +98,11 @@ public sealed class RedisTokenBlacklistService : ITokenBlacklistService
             var key = GetUserRevocationKey(userId);
             var timestamp = DateTime.UtcNow;
 
-            var data = new UserRevocationData
-            {
-                UserId = userId,
-                RevokedAt = timestamp,
-                Reason = reason ?? "All user tokens revoked"
-            };
+            var data = new UserRevocationData(
+                userId,
+                timestamp,
+                reason ?? "All user tokens revoked"
+            );
 
             var json = JsonSerializer.Serialize(data);
             

@@ -88,15 +88,14 @@ public class SecurityEventService : ISecurityEventService
         CancellationToken ct = default)
     {
         var metadataJson = metadata is null ? null : JsonSerializer.Serialize(metadata);
-        var createDto = new SecurityEventCreateDto
-        {
-            EventType = type,
-            UserId = userId,
-            IpAddress = ipAddress,
-            UserAgent = userAgent,
-            DeviceId = deviceId,
-            MetadataJson = metadataJson
-        };
+        var createDto = new SecurityEventCreateDto(
+            type,
+            userId,
+            ipAddress,
+            userAgent,
+            deviceId,
+            metadataJson
+        );
         return await RecordSecurityEventAsync(createDto, ct);
     }
 
