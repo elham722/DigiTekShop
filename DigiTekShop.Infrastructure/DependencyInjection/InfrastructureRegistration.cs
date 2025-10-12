@@ -4,9 +4,7 @@ using DigiTekShop.Contracts.Abstractions.Events;
 using DigiTekShop.Contracts.Abstractions.Time;
 using DigiTekShop.Infrastructure.Caching;
 using DigiTekShop.Infrastructure.Events;
-using DigiTekShop.Infrastructure.Pipeline;
 using DigiTekShop.Infrastructure.Time;
-using MediatR;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +13,6 @@ using StackExchange.Redis;
 
 namespace DigiTekShop.Infrastructure.DependencyInjection;
 
-// InfrastructureRegistration.cs
 public static class InfrastructureRegistration
 {
     public static IServiceCollection AddInfrastructure(
@@ -59,10 +56,6 @@ public static class InfrastructureRegistration
 
         // DomainEvent Publisher (in-process MediatR)
         services.AddScoped<IDomainEventPublisher, MediatRDomainEventPublisher>();
-
-        // 🔹 UnitOfWork Behavior: orchestration تراکنش/SaveChanges/Dispatch
-        // به IUnitOfWork (از Contracts) وابسته است، نه به DbContext/Persistence
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavior<,>));
 
         // 5) HealthCheck
         services.AddHealthChecks().AddRedis(redisCs, name: "redis");
