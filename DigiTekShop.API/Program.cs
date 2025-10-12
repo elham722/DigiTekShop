@@ -149,6 +149,8 @@ builder.Services.AddRateLimiter(options =>
 
 #region Infrastructure & Application Services
 
+// Add options validation
+builder.Services.AddOptionsValidation(builder.Configuration);
 
 builder.Services.AddInfrastructure(builder.Configuration,builder.Environment);
 builder.Services.AddPersistenceServices(builder.Configuration);
@@ -158,7 +160,6 @@ builder.Services
     .ConfigureJwtAuthentication(builder.Configuration);
 
 builder.Services.AddExternalServices(builder.Configuration);
-
 
 builder.Services.ConfigureApplicationCore();
 builder.Services.AddMediatR(cfg =>

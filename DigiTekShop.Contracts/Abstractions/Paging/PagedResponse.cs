@@ -10,11 +10,11 @@ public sealed record PagedResponse<T>(
     bool HasPrevious
 )
 {
-    public static DTOs.Common.PagedResponse<TItem> Create<TItem>(IEnumerable<TItem> items, int totalCount, DTOs.Common.PagedRequest request)
+    public static PagedResponse<TItem> Create<TItem>(IEnumerable<TItem> items, int totalCount, PagedRequest request)
     {
         var totalPages = (int)Math.Ceiling((double)totalCount / request.Size);
 
-        return new DTOs.Common.PagedResponse<TItem>(
+        return new PagedResponse<TItem>(
             Items: items,
             TotalCount: totalCount,
             Page: request.Page,

@@ -4,6 +4,7 @@ using DigiTekShop.Persistence.Context;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace DigiTekShop.Persistence.Ef;
 
@@ -11,16 +12,19 @@ public sealed class EfUnitOfWork : IUnitOfWork
 {
     private readonly DigiTekShopDbContext _db;
     private readonly IDomainEventPublisher _publisher;
+    private readonly IOutboxEventRepository _outboxRepository;
     private readonly ILogger<EfUnitOfWork> _logger;
     private IDbContextTransaction? _tx;
 
     public EfUnitOfWork(
         DigiTekShopDbContext db,
         IDomainEventPublisher publisher,
+        IOutboxEventRepository outboxRepository,
         ILogger<EfUnitOfWork> logger)
     {
         _db = db;
         _publisher = publisher;
+        _outboxRepository = outboxRepository;
         _logger = logger;
     }
 
@@ -96,12 +100,47 @@ public sealed class EfUnitOfWork : IUnitOfWork
             return;
         }
 
-        _logger.LogInformation("Dispatching {EventCount} domain events from {AggregateCount} aggregates",
+        _logger.LogInformation("Saving {EventCount} domain events to outbox from {AggregateCount} aggregates",
             allEvents.Count, aggregates.Count);
 
-        // Publish all events via MediatR
-        await _publisher.PublishAsync(allEvents, ct);
-        
-        _logger.LogDebug("Domain events dispatched successfully");
+        // Save events to outbox for reliable processing
+        foreach (var domainEvent in allEvents)
+        {
+            var outboxEvent = new OutboxEvent
+            {
+                Id = Guid.NewGuid(),
+                EventType = domainEvent.GetType().AssemblyQualifiedName!,
+                EventData = JsonSerializer.Serialize(domainEvent),
+                AggregateId = GetAggregateId(domainEvent),
+                AggregateType = GetAggregateType(domainEvent),
+                CreatedAt = DateTime.UtcNow,
+                RetryCount = 0
+            };
+
+            await _outboxRepository.AddAsync(outboxEvent, ct);
+        }
+
+        _logger.LogDebug("Domain events saved to outbox successfully");
+    }
+
+    private static string GetAggregateId(IDomainEvent domainEvent)
+    {
+        // Try to get aggregate ID from common properties
+        var aggregateIdProperty = domainEvent.GetType()
+            .GetProperties()
+            .FirstOrDefault(p => p.Name.EndsWith("Id") && p.PropertyType == typeof(Guid));
+
+        return aggregateIdProperty?.GetValue(domainEvent)?.ToString() ?? Guid.NewGuid().ToString();
+    }
+
+    private static string GetAggregateType(IDomainEvent domainEvent)
+    {
+        // Extract aggregate type from event type name
+        var eventTypeName = domainEvent.GetType().Name;
+        if (eventTypeName.EndsWith("Event"))
+        {
+            return eventTypeName[..^5]; // Remove "Event" suffix
+        }
+        return eventTypeName;
     }
 }

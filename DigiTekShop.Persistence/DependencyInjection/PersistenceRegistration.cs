@@ -2,6 +2,7 @@
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
+using DigiTekShop.Contracts.Abstractions.Events;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.Persistence.Ef;
 using DigiTekShop.Persistence.Repositories.Customer;
@@ -45,8 +46,9 @@ public static class PersistenceRegistration
         services.AddScoped<ICustomerCommandRepository, CustomerCommandRepository>();
         services.AddScoped<ICustomerQueryRepository, CustomerQueryRepository>();
 
-        // 4. Unit of Work
-        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+               // 4. Unit of Work
+               services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+
 
         return services;
     }

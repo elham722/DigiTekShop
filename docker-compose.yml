@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: DigiTekShop.API/Dockerfile
+    ports:
+      - "5000:80"
+      - "5001:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80;https://+:443
+      - ConnectionStrings__DBConnection=Server=sqlserver;Database=DigiTekShopDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;
+      - ConnectionStrings__Redis=redis:6379
+      # - RedisCache__InstanceName=digitek:
+    depends_on:
+      - sqlserver
+      - redis
+    volumes:
+      - ~/.aspnet/https:/https:ro
+
+  # SQL Server Database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Database Migration Service
+  migration:
+    build:
+      context: .
+      dockerfile: DigiTekShop.API/Dockerfile
+    command: ["dotnet", "ef", "database", "update", "--project", "DigiTekShop.Persistence", "--startup-project", "DigiTekShop.API"]
+    environment:
+      - ConnectionStrings__DBConnection=Server=sqlserver;Database=DigiTekShopDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;
+    depends_on:
+      - sqlserver
+    profiles:
+      - migration
+
+volumes:
+  sqlserver_data:
+  redis_data:

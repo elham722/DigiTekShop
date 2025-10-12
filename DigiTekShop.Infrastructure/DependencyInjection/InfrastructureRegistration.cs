@@ -54,8 +54,12 @@ public static class InfrastructureRegistration
         services.AddSingleton<IRateLimiter, RedisRateLimiter>();
         services.AddSingleton<ITokenBlacklistService, RedisTokenBlacklistService>();
 
-        // DomainEvent Publisher (in-process MediatR)
-        services.AddScoped<IDomainEventPublisher, MediatRDomainEventPublisher>();
+               // DomainEvent Publisher (in-process MediatR)
+               services.AddScoped<IDomainEventPublisher, MediatRDomainEventPublisher>();
+
+               // Outbox pattern for reliable messaging
+               services.AddScoped<IOutboxEventRepository, InfrastructureOutboxEventRepository>();
+               services.AddHostedService<OutboxEventProcessor>();
 
         // 5) HealthCheck
         services.AddHealthChecks().AddRedis(redisCs, name: "redis");
