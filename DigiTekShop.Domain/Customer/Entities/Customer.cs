@@ -71,14 +71,14 @@ public sealed class Customer : VersionedAggregateRoot<CustomerId>
 
         if (_addresses.Count == 0)
         {
-            address.MakeDefault();
+            address.SetAsDefault();
         }
         else if (asDefault)
         {
             for (int i = 0; i < _addresses.Count; i++)
-                _addresses[i].UnsetDefault();
+                _addresses[i].SetAsNonDefault();
 
-            address.MakeDefault();
+            address.SetAsDefault();
 
             var newIndex = _addresses.Count;
          
@@ -96,9 +96,9 @@ public sealed class Customer : VersionedAggregateRoot<CustomerId>
             return Result.Failure("Address index is out of range.", "CUSTOMER.ADDRESS_INDEX_RANGE");
 
         for (int i = 0; i < _addresses.Count; i++)
-            _addresses[i].UnsetDefault();
+            _addresses[i].SetAsNonDefault();
 
-        _addresses[index].MakeDefault();
+        _addresses[index].SetAsDefault();
 
         RaiseDomainEvent(new CustomerDefaultAddressChanged(Id.Value, index));
         EnsureInvariants();
