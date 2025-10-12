@@ -1,17 +1,13 @@
 ﻿namespace DigiTekShop.Contracts.Auth.PhoneVerification
 {
-    public class PhoneVerificationStatsDto
+    public record PhoneVerificationStatsDto(
+        int TotalCodes,
+        int VerifiedCodes,
+        int ExpiredCodes,
+        int FailedAttempts,
+        DateTime? LastVerificationAt
+    )
     {
-        public int TotalCodes { get; set; }
-
-        public int VerifiedCodes { get; set; }
-
-        public int ExpiredCodes { get; set; }
-
-        public int FailedAttempts { get; set; }
-
-        public DateTime? LastVerificationAt { get; set; }
-
         public double SuccessRate => TotalCodes > 0 ? (double)VerifiedCodes / TotalCodes * 100 : 0;
     }
 }
