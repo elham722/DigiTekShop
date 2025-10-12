@@ -17,6 +17,8 @@ namespace DigiTekShop.API.Controllers.Customers.V1;
 [ApiVersion("1.0")]
 [Authorize]
 [Produces("application/json")]
+[ApiExplorerSettings(GroupName = "v1-customers")]
+[Tags("Customers")]
 public sealed class CustomersQueryController : ApiControllerBase
 {
     private readonly ISender _sender;
@@ -28,67 +30,40 @@ public sealed class CustomersQueryController : ApiControllerBase
         _logger = logger;
     }
 
-  
-    [HttpGet("{customerId:guid}")]
+    [HttpGet("{customerId:guid}", Name = "GetCustomerById")]
     [ProducesResponseType(typeof(ApiResponse<CustomerView>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCustomerById(
-        Guid customerId,
-        CancellationToken ct = default)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetCustomerById([FromRoute] Guid customerId, CancellationToken ct = default)
     {
-        var query = new GetCustomerByIdQuery(customerId);
-        var result = await _sender.Send(query, ct);
+        var result = await _sender.Send(new GetCustomerByIdQuery(customerId), ct);
 
-        // If customer not found, return 404
+        // اختیار: Null را در لایه اپلیکیشن به NotFound ترجمه کن تا این if حذف شود
         if (result.IsSuccess && result.Value is null)
         {
-            return NotFound(new ProblemDetails
-            {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Customer not found",
-                Detail = $"Customer with ID {customerId} was not found.",
-                Instance = HttpContext.Request.Path
-            });
+            return NotFound(); // ProblemDetails سراسری
         }
 
         return this.ToActionResult(result);
     }
 
-    
     [HttpGet("me")]
     [ProducesResponseType(typeof(ApiResponse<CustomerView>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyProfile(CancellationToken ct = default)
     {
-       
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        if (!Guid.TryParse(userIdClaim, out var userId))
         {
-            _logger.LogWarning("User ID not found in claims or invalid");
-            return Unauthorized(new ProblemDetails
-            {
-                Status = StatusCodes.Status401Unauthorized,
-                Title = "Unauthorized",
-                Detail = "User ID not found in token claims.",
-                Instance = HttpContext.Request.Path
-            });
+            _logger.LogWarning("Invalid or missing NameIdentifier");
+            return Unauthorized();
         }
 
-        var query = new GetMyCustomerProfileQuery(userId);
-        var result = await _sender.Send(query, ct);
+        var result = await _sender.Send(new GetMyCustomerProfileQuery(userId), ct);
 
-        // If customer profile not found for this user
         if (result.IsSuccess && result.Value is null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Customer profile not found",
-                Detail = "No customer profile exists for this user. Please register as a customer first.",
-                Instance = HttpContext.Request.Path
-            });
-        }
+            return NotFound();
 
         return this.ToActionResult(result);
     }

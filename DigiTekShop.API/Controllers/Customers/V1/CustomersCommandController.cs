@@ -20,6 +20,8 @@ namespace DigiTekShop.API.Controllers.Customers.V1;
 [Authorize]
 [Produces("application/json")]
 [Consumes("application/json")]
+[ApiExplorerSettings(GroupName = "v1-customers")]
+[Tags("Customers")]
 public sealed class CustomersCommandController : ApiControllerBase
 {
     private readonly ISender _sender;
@@ -31,142 +33,92 @@ public sealed class CustomersCommandController : ApiControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Register a new customer
-    /// </summary>
-    /// <param name="request">Customer registration data</param>
-    /// <param name="ct">Cancellation token</param>
-    /// <returns>Customer ID</returns>
+    /// <summary>Register a new customer</summary>
     [HttpPost("register")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> RegisterCustomer(
-        [FromBody] RegisterCustomerDto request,
-        CancellationToken ct)
+    public async Task<IActionResult> RegisterCustomer([FromBody] RegisterCustomerDto request, CancellationToken ct)
     {
-        var command = new RegisterCustomerCommand(request);
-        var result = await _sender.Send(command, ct);
+        var result = await _sender.Send(new RegisterCustomerCommand(request), ct);
+         return this.ToActionResult(result);
 
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("Customer registered successfully: {CustomerId}", result.Value);
-            return this.ToActionResult(result, StatusCodes.Status201Created);
-        }
-
-        return this.ToActionResult(result);
     }
 
-    /// <summary>
-    /// Add a new address to customer
-    /// </summary>
-    /// <param name="customerId">Customer ID</param>
-    /// <param name="request">Address data</param>
-    /// <param name="ct">Cancellation token</param>
+    /// <summary>Add a new address to customer</summary>
     [HttpPost("{customerId:guid}/addresses")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(void), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AddAddress(
-        Guid customerId,
+        [FromRoute] Guid customerId,
         [FromBody] AddressDto request,
         [FromQuery] bool asDefault = false,
         CancellationToken ct = default)
     {
-        var command = new AddAddressCommand(customerId, request, asDefault);
-        var result = await _sender.Send(command, ct);
+        var result = await _sender.Send(new AddAddressCommand(customerId, request, asDefault), ct);
+        if (!result.IsSuccess) return this.ToActionResult(result);
 
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("Address added for customer: {CustomerId}", customerId);
-        }
+        _logger.LogInformation("Address added for customer: {CustomerId}", customerId);
 
-        return this.ToActionResult(result);
+        // اگر آدرس id ندارد، مسیر مشتری را برگردان
+        return CreatedAtAction(
+            nameof(CustomersQueryController.GetCustomerById),
+            "CustomersQuery",
+            new { version = "1.0", customerId },
+            null);
     }
 
-    /// <summary>
-    /// Change customer email
-    /// </summary>
-    /// <param name="customerId">Customer ID</param>
-    /// <param name="newEmail">New email address</param>
-    /// <param name="ct">Cancellation token</param>
+    
     [HttpPut("{customerId:guid}/email")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> ChangeEmail(
-        Guid customerId,
-        [FromBody] string newEmail,
-        CancellationToken ct = default)
+    public async Task<IActionResult> ChangeEmail(ChangeEmailCommand command,CancellationToken ct = default)
     {
-        var command = new ChangeEmailCommand(customerId, newEmail);
         var result = await _sender.Send(command, ct);
+        if (!result.IsSuccess) return this.ToActionResult(result);
 
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("Email changed for customer: {CustomerId}", customerId);
-        }
-
-        return this.ToActionResult(result);
+        _logger.LogInformation("Email changed for customer: {CustomerId}", command.CustomerId);
+        return NoContent();
     }
 
-    /// <summary>
-    /// Set default address for customer
-    /// </summary>
-    /// <param name="customerId">Customer ID</param>
-    /// <param name="addressIndex">Index of the address to set as default</param>
-    /// <param name="ct">Cancellation token</param>
-    [HttpPut("{customerId:guid}/addresses/{addressIndex:int}/set-default")]
+    /// <summary>Set default address for customer</summary>
+    [HttpPut("{customerId:guid}/addresses/{addressIndex:int}/default")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetDefaultAddress(
-        Guid customerId,
-        int addressIndex,
+        [FromRoute] Guid customerId,
+        [FromRoute] int addressIndex,
         CancellationToken ct = default)
     {
-        var command = new SetDefaultAddressCommand(customerId, addressIndex);
-        var result = await _sender.Send(command, ct);
+        var result = await _sender.Send(new SetDefaultAddressCommand(customerId, addressIndex), ct);
+        if (!result.IsSuccess) return this.ToActionResult(result);
 
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("Default address set for customer: {CustomerId}, Index: {Index}",
-                customerId, addressIndex);
-        }
-
-        return this.ToActionResult(result);
+        _logger.LogInformation("Default address set: {CustomerId} idx={Index}", customerId, addressIndex);
+        return NoContent();
     }
 
-    /// <summary>
-    /// Update customer profile
-    /// </summary>
-    /// <param name="customerId">Customer ID</param>
-    /// <param name="fullName">Full name</param>
-    /// <param name="phone">Phone number (optional)</param>
-    /// <param name="ct">Cancellation token</param>
+    /// <summary>Update customer profile</summary>
     [HttpPut("{customerId:guid}/profile")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateProfile(
-        Guid customerId,
+        [FromRoute] Guid customerId,
         [FromBody] UpdateProfileRequest request,
         CancellationToken ct = default)
     {
-        var command = new UpdateProfileCommand(customerId, request.FullName, request.Phone);
-        var result = await _sender.Send(command, ct);
+        var result = await _sender.Send(new UpdateProfileCommand(customerId, request.FullName, request.Phone), ct);
+        if (!result.IsSuccess) return this.ToActionResult(result);
 
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("Profile updated for customer: {CustomerId}", customerId);
-        }
-
-        return this.ToActionResult(result);
+        _logger.LogInformation("Profile updated: {CustomerId}", customerId);
+        return NoContent();
     }
 }
 
-/// <summary>
-/// Request model for updating customer profile
-/// </summary>
 public sealed record UpdateProfileRequest(string FullName, string? Phone);
+
