@@ -25,21 +25,21 @@ public class SecurityEventService : ISecurityEventService
 
     #region Helpers
 
-    private static SecurityEventDto ToDto(SecurityEvent e) => new()
-    {
-        Id = e.Id,
-        EventType = e.Type,
-        UserId = e.UserId,
-        IpAddress = e.IpAddress,
-        UserAgent = e.UserAgent,
-        DeviceId = e.DeviceId,
-        MetadataJson = e.MetadataJson,
-        OccurredAt = e.OccurredAt,
-        IsResolved = e.IsResolved,
-        ResolvedAt = e.ResolvedAt,
-        ResolvedBy = e.ResolvedBy,
-        ResolutionNotes = e.ResolutionNotes
-    };
+    private static SecurityEventDto ToDto(SecurityEvent e) => new(
+        e.Id,
+        e.Type,
+        e.UserId,
+        e.IpAddress,
+        e.UserAgent,
+        e.DeviceId,
+        e.MetadataJson,
+        e.OccurredAt,
+        e.IsResolved,
+        e.ResolvedAt,
+        e.ResolvedBy,
+        e.ResolutionNotes,
+        null
+    );
 
     #endregion
 
@@ -114,21 +114,21 @@ public class SecurityEventService : ISecurityEventService
                 .Where(se => !se.IsResolved)
                 .OrderByDescending(se => se.OccurredAt)
                 .Take(limit)
-                .Select(se => new SecurityEventDto
-                {
-                    Id = se.Id,
-                    EventType = se.Type,
-                    UserId = se.UserId,
-                    IpAddress = se.IpAddress,
-                    UserAgent = se.UserAgent,
-                    DeviceId = se.DeviceId,
-                    MetadataJson = se.MetadataJson,
-                    OccurredAt = se.OccurredAt,
-                    IsResolved = se.IsResolved,
-                    ResolvedAt = se.ResolvedAt,
-                    ResolvedBy = se.ResolvedBy,
-                    ResolutionNotes = se.ResolutionNotes
-                })
+                .Select(se => new SecurityEventDto(
+                    se.Id,
+                    se.Type,
+                    se.UserId,
+                    se.IpAddress,
+                    se.UserAgent,
+                    se.DeviceId,
+                    se.MetadataJson,
+                    se.OccurredAt,
+                    se.IsResolved,
+                    se.ResolvedAt,
+                    se.ResolvedBy,
+                    se.ResolutionNotes,
+                    null
+                ))
                 .ToListAsync(ct);
 
             return Result<IEnumerable<SecurityEventDto>>.Success(list);
@@ -151,21 +151,21 @@ public class SecurityEventService : ISecurityEventService
                 .Where(se => se.UserId == userId)
                 .OrderByDescending(se => se.OccurredAt)
                 .Take(limit)
-                .Select(se => new SecurityEventDto
-                {
-                    Id = se.Id,
-                    EventType = se.Type,
-                    UserId = se.UserId,
-                    IpAddress = se.IpAddress,
-                    UserAgent = se.UserAgent,
-                    DeviceId = se.DeviceId,
-                    MetadataJson = se.MetadataJson,
-                    OccurredAt = se.OccurredAt,
-                    IsResolved = se.IsResolved,
-                    ResolvedAt = se.ResolvedAt,
-                    ResolvedBy = se.ResolvedBy,
-                    ResolutionNotes = se.ResolutionNotes
-                })
+                .Select(se => new SecurityEventDto(
+                    se.Id,
+                    se.Type,
+                    se.UserId,
+                    se.IpAddress,
+                    se.UserAgent,
+                    se.DeviceId,
+                    se.MetadataJson,
+                    se.OccurredAt,
+                    se.IsResolved,
+                    se.ResolvedAt,
+                    se.ResolvedBy,
+                    se.ResolutionNotes,
+                    null
+                ))
                 .ToListAsync(ct);
 
             return Result<IEnumerable<SecurityEventDto>>.Success(list);
@@ -192,21 +192,21 @@ public class SecurityEventService : ISecurityEventService
             var list = await _context.SecurityEvents
                 .Where(se => se.IpAddress == ipAddress && se.OccurredAt >= cutoff)
                 .OrderByDescending(se => se.OccurredAt)
-                .Select(se => new SecurityEventDto
-                {
-                    Id = se.Id,
-                    EventType = se.Type,
-                    UserId = se.UserId,
-                    IpAddress = se.IpAddress,
-                    UserAgent = se.UserAgent,
-                    DeviceId = se.DeviceId,
-                    MetadataJson = se.MetadataJson,
-                    OccurredAt = se.OccurredAt,
-                    IsResolved = se.IsResolved,
-                    ResolvedAt = se.ResolvedAt,
-                    ResolvedBy = se.ResolvedBy,
-                    ResolutionNotes = se.ResolutionNotes
-                })
+                .Select(se => new SecurityEventDto(
+                    se.Id,
+                    se.Type,
+                    se.UserId,
+                    se.IpAddress,
+                    se.UserAgent,
+                    se.DeviceId,
+                    se.MetadataJson,
+                    se.OccurredAt,
+                    se.IsResolved,
+                    se.ResolvedAt,
+                    se.ResolvedBy,
+                    se.ResolutionNotes,
+                    null
+                ))
                 .ToListAsync(ct);
 
             return Result<IEnumerable<SecurityEventDto>>.Success(list);
@@ -267,28 +267,30 @@ public class SecurityEventService : ISecurityEventService
                 .Where(se => se.OccurredAt >= cutoff)
                 .ToListAsync(ct);
 
-            var stats = new SecurityEventStatsDto
-            {
-              
-                TotalEvents = events.Count,
-                UnresolvedEvents = events.Count(e => !e.IsResolved),
+            var total = events.Count;
+            var unresolved = events.Count(e => !e.IsResolved);
+            var high = events.Count(e => e.IsHighSeverity);
+            var medium = events.Count(e => e.IsMediumSeverity);
+            var low = events.Count(e => e.IsLowSeverity);
+            var byType = events
+                .GroupBy(e => e.Type)
+                .ToDictionary(g => g.Key.ToString(), g => g.Count());
+            var byIp = events
+                .Where(e => !string.IsNullOrWhiteSpace(e.IpAddress))
+                .GroupBy(e => e.IpAddress!)
+                .OrderByDescending(g => g.Count())
+                .Take(10)
+                .ToDictionary(g => g.Key, g => g.Count());
 
-               
-                HighSeverityEvents = events.Count(e => e.IsHighSeverity),
-                MediumSeverityEvents = events.Count(e => e.IsMediumSeverity),
-                LowSeverityEvents = events.Count(e => e.IsLowSeverity),
-
-                EventsByType = events
-                    .GroupBy(e => e.Type)
-                    .ToDictionary(g => g.Key.ToString(), g => g.Count()),
-
-                EventsByIp = events
-                    .Where(e => !string.IsNullOrWhiteSpace(e.IpAddress))
-                    .GroupBy(e => e.IpAddress!)
-                    .OrderByDescending(g => g.Count())
-                    .Take(10)
-                    .ToDictionary(g => g.Key, g => g.Count())
-            };
+            var stats = new SecurityEventStatsDto(
+                total,
+                unresolved,
+                high,
+                medium,
+                low,
+                byType,
+                byIp
+            );
 
             return Result<SecurityEventStatsDto>.Success(stats);
         }

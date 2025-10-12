@@ -46,23 +46,22 @@ public class DeviceManagementService : IDeviceManagementService
         if (user is null)
             return Result<IEnumerable<UserDeviceDto>>.Failure("User not found");
 
-         var devices = await _context.UserDevices
+            var devices = await _context.UserDevices
              .Where(d => d.UserId == user.Id) 
              .OrderByDescending(d => d.LastLoginAt)
-             .Select(d => new UserDeviceDto
-             {
-                 DeviceId = d.Id,
-                 DeviceName = d.DeviceName,
-                 DeviceFingerprint = d.DeviceFingerprint,
-                 BrowserInfo = d.BrowserInfo,
-                 OperatingSystem = d.OperatingSystem,
-                 IpAddress = d.IpAddress,
-                 IsActive = d.IsActive,
-                 IsTrusted = d.IsTrusted,
-                 TrustedAt = d.TrustedAt,
-                 TrustExpiresAt = d.TrustExpiresAt,
-                 LastLoginAt = d.LastLoginAt
-             })
+                .Select(d => new UserDeviceDto(
+                    d.Id,
+                    d.DeviceName,
+                    d.DeviceFingerprint,
+                    d.BrowserInfo,
+                    d.OperatingSystem,
+                    d.IpAddress,
+                    d.IsActive,
+                    d.IsTrusted,
+                    d.TrustedAt,
+                    d.TrustExpiresAt,
+                    d.LastLoginAt
+                ))
              .ToListAsync(ct);
 
         return Result<IEnumerable<UserDeviceDto>>.Success(devices);
@@ -259,15 +258,14 @@ public class DeviceManagementService : IDeviceManagementService
         if (user == null)
             return Result<DeviceStatsDto>.Failure("User not found");
 
-        var stats = new DeviceStatsDto
-        {
-            TotalDevices = user.Devices.Count,
-            ActiveDevices = user.GetActiveDeviceCount(),
-            TrustedDevices = user.GetTrustedDeviceCount(),
-            MaxActiveDevices = _deviceLimits.MaxActiveDevicesPerUser,
-            MaxTrustedDevices = _deviceLimits.MaxTrustedDevicesPerUser,
-            LastCleanupAt = DateTime.UtcNow 
-        };
+        var stats = new DeviceStatsDto(
+            user.Devices.Count,
+            user.GetActiveDeviceCount(),
+            user.GetTrustedDeviceCount(),
+            _deviceLimits.MaxActiveDevicesPerUser,
+            _deviceLimits.MaxTrustedDevicesPerUser,
+            DateTime.UtcNow
+        );
 
         return Result<DeviceStatsDto>.Success(stats);
     }

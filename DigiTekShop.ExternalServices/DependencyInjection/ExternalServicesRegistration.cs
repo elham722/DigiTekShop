@@ -14,7 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using DigiTekShop.ExternalServices.Email.Options;
 using DigiTekShop.ExternalServices.Email.Templates;
-using DigiTekShop.Contracts.SMS;
+using DigiTekShop.ExternalServices.Sms.Options;
 
 
 namespace DigiTekShop.ExternalServices.DependencyInjection

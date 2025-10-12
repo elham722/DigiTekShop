@@ -17,4 +17,7 @@ public sealed class PhoneTemplateSettings
     public int MaxSmsLength { get; set; } = 160;
 
     public string SenderNumber { get; set; } = string.Empty;
+
+    // Optional provider template name for OTP (e.g., Kavenegar template)
+    public string? OtpTemplateName { get; set; } = "login-otp";
 }

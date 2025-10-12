@@ -4,8 +4,8 @@ using DigiTekShop.Domain.Customer.Entities;
 
 namespace DigiTekShop.Contracts.Repositories.Customers;
 
-public interface ICustomerQueryRepository : IQueryRepository<Customer, CustomerId>
+public interface ICustomerQueryRepository : IQueryRepository<Domain.Customer.Entities.Customer, CustomerId>
 {
-    Task<Customer?> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
-    Task<Customer?> GetByEmailAsync(string email, CancellationToken ct = default);
+    Task<Domain.Customer.Entities.Customer?> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
+    Task<Domain.Customer.Entities.Customer?> GetByEmailAsync(string email, CancellationToken ct = default);
 }

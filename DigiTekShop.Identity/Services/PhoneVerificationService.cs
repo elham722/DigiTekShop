@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DigiTekShop.Contracts.Auth.PhoneVerification;
-using DigiTekShop.Contracts.SMS;
+ 
 
 namespace DigiTekShop.Identity.Services;
 
@@ -21,7 +21,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly PhoneVerificationSettings _settings;
     private readonly IRateLimiter _rateLimiter;
-    private readonly KavenegarSettings _smsCfg;
+    
     private readonly ILogger<PhoneVerificationService> _logger;
 
     public PhoneVerificationService(
@@ -30,7 +30,6 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         DigiTekShopIdentityDbContext context,
         IOptions<PhoneVerificationSettings> settings,
         IRateLimiter rateLimiter,
-        IOptions<KavenegarSettings> smsOptions,
         ILogger<PhoneVerificationService> logger)
     {
         _userManager = userManager;
@@ -38,7 +37,6 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         _context = context;
         _settings = settings.Value;
         _rateLimiter = rateLimiter;
-        _smsCfg = smsOptions.Value;
         _logger = logger;
     }
 
@@ -106,7 +104,8 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
 
         await GetOrCreateAndPersistVerificationAsync(user.Id, hash, expires, phoneNumber, ct);
 
-        var sendResult = await _phoneSender.SendCodeAsync(phoneNumber, code, _smsCfg.OtpTemplate);
+        var templateName = _settings.Template.OtpTemplateName;
+        var sendResult = await _phoneSender.SendCodeAsync(phoneNumber, code, templateName);
 
         if (sendResult.IsFailure) return Result.Failure("Failed to send SMS.");
 
@@ -200,16 +199,15 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         if (verification == null)
             return null;
 
-        return new PhoneVerificationStatusDto
-        {
-            IsVerified = verification.IsVerified,
-            IsExpired = verification.IsExpired(),
-            Attempts = verification.Attempts,
-            CreatedAt = verification.CreatedAt,
-            ExpiresAt = verification.ExpiresAt,
-            VerifiedAt = verification.VerifiedAt,
-            CanResend = DateTime.UtcNow >= verification.CreatedAt.AddMinutes(_settings.ResendCooldownMinutes)
-        };
+        return new PhoneVerificationStatusDto(
+            IsVerified: verification.IsVerified,
+            IsExpired: verification.IsExpired(),
+            Attempts: verification.Attempts,
+            CreatedAt: verification.CreatedAt,
+            ExpiresAt: verification.ExpiresAt,
+            VerifiedAt: verification.VerifiedAt,
+            CanResend: DateTime.UtcNow >= verification.CreatedAt.AddMinutes(_settings.ResendCooldownMinutes)
+        );
     }
 
  
@@ -244,16 +242,15 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
             .AsNoTracking()
             .Where(pv => pv.UserId == userId)
             .GroupBy(pv => 1)
-            .Select(g => new PhoneVerificationStatsDto
-            {
-                TotalCodes = g.Count(),
-                VerifiedCodes = g.Count(pv => pv.IsVerified),
-                ExpiredCodes = g.Count(pv => pv.ExpiresAt <= DateTime.UtcNow && !pv.IsVerified),
-                FailedAttempts = g.Sum(pv => pv.Attempts),
-                LastVerificationAt = g.Max(pv => pv.CreatedAt)
-            })
+            .Select(g => new PhoneVerificationStatsDto(
+                g.Count(),
+                g.Count(pv => pv.IsVerified),
+                g.Count(pv => pv.ExpiresAt <= DateTime.UtcNow && !pv.IsVerified),
+                g.Sum(pv => pv.Attempts),
+                g.Max(pv => pv.CreatedAt)
+            ))
             .FirstOrDefaultAsync(ct);
 
-        return stats ?? new PhoneVerificationStatsDto();
+        return stats ?? new PhoneVerificationStatsDto(0,0,0,0,null);
     }
 }

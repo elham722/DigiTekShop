@@ -449,16 +449,15 @@ public sealed class PasswordResetService : IPasswordService
             .FirstOrDefaultAsync(ct);
 
         if (activeTokens == null)
-            return new PasswordResetThrottleStatus { HasActiveToken = false };
+            return new PasswordResetThrottleStatus(false, false, 0, null, null);
 
-        return new PasswordResetThrottleStatus
-        {
-            HasActiveToken = true,
-            IsThrottled = activeTokens.IsThrottled,
-            AttemptCount = activeTokens.AttemptCount,
-            ThrottleUntil = activeTokens.ThrottleUntil,
-            LastAttemptAt = activeTokens.LastAttemptAt
-        };
+        return new PasswordResetThrottleStatus(
+            true,
+            activeTokens.IsThrottled,
+            activeTokens.AttemptCount,
+            activeTokens.ThrottleUntil,
+            activeTokens.LastAttemptAt
+        );
     }
 
     private string HashToken(string token)
