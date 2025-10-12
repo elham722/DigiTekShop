@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.DTOs.SMS
+﻿namespace DigiTekShop.Contracts.SMS
 {
     public class KavenegarResponse
     {

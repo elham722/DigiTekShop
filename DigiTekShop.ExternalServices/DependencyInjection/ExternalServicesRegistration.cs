@@ -12,9 +12,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using DigiTekShop.Contracts.DTOs.SMS;
 using DigiTekShop.ExternalServices.Email.Options;
 using DigiTekShop.ExternalServices.Email.Templates;
+using DigiTekShop.Contracts.SMS;
 
 
 namespace DigiTekShop.ExternalServices.DependencyInjection

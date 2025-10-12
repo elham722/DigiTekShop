@@ -9,8 +9,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using DigiTekShop.Contracts.DTOs.SMS;
 using DigiTekShop.Contracts.Auth.PhoneVerification;
+using DigiTekShop.Contracts.SMS;
 
 namespace DigiTekShop.Identity.Services;
 

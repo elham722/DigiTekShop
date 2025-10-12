@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.DTOs.Customer;
+﻿namespace DigiTekShop.Contracts.Customer;
 
 public sealed record AddressDto(
     string Line1,

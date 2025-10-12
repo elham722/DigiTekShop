@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Customer;
+﻿using DigiTekShop.Contracts.Customer;
 using DigiTekShop.SharedKernel.Results;
 using MediatR;
 

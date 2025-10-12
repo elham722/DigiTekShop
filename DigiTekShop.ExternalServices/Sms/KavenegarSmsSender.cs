@@ -1,6 +1,6 @@
 // DigiTekShop.ExternalServices.Sms.KavenegarSmsSender
-using DigiTekShop.Contracts.DTOs.SMS;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
+using DigiTekShop.Contracts.SMS;
 using DigiTekShop.SharedKernel.Guards;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.Extensions.Logging;

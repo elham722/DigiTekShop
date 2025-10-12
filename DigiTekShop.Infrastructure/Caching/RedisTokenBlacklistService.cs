@@ -1,4 +1,4 @@
-using DigiTekShop.Contracts.DTOs.Cache;
+using DigiTekShop.Contracts.Cache;
 using DigiTekShop.Contracts.Interfaces.Caching;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
