@@ -1,22 +1,20 @@
 using System.Diagnostics;
-using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace DigiTekShop.Application.Behaviors;
 
-public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
+public sealed class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
 {
     private readonly ILogger<PerformanceBehavior<TRequest, TResponse>> _logger;
-    private readonly int _thresholdInMilliseconds;
+    private const int DefaultThresholdMs = 1000;
 
-    public PerformanceBehavior(ILogger<PerformanceBehavior<TRequest, TResponse>> logger, int thresholdInMilliseconds = 1000)
+    public PerformanceBehavior(ILogger<PerformanceBehavior<TRequest, TResponse>> logger)
     {
         _logger = logger;
-        _thresholdInMilliseconds = thresholdInMilliseconds;
     }
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
     {
         var requestName = typeof(TRequest).Name;
         var stopwatch = Stopwatch.StartNew();
@@ -25,13 +23,13 @@ public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TReque
         
         stopwatch.Stop();
 
-        if (stopwatch.ElapsedMilliseconds > _thresholdInMilliseconds)
+        if (stopwatch.ElapsedMilliseconds > DefaultThresholdMs)
         {
             _logger.LogWarning(
-                "Performance issue detected: Request {RequestName} took {ElapsedMilliseconds}ms (threshold: {Threshold}ms)",
+                "Performance issue: {RequestName} took {ElapsedMs}ms (threshold: {ThresholdMs}ms)",
                 requestName,
                 stopwatch.ElapsedMilliseconds,
-                _thresholdInMilliseconds);
+                DefaultThresholdMs);
         }
 
         return response;

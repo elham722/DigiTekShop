@@ -1,33 +1,48 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
-using DigiTekShop.Domain.Customer.Entities;
-using DigiTekShop.Domain.Customer.ValueObjects;
-using DigiTekShop.SharedKernel.Results;
-using MediatR;
 
 namespace DigiTekShop.Application.Customers.Commands.AddAddress;
 
-public sealed class AddAddressHandler : IRequestHandler<AddAddressCommand, Result>
+public sealed class AddAddressHandler : ICommandHandler<AddAddressCommand>
 {
-    private readonly ICustomerQueryRepository _q;
-    private readonly ICustomerCommandRepository _c;
+    private readonly ICustomerQueryRepository _queryRepo;
+    private readonly ICustomerCommandRepository _commandRepo;
 
-    public AddAddressHandler(ICustomerQueryRepository q, ICustomerCommandRepository c)
+    public AddAddressHandler(
+        ICustomerQueryRepository queryRepo,
+        ICustomerCommandRepository commandRepo)
     {
-        _q = q; _c = c;
+        _queryRepo = queryRepo;
+        _commandRepo = commandRepo;
     }
 
     public async Task<Result> Handle(AddAddressCommand request, CancellationToken ct)
     {
-        var customer = await _q.GetByIdAsync(new CustomerId(request.CustomerId), ct: ct);
-        if (customer is null) return Result.Failure("Customer not found.");
+        var customerId = new CustomerId(request.CustomerId);
 
-        var a = request.Address;
-        var vo = new Address(a.Line1, a.Line2, a.City, a.State, a.PostalCode, a.Country, a.IsDefault);
+        // Get customer (AsNoTracking)
+        var customer = await _queryRepo.GetByIdAsync(customerId, ct: ct);
+        if (customer is null)
+            return Result.Failure("Customer not found.");
 
-        var op = customer.AddAddress(vo, request.AsDefault);
-        if (op.IsFailure) return op;
+        // Map DTO to Value Object
+        var addressDto = request.Address;
+        var address = new Address(
+            line1: addressDto.Line1,
+            line2: addressDto.Line2,
+            city: addressDto.City,
+            state: addressDto.State,
+            postalCode: addressDto.PostalCode,
+            country: addressDto.Country,
+            isDefault: addressDto.IsDefault);
 
-        await _c.UpdateAsync(customer, ct); // ذخیره توسط Behavior
+        // Add address using domain logic
+        var addResult = customer.AddAddress(address, request.AsDefault);
+        if (addResult.IsFailure)
+            return addResult;
+
+        // Update customer (SaveChanges called by UnitOfWork)
+        await _commandRepo.UpdateAsync(customer, ct);
+
         return Result.Success();
     }
 }

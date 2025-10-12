@@ -1,27 +1,37 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
-using DigiTekShop.Domain.Customer.Entities;
-using DigiTekShop.SharedKernel.Results;
-using MediatR;
 
 namespace DigiTekShop.Application.Customers.Commands.SetDefaultAddress;
 
-public sealed class SetDefaultAddressHandler : IRequestHandler<SetDefaultAddressCommand, Result>
+public sealed class SetDefaultAddressHandler : ICommandHandler<SetDefaultAddressCommand>
 {
-    private readonly ICustomerQueryRepository _q;
-    private readonly ICustomerCommandRepository _c;
+    private readonly ICustomerQueryRepository _queryRepo;
+    private readonly ICustomerCommandRepository _commandRepo;
 
-    public SetDefaultAddressHandler(ICustomerQueryRepository q, ICustomerCommandRepository c)
-    { _q = q; _c = c; }
+    public SetDefaultAddressHandler(
+        ICustomerQueryRepository queryRepo,
+        ICustomerCommandRepository commandRepo)
+    {
+        _queryRepo = queryRepo;
+        _commandRepo = commandRepo;
+    }
 
     public async Task<Result> Handle(SetDefaultAddressCommand request, CancellationToken ct)
     {
-        var customer = await _q.GetByIdAsync(new CustomerId(request.CustomerId), ct: ct);
-        if (customer is null) return Result.Failure("Customer not found.");
+        var customerId = new CustomerId(request.CustomerId);
 
-        var r = customer.SetDefaultAddress(request.Index);
-        if (r.IsFailure) return r;
+        // Get customer (AsNoTracking)
+        var customer = await _queryRepo.GetByIdAsync(customerId, ct: ct);
+        if (customer is null)
+            return Result.Failure("Customer not found.");
 
-        await _c.UpdateAsync(customer, ct);
+        // Set default address using domain logic
+        var setDefaultResult = customer.SetDefaultAddress(request.AddressIndex);
+        if (setDefaultResult.IsFailure)
+            return setDefaultResult;
+
+        // Update customer (SaveChanges called by UnitOfWork)
+        await _commandRepo.UpdateAsync(customer, ct);
+
         return Result.Success();
     }
 }

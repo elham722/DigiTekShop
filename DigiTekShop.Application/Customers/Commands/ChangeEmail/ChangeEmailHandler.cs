@@ -1,31 +1,42 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
-using DigiTekShop.Domain.Customer.Entities;
-using DigiTekShop.SharedKernel.Results;
-using MediatR;
 
 namespace DigiTekShop.Application.Customers.Commands.ChangeEmail;
 
-public sealed class ChangeEmailHandler : IRequestHandler<ChangeEmailCommand, Result>
+public sealed class ChangeEmailHandler : ICommandHandler<ChangeEmailCommand>
 {
-    private readonly ICustomerQueryRepository _q;
-    private readonly ICustomerCommandRepository _c;
+    private readonly ICustomerQueryRepository _queryRepo;
+    private readonly ICustomerCommandRepository _commandRepo;
 
-    public ChangeEmailHandler(ICustomerQueryRepository q, ICustomerCommandRepository c)
-    { _q = q; _c = c; }
+    public ChangeEmailHandler(
+        ICustomerQueryRepository queryRepo,
+        ICustomerCommandRepository commandRepo)
+    {
+        _queryRepo = queryRepo;
+        _commandRepo = commandRepo;
+    }
 
     public async Task<Result> Handle(ChangeEmailCommand request, CancellationToken ct)
     {
-        var customer = await _q.GetByIdAsync(new CustomerId(request.CustomerId), ct: ct);
-        if (customer is null) return Result.Failure("Customer not found.");
+        var customerId = new CustomerId(request.CustomerId);
 
-        var other = await _q.GetByEmailAsync(request.NewEmail, ct);
-        if (other is not null && other.Id.Value != request.CustomerId)
+        // Get customer (AsNoTracking)
+        var customer = await _queryRepo.GetByIdAsync(customerId, ct: ct);
+        if (customer is null)
+            return Result.Failure("Customer not found.");
+
+        // Check if new email is already in use by another customer
+        var existingCustomer = await _queryRepo.GetByEmailAsync(request.NewEmail, ct);
+        if (existingCustomer is not null && existingCustomer.Id.Value != request.CustomerId)
             return Result.Failure("Email already in use by another customer.");
 
-        var r = customer.ChangeEmail(request.NewEmail);
-        if (r.IsFailure) return r;
+        // Change email using domain logic
+        var changeResult = customer.ChangeEmail(request.NewEmail);
+        if (changeResult.IsFailure)
+            return changeResult;
 
-        await _c.UpdateAsync(customer, ct);
+        // Update customer (SaveChanges called by UnitOfWork)
+        await _commandRepo.UpdateAsync(customer, ct);
+
         return Result.Success();
     }
 }

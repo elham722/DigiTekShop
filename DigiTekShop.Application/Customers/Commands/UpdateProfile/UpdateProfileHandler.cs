@@ -1,27 +1,37 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
-using DigiTekShop.Domain.Customer.Entities;
-using DigiTekShop.SharedKernel.Results;
-using MediatR;
 
 namespace DigiTekShop.Application.Customers.Commands.UpdateProfile;
 
-public sealed class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Result>
+public sealed class UpdateProfileHandler : ICommandHandler<UpdateProfileCommand>
 {
-    private readonly ICustomerQueryRepository _q;
-    private readonly ICustomerCommandRepository _c;
+    private readonly ICustomerQueryRepository _queryRepo;
+    private readonly ICustomerCommandRepository _commandRepo;
 
-    public UpdateProfileHandler(ICustomerQueryRepository q, ICustomerCommandRepository c)
-    { _q = q; _c = c; }
+    public UpdateProfileHandler(
+        ICustomerQueryRepository queryRepo,
+        ICustomerCommandRepository commandRepo)
+    {
+        _queryRepo = queryRepo;
+        _commandRepo = commandRepo;
+    }
 
     public async Task<Result> Handle(UpdateProfileCommand request, CancellationToken ct)
     {
-        var customer = await _q.GetByIdAsync(new CustomerId(request.CustomerId), ct: ct);
-        if (customer is null) return Result.Failure("Customer not found.");
+        var customerId = new CustomerId(request.CustomerId);
 
-        var r = customer.UpdateProfile(request.FullName, request.Phone);
-        if (r.IsFailure) return r;
+        // Get customer (AsNoTracking)
+        var customer = await _queryRepo.GetByIdAsync(customerId, ct: ct);
+        if (customer is null)
+            return Result.Failure("Customer not found.");
 
-        await _c.UpdateAsync(customer, ct);
+        // Update profile using domain logic
+        var updateResult = customer.UpdateProfile(request.FullName, request.Phone);
+        if (updateResult.IsFailure)
+            return updateResult;
+
+        // Update customer (SaveChanges called by UnitOfWork)
+        await _commandRepo.UpdateAsync(customer, ct);
+
         return Result.Success();
     }
 }
