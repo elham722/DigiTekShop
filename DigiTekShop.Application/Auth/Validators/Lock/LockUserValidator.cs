@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.Auth.Lockout;
+﻿using DigiTekShop.Contracts.DTOs.Auth.Lockout;
 using FluentValidation;
 using System;
 using System.Collections.Generic;

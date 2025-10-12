@@ -1,6 +1,6 @@
-﻿using DigiTekShop.Contracts.Auth.Mfa;
-using DigiTekShop.Contracts.Auth.TwoFactor;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.DTOs.Auth.Mfa;
+using DigiTekShop.Contracts.DTOs.Auth.TwoFactor;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

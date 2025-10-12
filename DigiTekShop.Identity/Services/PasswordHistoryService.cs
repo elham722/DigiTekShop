@@ -1,5 +1,5 @@
-using DigiTekShop.Contracts.Auth.PasswordHistory;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.DTOs.Auth.PasswordHistory;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.SharedKernel.Guards;

@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DigiTekShop.Contracts.Auth.Register;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.DTOs.Auth.Register;
 using DigiTekShop.SharedKernel.Results;
 using MediatR;
 

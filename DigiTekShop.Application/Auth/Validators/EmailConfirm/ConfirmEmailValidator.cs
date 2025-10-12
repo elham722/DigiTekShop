@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DigiTekShop.Contracts.Auth.EmailConfirmation;
+using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 
 namespace DigiTekShop.Application.Auth.Validators.EmailConfirm
 {

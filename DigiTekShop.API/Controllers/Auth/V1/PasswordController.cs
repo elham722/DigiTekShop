@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using DigiTekShop.API.Models;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.API.Extensions;
-using DigiTekShop.Contracts.Auth.ResetPassword;
+using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 
 namespace DigiTekShop.API.Controllers.Auth.V1;
 

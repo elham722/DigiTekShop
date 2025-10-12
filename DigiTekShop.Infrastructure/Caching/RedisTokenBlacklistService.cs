@@ -1,5 +1,5 @@
-using DigiTekShop.Contracts.Cache;
-using DigiTekShop.Contracts.Interfaces.Caching;
+using DigiTekShop.Contracts.Abstractions.Caching;
+using DigiTekShop.Contracts.DTOs.Cache;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;

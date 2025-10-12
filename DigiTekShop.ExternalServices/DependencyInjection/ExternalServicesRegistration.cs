@@ -1,7 +1,4 @@
-﻿
-using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
-using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
-using DigiTekShop.ExternalServices.Sms;
+﻿using DigiTekShop.ExternalServices.Sms;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -15,6 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 using DigiTekShop.ExternalServices.Email.Options;
 using DigiTekShop.ExternalServices.Email.Templates;
 using DigiTekShop.ExternalServices.Sms.Options;
+using DigiTekShop.Contracts.Abstractions.ExternalServices.EmailSender;
+using DigiTekShop.Contracts.Abstractions.ExternalServices.PhoneSender;
 
 
 namespace DigiTekShop.ExternalServices.DependencyInjection

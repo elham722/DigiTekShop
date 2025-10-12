@@ -1,4 +1,4 @@
-using DigiTekShop.Contracts.Interfaces.Caching;
+using DigiTekShop.Contracts.Abstractions.Caching;
 using StackExchange.Redis;
 
 namespace DigiTekShop.Infrastructure.Caching;

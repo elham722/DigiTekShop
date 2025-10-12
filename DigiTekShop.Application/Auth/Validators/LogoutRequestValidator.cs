@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.Auth.Logout;
+﻿using DigiTekShop.Contracts.DTOs.Auth.Logout;
 using FluentValidation;
 using System;
 using System.Collections.Generic;

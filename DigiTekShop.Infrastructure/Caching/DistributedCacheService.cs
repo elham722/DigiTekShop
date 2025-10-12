@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text;
 using System.Text.Json;
-using DigiTekShop.Contracts.Interfaces.Caching;
+using DigiTekShop.Contracts.Abstractions.Caching;
 
 namespace DigiTekShop.Infrastructure.Caching;
 

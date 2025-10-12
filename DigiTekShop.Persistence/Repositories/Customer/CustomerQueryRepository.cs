@@ -1,9 +1,9 @@
 ﻿// DigiTekShop.Infrastructure/Persistence/Ef/CustomerQueryRepository.cs
 using Microsoft.EntityFrameworkCore;
-using DigiTekShop.Contracts.Repositories.Customers;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.Persistence.Ef;
 using DigiTekShop.Domain.Customer.Entities;
+using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
 
 namespace DigiTekShop.Persistence.Repositories.Customer;
 

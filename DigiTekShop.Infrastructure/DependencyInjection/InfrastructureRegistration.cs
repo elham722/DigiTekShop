@@ -1,11 +1,11 @@
 ﻿
-using DigiTekShop.Contracts.Events;
-using DigiTekShop.Contracts.Interfaces.Caching;
+using DigiTekShop.Contracts.Abstractions.Caching;
+using DigiTekShop.Contracts.Abstractions.Events;
+using DigiTekShop.Contracts.Abstractions.Time;
 using DigiTekShop.Infrastructure.Caching;
 using DigiTekShop.Infrastructure.Events;
 using DigiTekShop.Infrastructure.Pipeline;
 using DigiTekShop.Infrastructure.Time;
-using DigiTekShop.SharedKernel.Abstractions;
 using MediatR;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;

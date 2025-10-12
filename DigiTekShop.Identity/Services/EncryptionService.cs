@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 
 namespace DigiTekShop.Identity.Services;
 

@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.Customer;
+﻿using DigiTekShop.Contracts.DTOs.Customer;
 using MediatR;
 
 namespace DigiTekShop.Application.Customers.Queries.GetMyCustomerProfile;

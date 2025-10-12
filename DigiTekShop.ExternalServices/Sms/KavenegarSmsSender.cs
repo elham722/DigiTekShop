@@ -1,5 +1,5 @@
 // DigiTekShop.ExternalServices.Sms.KavenegarSmsSender
-using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
+using DigiTekShop.Contracts.Abstractions.ExternalServices.PhoneSender;
 using DigiTekShop.ExternalServices.Sms.Models;
 using DigiTekShop.ExternalServices.Sms.Options;
 using DigiTekShop.SharedKernel.Guards;

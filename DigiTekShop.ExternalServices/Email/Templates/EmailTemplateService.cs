@@ -1,5 +1,5 @@
-﻿using DigiTekShop.Contracts.Auth.EmailConfirmation;
-using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
+﻿using DigiTekShop.Contracts.Abstractions.ExternalServices.EmailSender;
+using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 using System;
 using System.Collections.Generic;
 using System.Linq;

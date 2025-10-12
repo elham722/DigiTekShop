@@ -1,4 +1,4 @@
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;

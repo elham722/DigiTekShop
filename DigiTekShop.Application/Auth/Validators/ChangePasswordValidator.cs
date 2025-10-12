@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.Auth.ResetPassword;
+﻿using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
 using FluentValidation;
 using System;
 using System.Collections.Generic;

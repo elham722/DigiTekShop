@@ -1,6 +1,3 @@
-using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
-using DigiTekShop.Contracts.Interfaces.Caching;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Options.PhoneVerification;
 using DigiTekShop.SharedKernel.Guards;
@@ -9,8 +6,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using DigiTekShop.Contracts.Auth.PhoneVerification;
- 
+using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
+using DigiTekShop.Contracts.Abstractions.Caching;
+using DigiTekShop.Contracts.Abstractions.ExternalServices.PhoneSender;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+
 
 namespace DigiTekShop.Identity.Services;
 

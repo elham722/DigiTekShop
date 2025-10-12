@@ -1,6 +1,6 @@
 ﻿using MediatR;
-using DigiTekShop.Contracts.Events;
 using DigiTekShop.SharedKernel.DomainShared.Events;
+using DigiTekShop.Contracts.Abstractions.Events;
 
 namespace DigiTekShop.Infrastructure.Events;
 

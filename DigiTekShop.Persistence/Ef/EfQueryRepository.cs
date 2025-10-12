@@ -1,9 +1,9 @@
 ﻿
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
-using DigiTekShop.Contracts.Repositories.Query;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.SharedKernel.DomainShared.Primitives;
+using DigiTekShop.Contracts.Abstractions.Repositories.Query;
 
 namespace DigiTekShop.Persistence.Ef;
 

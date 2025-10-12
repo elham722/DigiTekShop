@@ -1,5 +1,5 @@
-using DigiTekShop.Contracts.Auth.UserDevice;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.DTOs.Auth.UserDevice;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.SharedKernel.Exceptions.Common;

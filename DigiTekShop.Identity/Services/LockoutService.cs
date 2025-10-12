@@ -1,9 +1,9 @@
-﻿using DigiTekShop.Contracts.Interfaces.Identity.Auth;
-using DigiTekShop.Identity.Models;
+﻿using DigiTekShop.Identity.Models;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.Identity;
 using FluentValidation;
-using DigiTekShop.Contracts.Auth.Lockout;
+using DigiTekShop.Contracts.DTOs.Auth.Lockout;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 
 namespace DigiTekShop.Identity.Services;
 

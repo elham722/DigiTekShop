@@ -1,5 +1,4 @@
-﻿
-using DigiTekShop.Contracts.Auth.Login;
+﻿using DigiTekShop.Contracts.DTOs.Auth.Login;
 using FluentValidation;
 
 namespace DigiTekShop.Application.Auth.Validators;

@@ -1,6 +1,4 @@
-﻿using DigiTekShop.Contracts.Interfaces.Caching;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
-using DigiTekShop.Identity.Options.PhoneVerification;
+﻿using DigiTekShop.Identity.Options.PhoneVerification;
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.Extensions.Logging;
@@ -8,7 +6,9 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using DigiTekShop.Contracts.Enums.Auth;
 using DigiTekShop.Identity.Options;
-using DigiTekShop.Contracts.Auth.Register;
+using DigiTekShop.Contracts.DTOs.Auth.Register;
+using DigiTekShop.Contracts.Abstractions.Caching;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 
 namespace DigiTekShop.Identity.Services.Register;
 
