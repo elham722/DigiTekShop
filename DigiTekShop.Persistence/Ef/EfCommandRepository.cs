@@ -7,7 +7,7 @@ using System.Linq.Expressions;
 
 namespace DigiTekShop.Persistence.Ef;
 
-public sealed class EfCommandRepository<T, TId> : ICommandRepository<T, TId>
+public class EfCommandRepository<T, TId> : ICommandRepository<T, TId>
     where T : AggregateRoot<TId>
 {
     private readonly DigiTekShopDbContext _ctx;

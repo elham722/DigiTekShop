@@ -8,7 +8,7 @@
         public string? State { get; }
         public string PostalCode { get; }
         public string Country { get; }
-        public bool IsDefault { get; private set; }
+        public bool IsDefault { get;  }
 
         private Address() { } 
 
@@ -27,9 +27,12 @@
             Country = country.Trim();
             IsDefault = isDefault;
         }
+        public Address WithDefault(bool isDefault) => new(
+            Line1, Line2, City, State, PostalCode, Country, isDefault);
 
-        public void MakeDefault() => IsDefault = true;
-        public void UnsetDefault() => IsDefault = false;
+
+        public Address SetAsDefault() => WithDefault(true);
+        public Address SetAsNonDefault() => WithDefault(false);
 
         protected override IEnumerable<object?> GetEqualityComponents()
         {

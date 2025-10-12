@@ -3,8 +3,8 @@
 public sealed class Customer : VersionedAggregateRoot<CustomerId>
 {
     
-    private readonly List<Address> _addresses = new();
-    public IReadOnlyCollection<Address> Addresses => _addresses.AsReadOnly();
+    private readonly List<Address> _addresses = [];
+    public IReadOnlyList<Address> Addresses => _addresses;
 
     
     public Guid UserId { get; private set; }
