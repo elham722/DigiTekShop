@@ -2,15 +2,15 @@
 {
     public sealed class Address : ValueObject
     {
-        public string Line1 { get; }
+        public string Line1 { get; } = string.Empty;
         public string? Line2 { get; }
-        public string City { get; }
+        public string City { get; } = string.Empty;
         public string? State { get; }
-        public string PostalCode { get; }
-        public string Country { get; }
+        public string PostalCode { get; } = string.Empty;
+        public string Country { get; } = string.Empty;
         public bool IsDefault { get;  }
 
-        private Address() { } 
+        private Address() { } // EF Core needs this 
 
         public Address(string line1, string? line2, string city, string? state, string postalCode, string country, bool isDefault = false)
         {

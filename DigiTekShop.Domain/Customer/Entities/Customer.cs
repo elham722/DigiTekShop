@@ -71,21 +71,27 @@ public sealed class Customer : VersionedAggregateRoot<CustomerId>
 
         if (_addresses.Count == 0)
         {
-            address.SetAsDefault();
+            // اولین آدرس باید default باشد
+            _addresses.Add(address.SetAsDefault());
         }
         else if (asDefault)
         {
+            // همه آدرس‌های قبلی را non-default کن
             for (int i = 0; i < _addresses.Count; i++)
-                _addresses[i].SetAsNonDefault();
+                _addresses[i] = _addresses[i].SetAsNonDefault();
 
-            address.SetAsDefault();
+            // آدرس جدید را default کن
+            _addresses.Add(address.SetAsDefault());
 
-            var newIndex = _addresses.Count;
-         
+            var newIndex = _addresses.Count - 1;
             RaiseDomainEvent(new CustomerDefaultAddressChanged(Id.Value, newIndex));
         }
+        else
+        {
+            // آدرس جدید را non-default اضافه کن
+            _addresses.Add(address.SetAsNonDefault());
+        }
 
-        _addresses.Add(address);
         EnsureInvariants();
         return Result.Success();
     }
@@ -95,10 +101,12 @@ public sealed class Customer : VersionedAggregateRoot<CustomerId>
         if (index < 0 || index >= _addresses.Count)
             return Result.Failure("Address index is out of range.", "CUSTOMER.ADDRESS_INDEX_RANGE");
 
+        // همه آدرس‌ها را non-default کن
         for (int i = 0; i < _addresses.Count; i++)
-            _addresses[i].SetAsNonDefault();
+            _addresses[i] = _addresses[i].SetAsNonDefault();
 
-        _addresses[index].SetAsDefault();
+        // آدرس مورد نظر را default کن
+        _addresses[index] = _addresses[index].SetAsDefault();
 
         RaiseDomainEvent(new CustomerDefaultAddressChanged(Id.Value, index));
         EnsureInvariants();

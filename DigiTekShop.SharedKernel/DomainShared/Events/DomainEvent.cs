@@ -1,9 +1,18 @@
 ﻿namespace DigiTekShop.SharedKernel.DomainShared.Events;
 
-public abstract class DomainEvent : IDomainEvent
+public abstract record DomainEvent : IDomainEvent
 {
+    public DateTimeOffset OccurredOn { get; init; }
+    public string? CorrelationId { get; init; }
+    public IReadOnlyDictionary<string, object?>? Metadata { get; init; }
+
+    protected DomainEvent()
+    {
+        OccurredOn = DateTimeOffset.UtcNow;
+    }
+
     protected DomainEvent(
-        DateTimeOffset? occurredOn = null,
+        DateTimeOffset? occurredOn,
         string? correlationId = null,
         IReadOnlyDictionary<string, object?>? metadata = null)
     {
@@ -11,8 +20,4 @@ public abstract class DomainEvent : IDomainEvent
         CorrelationId = correlationId;
         Metadata = metadata;
     }
-
-    public DateTimeOffset OccurredOn { get; }
-    public string? CorrelationId { get; }
-    public IReadOnlyDictionary<string, object?>? Metadata { get; }
 }
