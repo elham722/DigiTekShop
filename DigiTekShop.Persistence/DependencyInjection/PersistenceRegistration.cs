@@ -1,37 +1,53 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
+﻿using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
+using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.Persistence.Ef;
+using DigiTekShop.Persistence.Repositories.Customer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace DigiTekShop.Persistence.DependencyInjection
+namespace DigiTekShop.Persistence.DependencyInjection;
+
+public static class PersistenceRegistration
 {
-    public static class PersistenceRegistration
+    public static IServiceCollection AddPersistenceServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        public static IServiceCollection AddPersistenceServices(
-            this IServiceCollection services,
-            IConfiguration configuration)
+        // 1. DbContext with SQL Server
+        var connectionString = configuration.GetConnectionString("DBConnection")
+            ?? throw new InvalidOperationException("Database connection string 'DBConnection' not found");
+
+        services.AddDbContext<DigiTekShopDbContext>(opt =>
         {
-            // DbContext
-            services.AddDbContext<DigiTekShopDbContext>(opt =>
-                opt.UseSqlServer(configuration.GetConnectionString("DBConnection")));
+            opt.UseSqlServer(connectionString, sqlOptions =>
+            {
+                sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorNumbersToAdd: null);
+                sqlOptions.CommandTimeout(30);
+            });
 
-            // Repositories (EF Generic)
-            services.AddScoped(typeof(ICommandRepository<,>), typeof(EfCommandRepository<,>));
-            services.AddScoped(typeof(IQueryRepository<,>), typeof(EfQueryRepository<,>));
+            // Enable detailed errors only in Development
+            // opt.EnableDetailedErrors();
+            // opt.EnableSensitiveDataLogging();
+        });
 
-            // Unit of Work (EF)
-            services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        // 2. Generic Repositories (Base)
+        services.AddScoped(typeof(ICommandRepository<,>), typeof(EfCommandRepository<,>));
+        services.AddScoped(typeof(IQueryRepository<,>), typeof(EfQueryRepository<,>));
 
-            return services;
-        }
+        // 3. Specific Repositories (Entity-specific)
+        services.AddScoped<ICustomerCommandRepository, CustomerCommandRepository>();
+        services.AddScoped<ICustomerQueryRepository, CustomerQueryRepository>();
+
+        // 4. Unit of Work
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+
+        return services;
     }
 }
