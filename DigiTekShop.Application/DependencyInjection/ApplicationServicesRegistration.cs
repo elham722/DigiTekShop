@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using DigiTekShop.Application.Authorization;
 using DigiTekShop.Application.Behaviors;
+using Mapster;
+using DigiTekShop.Application.Mapping;
 
 namespace DigiTekShop.Application.DependencyInjection
 {
@@ -20,6 +22,9 @@ namespace DigiTekShop.Application.DependencyInjection
                 cfg.AddMaps(assembly);
             });
             services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
+
+            // Mapster global configuration
+            MappingConfig.Register(TypeAdapterConfig.GlobalSettings);
 
       
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

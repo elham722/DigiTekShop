@@ -20,22 +20,8 @@ public sealed class GetMyCustomerProfileHandler : IQueryHandler<GetMyCustomerPro
         if (customer is null)
             return Result<CustomerView?>.Success(null);
 
-        // Map to DTO
-        var view = new CustomerView(
-            Id: customer.Id.Value,
-            UserId: customer.UserId,
-            FullName: customer.FullName,
-            Email: customer.Email,
-            Phone: customer.Phone,
-            Addresses: customer.Addresses.Select(a => new AddressDto(
-                Line1: a.Line1,
-                Line2: a.Line2,
-                City: a.City,
-                State: a.State,
-                PostalCode: a.PostalCode,
-                Country: a.Country,
-                IsDefault: a.IsDefault
-            )).ToList());
+        // Map to DTO via Mapster (in-memory mapping)
+        var view = customer.Adapt<CustomerView>();
 
         return Result<CustomerView?>.Success(view);
     }

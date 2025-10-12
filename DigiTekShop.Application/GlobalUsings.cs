@@ -18,3 +18,4 @@ global using DigiTekShop.Contracts.Abstractions.CQRS.Commands;
 global using DigiTekShop.Contracts.Abstractions.CQRS.Queries;
 global using DigiTekShop.Domain.Customer.Entities;
 global using DigiTekShop.Domain.Customer.ValueObjects;
+global using Mapster;
