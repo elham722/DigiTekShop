@@ -2,7 +2,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
-namespace DigiTekShop.Application.Common.Behaviors;
+namespace DigiTekShop.Application.Behaviors;
 
 public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
 {

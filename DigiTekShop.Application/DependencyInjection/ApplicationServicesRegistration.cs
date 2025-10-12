@@ -1,10 +1,10 @@
-﻿using DigiTekShop.Application.Common.Behaviors;
-using FluentValidation;
+﻿using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using DigiTekShop.Application.Authorization;
+using DigiTekShop.Application.Behaviors;
 
 namespace DigiTekShop.Application.DependencyInjection
 {

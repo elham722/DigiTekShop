@@ -2,7 +2,7 @@ using FluentValidation;
 using MediatR;
 using DigiTekShop.SharedKernel.Results;
 
-namespace DigiTekShop.Application.Common.Behaviors;
+namespace DigiTekShop.Application.Behaviors;
 
 public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
 {

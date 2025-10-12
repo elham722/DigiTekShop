@@ -2,7 +2,7 @@ using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
-namespace DigiTekShop.Application.Common.Behaviors;
+namespace DigiTekShop.Application.Behaviors;
 
 public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
