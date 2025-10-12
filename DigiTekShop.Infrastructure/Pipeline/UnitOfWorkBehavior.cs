@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.Abstractions.Repositories.Abstractions;
+﻿using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using MediatR;
 
 namespace DigiTekShop.Infrastructure.Pipeline;

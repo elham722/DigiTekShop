@@ -3,7 +3,7 @@ using DigiTekShop.API.Controllers.Common.V1;
 using DigiTekShop.API.Extensions;
 using DigiTekShop.API.Models;
 using DigiTekShop.Application.Auth.Register.Command;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 using DigiTekShop.Contracts.DTOs.Auth.Register;
 using MediatR;

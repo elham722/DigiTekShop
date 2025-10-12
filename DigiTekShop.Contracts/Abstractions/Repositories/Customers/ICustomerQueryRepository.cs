@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Repositories.Customers;
+﻿using DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
+
+namespace DigiTekShop.Contracts.Abstractions.Repositories.Customers;
 
 public interface ICustomerQueryRepository : IQueryRepository<Customer, CustomerId>
 {

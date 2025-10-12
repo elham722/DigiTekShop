@@ -1,4 +1,5 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Encryption;
 using DigiTekShop.Contracts.DTOs.Auth.Mfa;
 using DigiTekShop.Contracts.DTOs.Auth.TwoFactor;
 using DigiTekShop.SharedKernel.Results;

@@ -1,20 +1,23 @@
-﻿
-using DigiTekShop.Contracts.Interfaces.ExternalServices.PhoneSender;
+﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.DeviceManagement;
+using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
+using DigiTekShop.Contracts.Abstractions.Identity.Encryption;
+using DigiTekShop.Contracts.Abstractions.Identity.Lockout;
+using DigiTekShop.Contracts.Abstractions.Identity.Password;
+using DigiTekShop.Contracts.Abstractions.Identity.Permission;
+using DigiTekShop.Contracts.Abstractions.Identity.Phone;
+using DigiTekShop.Contracts.Abstractions.Identity.Registration;
+using DigiTekShop.Contracts.Abstractions.Identity.Security;
+using DigiTekShop.Contracts.Abstractions.Identity.Token;
 using DigiTekShop.Identity.Options;
+using DigiTekShop.Identity.Options.PhoneVerification;
+using DigiTekShop.Identity.Options.Security;
 using DigiTekShop.Identity.Services;
+using DigiTekShop.Identity.Services.Register;
+using DigiTekShop.Identity.Services.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
-using DigiTekShop.Identity.Options.PhoneVerification;
-using DigiTekShop.Identity.Services.Tokens;
-using DigiTekShop.Identity.Options.Security;
-using DigiTekShop.Identity.Services.Register;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 

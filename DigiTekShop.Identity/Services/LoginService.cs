@@ -1,4 +1,6 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Security;
+using DigiTekShop.Contracts.Abstractions.Identity.Token;
 using DigiTekShop.Contracts.DTOs.Auth.Login;
 using DigiTekShop.Contracts.DTOs.Auth.Logout;
 using DigiTekShop.Contracts.DTOs.Auth.Token;

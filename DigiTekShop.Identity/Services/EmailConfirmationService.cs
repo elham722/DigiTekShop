@@ -1,5 +1,5 @@
 ﻿using DigiTekShop.Contracts.Abstractions.ExternalServices.EmailSender;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 using DigiTekShop.Contracts.Enums.Audit;
 using DigiTekShop.Identity.Models;

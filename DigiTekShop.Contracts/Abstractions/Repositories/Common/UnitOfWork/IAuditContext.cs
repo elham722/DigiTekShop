@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Repositories.Abstractions;
+﻿namespace DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 
 public interface IAuditContext
 {

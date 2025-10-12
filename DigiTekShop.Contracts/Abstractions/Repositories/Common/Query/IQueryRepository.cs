@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Repositories.Query;
+﻿namespace DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
 
 public interface IQueryRepository<T, TId>
     where T : AggregateRoot<TId>

@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Repositories.Command;
+﻿using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
+
+namespace DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
 
 public interface ICommandRepository<T, TId>
     where T : AggregateRoot<TId>

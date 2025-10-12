@@ -1,9 +1,5 @@
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
-using DigiTekShop.Contracts.Interfaces.Caching;
-using DigiTekShop.Identity.Models;
+using DigiTekShop.Contracts.Abstractions.Identity.Permission;
 using DigiTekShop.SharedKernel.Results;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 

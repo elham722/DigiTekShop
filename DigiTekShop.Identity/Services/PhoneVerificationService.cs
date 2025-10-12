@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
 using DigiTekShop.Contracts.Abstractions.Caching;
 using DigiTekShop.Contracts.Abstractions.ExternalServices.PhoneSender;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Phone;
 
 
 namespace DigiTekShop.Identity.Services;

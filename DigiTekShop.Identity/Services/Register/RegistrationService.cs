@@ -8,7 +8,9 @@ using DigiTekShop.Contracts.Enums.Auth;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Contracts.DTOs.Auth.Register;
 using DigiTekShop.Contracts.Abstractions.Caching;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
+using DigiTekShop.Contracts.Abstractions.Identity.Phone;
+using DigiTekShop.Contracts.Abstractions.Identity.Registration;
 
 namespace DigiTekShop.Identity.Services.Register;
 

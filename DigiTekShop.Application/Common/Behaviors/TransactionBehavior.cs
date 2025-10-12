@@ -1,5 +1,5 @@
 using DigiTekShop.Contracts.Abstractions.CQRS.Commands;
-using DigiTekShop.Contracts.Abstractions.Repositories.Abstractions;
+using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using MediatR;
 using Microsoft.Extensions.Logging;
 

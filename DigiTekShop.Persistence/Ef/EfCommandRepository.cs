@@ -1,6 +1,5 @@
-﻿
-using DigiTekShop.Contracts.Abstractions.Repositories.Abstractions;
-using DigiTekShop.Contracts.Abstractions.Repositories.Command;
+﻿using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
+using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.SharedKernel.DomainShared.Primitives;
 using Microsoft.EntityFrameworkCore;

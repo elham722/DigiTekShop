@@ -13,7 +13,8 @@ using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.Contracts.Enums.Security;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
 using DigiTekShop.Contracts.Abstractions.Caching;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Token;
+using DigiTekShop.Contracts.Abstractions.Identity.Security;
 
 namespace DigiTekShop.Identity.Services.Tokens;
 

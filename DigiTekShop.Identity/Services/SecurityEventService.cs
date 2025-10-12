@@ -1,4 +1,4 @@
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Security;
 using DigiTekShop.Contracts.DTOs.Auth.SecurityEvent;
 using DigiTekShop.Contracts.Enums.Security;
 using DigiTekShop.Identity.Context;

@@ -1,5 +1,5 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Events;
-using DigiTekShop.Contracts.Abstractions.Repositories.Abstractions;
+using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using Microsoft.EntityFrameworkCore.Storage;

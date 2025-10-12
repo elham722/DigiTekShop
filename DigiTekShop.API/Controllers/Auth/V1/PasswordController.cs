@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using DigiTekShop.API.Models;
 using DigiTekShop.API.Extensions;
 using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Password;
 
 namespace DigiTekShop.API.Controllers.Auth.V1;
 

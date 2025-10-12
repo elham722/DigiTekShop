@@ -1,5 +1,5 @@
-﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
-using DigiTekShop.Contracts.Auth.EmailConfirmation;
+﻿using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
+using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

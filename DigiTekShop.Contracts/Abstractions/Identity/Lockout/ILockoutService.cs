@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Identity.Auth
+﻿namespace DigiTekShop.Contracts.Abstractions.Identity.Lockout
 {
     public interface ILockoutService
     {

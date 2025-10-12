@@ -3,7 +3,7 @@ using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.Identity;
 using FluentValidation;
 using DigiTekShop.Contracts.DTOs.Auth.Lockout;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+using DigiTekShop.Contracts.Abstractions.Identity.Lockout;
 
 namespace DigiTekShop.Identity.Services;
 
