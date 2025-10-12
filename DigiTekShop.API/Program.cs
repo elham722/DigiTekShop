@@ -379,6 +379,7 @@ app.UseModernSwagger(app.Environment);
 #region Endpoints
 
 app.UseMiddleware<NoStoreAuthMiddleware>();
+app.UseIdempotency(); // Add idempotency middleware
 app.MapControllers();
 
 // ✅ Health check endpoints

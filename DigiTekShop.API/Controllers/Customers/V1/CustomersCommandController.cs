@@ -34,35 +34,69 @@ public sealed class CustomersCommandController : ApiControllerBase
     }
 
     /// <summary>Register a new customer</summary>
-    [HttpPost("register")]
+    [HttpPost]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(ApiResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<CustomerRegistrationResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> RegisterCustomer([FromBody] RegisterCustomerDto request, CancellationToken ct)
+    public async Task<IActionResult> RegisterCustomer([FromBody] RegisterCustomerRequest request, CancellationToken ct)
     {
-        var result = await _sender.Send(new RegisterCustomerCommand(request), ct);
-         return this.ToActionResult(result);
-
+        // Convert request DTO to command DTO
+        var commandDto = new RegisterCustomerDto(
+            request.UserId,
+            request.FullName,
+            request.Email,
+            request.Phone
+        );
+        
+        var result = await _sender.Send(new RegisterCustomerCommand(commandDto), ct);
+        
+        if (result.IsSuccess)
+        {
+            var response = new CustomerRegistrationResponse(
+                result.Value,
+                request.FullName,
+                request.Email,
+                DateTime.UtcNow
+            );
+            
+            return CreatedAtAction(
+                nameof(CustomersQueryController.GetCustomerById),
+                "CustomersQuery",
+                new { version = "1.0", customerId = result.Value },
+                response);
+        }
+        
+        return this.ToActionResult(result);
     }
 
     /// <summary>Add a new address to customer</summary>
     [HttpPost("{customerId:guid}/addresses")]
-    [ProducesResponseType(typeof(void), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AddAddress(
         [FromRoute] Guid customerId,
-        [FromBody] AddressDto request,
+        [FromBody] AddAddressRequest request,
         [FromQuery] bool asDefault = false,
         CancellationToken ct = default)
     {
-        var result = await _sender.Send(new AddAddressCommand(customerId, request, asDefault), ct);
+        // Convert request DTO to command DTO
+        var addressDto = new AddressDto(
+            request.Line1,
+            request.Line2,
+            request.City,
+            request.State,
+            request.PostalCode,
+            request.Country,
+            request.IsDefault
+        );
+        
+        var result = await _sender.Send(new AddAddressCommand(customerId, addressDto, asDefault), ct);
         if (!result.IsSuccess) return this.ToActionResult(result);
 
         _logger.LogInformation("Address added for customer: {CustomerId}", customerId);
 
-        // اگر آدرس id ندارد، مسیر مشتری را برگردان
         return CreatedAtAction(
             nameof(CustomersQueryController.GetCustomerById),
             "CustomersQuery",
@@ -70,18 +104,21 @@ public sealed class CustomersCommandController : ApiControllerBase
             null);
     }
 
-    
+    /// <summary>Change customer email</summary>
     [HttpPut("{customerId:guid}/email")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> ChangeEmail(ChangeEmailCommand command,CancellationToken ct = default)
+    public async Task<IActionResult> ChangeEmail(
+        [FromRoute] Guid customerId,
+        [FromBody] ChangeEmailRequest request,
+        CancellationToken ct = default)
     {
-        var result = await _sender.Send(command, ct);
+        var result = await _sender.Send(new ChangeEmailCommand(customerId, request.NewEmail), ct);
         if (!result.IsSuccess) return this.ToActionResult(result);
 
-        _logger.LogInformation("Email changed for customer: {CustomerId}", command.CustomerId);
+        _logger.LogInformation("Email changed for customer: {CustomerId}", customerId);
         return NoContent();
     }
 
@@ -119,6 +156,4 @@ public sealed class CustomersCommandController : ApiControllerBase
         return NoContent();
     }
 }
-
-public sealed record UpdateProfileRequest(string FullName, string? Phone);
 

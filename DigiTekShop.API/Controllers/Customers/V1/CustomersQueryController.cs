@@ -31,17 +31,49 @@ public sealed class CustomersQueryController : ApiControllerBase
     }
 
     [HttpGet("{customerId:guid}", Name = "GetCustomerById")]
-    [ProducesResponseType(typeof(ApiResponse<CustomerView>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CustomerResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
     public async Task<IActionResult> GetCustomerById([FromRoute] Guid customerId, CancellationToken ct = default)
     {
         var result = await _sender.Send(new GetCustomerByIdQuery(customerId), ct);
 
-        // اختیار: Null را در لایه اپلیکیشن به NotFound ترجمه کن تا این if حذف شود
         if (result.IsSuccess && result.Value is null)
         {
-            return NotFound(); // ProblemDetails سراسری
+            return NotFound();
+        }
+
+        if (result.IsSuccess && result.Value is not null)
+        {
+            // Convert to response DTO
+            var customer = result.Value;
+            var response = new CustomerResponse(
+                customer.Id,
+                customer.UserId,
+                customer.FullName,
+                customer.Email,
+                customer.Phone,
+                DateTime.UtcNow, // TODO: Add CreatedAt to domain
+                DateTime.UtcNow, // TODO: Add UpdatedAt to domain
+                customer.Addresses.Select(a => new AddressResponse(
+                    a.Line1,
+                    a.Line2,
+                    a.City,
+                    a.State,
+                    a.PostalCode,
+                    a.Country,
+                    a.IsDefault
+                )).ToList()
+            );
+
+            // ETag support
+            var etag = response.GenerateETag();
+            var notModified = HttpContext.CheckETag(etag);
+            if (notModified != null) return notModified;
+
+            HttpContext.Response.SetETag(etag);
+            return Ok(new ApiResponse<CustomerResponse>(response));
         }
 
         return this.ToActionResult(result);
