@@ -1,4 +1,4 @@
-using DigiTekShop.Contracts.DTOs.Auth.PasswordHistory;
+using DigiTekShop.Contracts.Auth.PasswordHistory;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Options;

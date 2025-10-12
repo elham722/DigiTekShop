@@ -1,5 +1,5 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.Mfa;
-using DigiTekShop.Contracts.DTOs.Auth.TwoFactor;
+﻿using DigiTekShop.Contracts.Auth.Mfa;
+using DigiTekShop.Contracts.Auth.TwoFactor;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;

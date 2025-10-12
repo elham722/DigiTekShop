@@ -1,8 +1,7 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.EmailSender;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
-using DigiTekShop.Contracts.DTOs.Auth.EmailSender;
+using DigiTekShop.ExternalServices.Email.Options;
 namespace DigiTekShop.ExternalServices.Email
 {
     public sealed class SmtpHealthCheck : IHealthCheck

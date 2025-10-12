@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+﻿using DigiTekShop.Contracts.Auth.EmailConfirmation;
 using DigiTekShop.Contracts.Enums.Audit;
 using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
@@ -66,7 +66,7 @@ public class EmailConfirmationService : IEmailConfirmationService
         if (!validation.IsValid)
             return Result.Failure(validation.Errors.Select(e => e.ErrorMessage).ToList());
 
-        var user = await _userManager.FindByIdAsync(request.UserId);
+        var user = await _userManager.FindByIdAsync(request.UserId.ToString());
         if (user is null) return Result.Failure("Invalid user.");
         if (user.EmailConfirmed) return Result.Success();
 

@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.UserDevice;
+﻿using DigiTekShop.Contracts.Auth.UserDevice;
 using DigiTekShop.SharedKernel.Results;
 using System;
 using System.Collections.Generic;

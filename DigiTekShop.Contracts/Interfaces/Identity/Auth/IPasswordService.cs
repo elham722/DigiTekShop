@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
+﻿using DigiTekShop.Contracts.Auth.ResetPassword;
 using DigiTekShop.SharedKernel.Results;
 using System;
 using System.Collections.Generic;

@@ -1,7 +1,6 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+﻿using DigiTekShop.Contracts.Auth.EmailConfirmation;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DigiTekShop.API.Controllers.Auth.V1
@@ -18,7 +17,7 @@ namespace DigiTekShop.API.Controllers.Auth.V1
         // GET https://localhost:7055/account/confirm-email?userId=...&token=...
         [HttpGet("confirm-email")]
         [AllowAnonymous]
-        public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token, CancellationToken ct)
+        public async Task<IActionResult> ConfirmEmail([FromQuery] Guid userId, [FromQuery] string token, CancellationToken ct)
         {
             var res = await _emailConfirm.ConfirmEmailAsync(
                 new ConfirmEmailRequestDto(userId, token), ct);

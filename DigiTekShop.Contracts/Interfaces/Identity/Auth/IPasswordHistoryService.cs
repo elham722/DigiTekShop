@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.PasswordHistory;
+﻿using DigiTekShop.Contracts.Auth.PasswordHistory;
 using System;
 using System.Collections.Generic;
 using System.Linq;

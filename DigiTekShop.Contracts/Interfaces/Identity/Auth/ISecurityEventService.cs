@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.SecurityEvent;
+﻿using DigiTekShop.Contracts.Auth.SecurityEvent;
 using DigiTekShop.Contracts.Enums.Security;
 using DigiTekShop.SharedKernel.Results;
 using System;

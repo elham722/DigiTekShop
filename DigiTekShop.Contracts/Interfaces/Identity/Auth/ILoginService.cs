@@ -1,6 +1,6 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.Login;
-using DigiTekShop.Contracts.DTOs.Auth.Logout;
-using DigiTekShop.Contracts.DTOs.Auth.Token;
+﻿using DigiTekShop.Contracts.Auth.Login;
+using DigiTekShop.Contracts.Auth.Logout;
+using DigiTekShop.Contracts.Auth.Token;
 using DigiTekShop.SharedKernel.Results;
 using System;
 using System.Collections.Generic;

@@ -1,7 +1,4 @@
-﻿
-
-using DigiTekShop.Contracts.DTOs.Auth.Token;
-using DigiTekShop.Contracts.Interfaces.Caching;
+﻿using DigiTekShop.Contracts.Interfaces.Caching;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Identity.Options.Security;
@@ -16,6 +13,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.Contracts.Enums.Security;
+using DigiTekShop.Contracts.Auth.Token;
 
 namespace DigiTekShop.Identity.Services.Tokens;
 

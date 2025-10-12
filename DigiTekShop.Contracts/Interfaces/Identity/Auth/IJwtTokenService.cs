@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.Token;
+﻿using DigiTekShop.Contracts.Auth.Token;
 using DigiTekShop.SharedKernel.Results;
 using System.Security.Claims;
 

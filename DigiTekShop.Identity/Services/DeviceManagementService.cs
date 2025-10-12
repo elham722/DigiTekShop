@@ -1,4 +1,4 @@
-using DigiTekShop.Contracts.DTOs.Auth.UserDevice;
+using DigiTekShop.Contracts.Auth.UserDevice;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.Identity.Options;

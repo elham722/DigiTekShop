@@ -1,22 +1,16 @@
-﻿using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
-using DigiTekShop.Identity.Models;
+﻿using DigiTekShop.Contracts.Auth.ResetPassword;
+using DigiTekShop.Contracts.Enums.Audit;
+using DigiTekShop.Contracts.Interfaces.ExternalServices.EmailSender;
+using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Helpers.EmailTemplates;
+using DigiTekShop.Identity.Options;
+using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
-using DigiTekShop.SharedKernel.Guards;
-using Microsoft.AspNetCore.Identity;
+using FluentValidation;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
-using System.Text;
-using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
-using DigiTekShop.Identity.Options;
-using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
-using FluentValidation;
-using DigiTekShop.SharedKernel.Errors;
-using DigiTekShop.Contracts.Enums.Audit;
 
 namespace DigiTekShop.Identity.Services;
 

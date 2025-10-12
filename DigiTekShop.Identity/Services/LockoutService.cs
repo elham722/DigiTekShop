@@ -1,9 +1,9 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.Lockout;
-using DigiTekShop.Contracts.Interfaces.Identity.Auth;
+﻿using DigiTekShop.Contracts.Interfaces.Identity.Auth;
 using DigiTekShop.Identity.Models;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.Identity;
 using FluentValidation;
+using DigiTekShop.Contracts.Auth.Lockout;
 
 namespace DigiTekShop.Identity.Services;
 
@@ -33,10 +33,10 @@ public sealed class LockoutService : ILockoutService
             return Result<LockUserResponseDto>.Failure(errors);
         }
 
-        if (!Guid.TryParse(req.UserId, out var uid))
+        if (!Guid.TryParse(req.UserId.ToString(), out var uid))
             return Result<LockUserResponseDto>.Failure("Invalid user id");
 
-        var user = await _userManager.FindByIdAsync(req.UserId);
+        var user = await _userManager.FindByIdAsync(req.UserId.ToString());
         if (user is null) return Result<LockUserResponseDto>.Failure("User not found");
 
         var prevEnd = await _userManager.GetLockoutEndDateAsync(user);
@@ -64,10 +64,10 @@ public sealed class LockoutService : ILockoutService
             return Result<UnlockUserResponseDto>.Failure(errors);
         }
 
-        if (!Guid.TryParse(req.UserId, out var uid))
+        if (!Guid.TryParse(req.UserId.ToString(), out var uid))
             return Result<UnlockUserResponseDto>.Failure("Invalid user id");
 
-        var user = await _userManager.FindByIdAsync(req.UserId);
+        var user = await _userManager.FindByIdAsync(req.UserId.ToString());
         if (user is null) return Result<UnlockUserResponseDto>.Failure("User not found");
 
        

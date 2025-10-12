@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.TwoFactor;
+﻿using DigiTekShop.Contracts.Auth.TwoFactor;
 using DigiTekShop.SharedKernel.Results;
 using System;
 using System.Collections.Generic;

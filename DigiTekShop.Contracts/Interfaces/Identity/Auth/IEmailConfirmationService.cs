@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+﻿using DigiTekShop.Contracts.Auth.EmailConfirmation;
 using DigiTekShop.SharedKernel.Results;
 using System;
 using System.Collections.Generic;

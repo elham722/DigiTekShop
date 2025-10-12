@@ -1,6 +1,6 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.Login;
-using DigiTekShop.Contracts.DTOs.Auth.Logout;
-using DigiTekShop.Contracts.DTOs.Auth.Token;
+﻿using DigiTekShop.Contracts.Auth.Login;
+using DigiTekShop.Contracts.Auth.Logout;
+using DigiTekShop.Contracts.Auth.Token;
 using DigiTekShop.Contracts.Enums.Auth;
 using DigiTekShop.Contracts.Enums.Security;
 using DigiTekShop.Contracts.Interfaces.Identity.Auth;

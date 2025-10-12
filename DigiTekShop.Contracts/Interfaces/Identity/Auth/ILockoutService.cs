@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.Lockout;
+﻿using DigiTekShop.Contracts.Auth.Lockout;
 using DigiTekShop.SharedKernel.Results;
 using System;
 using System.Collections.Generic;
