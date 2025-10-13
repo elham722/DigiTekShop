@@ -23,6 +23,7 @@ using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using DigiTekShop.API.Extensions.ApiKey;
+using DigiTekShop.API.Extensions.Idempotency;
 
 var builder = WebApplication.CreateBuilder(args);
 
