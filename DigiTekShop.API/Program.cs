@@ -17,6 +17,7 @@ using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using DigiTekShop.Persistence.DependencyInjection;
+using DigiTekShop.API.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
