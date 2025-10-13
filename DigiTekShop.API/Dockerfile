@@ -43,3 +43,4 @@ RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
 USER appuser
 
 ENTRYPOINT ["dotnet", "DigiTekShop.API.dll"]
+

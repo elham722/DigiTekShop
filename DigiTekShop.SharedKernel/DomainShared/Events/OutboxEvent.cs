@@ -34,3 +34,4 @@ public sealed class OutboxEvent
 
     public bool ShouldRetry => !IsProcessed && RetryCount < 3;
 }
+
