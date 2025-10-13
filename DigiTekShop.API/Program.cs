@@ -1,7 +1,11 @@
 ﻿using Asp.Versioning;
 using DigiTekShop.API.ErrorHandling;
-using DigiTekShop.API.Extensions;
+using DigiTekShop.API.Extensions.Clients;
+using DigiTekShop.API.Extensions.Headers;
+using DigiTekShop.API.Extensions.HealthCheck;
 using DigiTekShop.API.Extensions.Options;
+using DigiTekShop.API.Extensions.Performance;
+using DigiTekShop.API.Extensions.TrimmingModel;
 using DigiTekShop.API.Middleware;
 using DigiTekShop.API.Swagger;
 using DigiTekShop.Application.Authorization;
@@ -18,10 +22,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
-using DigiTekShop.API.Extensions.Clients;
-using DigiTekShop.API.Extensions.Headers;
-using DigiTekShop.API.Extensions.HealthCheck;
-using DigiTekShop.API.Extensions.Performance;
+using DigiTekShop.API.Extensions.ApiKey;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -95,6 +96,7 @@ builder.Services.AddControllers(options =>
 #endregion
 
 #region Rate Limiting
+builder.Services.AddApiKeyAuth(builder.Configuration);
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -132,7 +134,13 @@ builder.Services.AddRateLimiter(options =>
         options.QueueLimit = 5;
     });
 
-    
+    options.AddFixedWindowLimiter("WebhooksPolicy", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 10;
+        opt.QueueLimit = 0;
+    });
+
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -305,7 +313,8 @@ app.UseClientContext();
 
 
 
-app.UseApiKey();
+if (builder.Configuration.GetValue<bool>("ApiKey:Enabled"))
+    app.UseApiKeyAuth();
 
 #region Logging
 
@@ -395,9 +404,6 @@ app.UseSwaggerMinimal(app.Environment);
 app.UseMiddleware<NoStoreAuthMiddleware>();
 app.UseIdempotency(); // Add idempotency middleware
 app.MapControllers();
-
-
-
 
 #endregion
 

@@ -1,80 +1,106 @@
+using System.Security.Cryptography;
+using DigiTekShop.API.Common.Http;
+using DigiTekShop.API.Security;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+
 namespace DigiTekShop.API.Middleware;
 
-/// <summary>
-/// Middleware for API Key authentication (optional - for service-to-service calls)
-/// </summary>
-public class ApiKeyMiddleware
+public sealed class ApiKeyMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ApiKeyMiddleware> _logger;
-    private const string ApiKeyHeaderName = "X-API-Key";
+    private readonly IOptionsMonitor<ApiKeyOptions> _options;
 
-    public ApiKeyMiddleware(RequestDelegate next, ILogger<ApiKeyMiddleware> logger)
+    public ApiKeyMiddleware(RequestDelegate next, ILogger<ApiKeyMiddleware> logger, IOptionsMonitor<ApiKeyOptions> options)
     {
         _next = next;
         _logger = logger;
+        _options = options;
     }
 
-    public async Task InvokeAsync(HttpContext context, IConfiguration configuration)
+    public async Task InvokeAsync(HttpContext context)
     {
-        // Skip for health checks and swagger
-        if (context.Request.Path.StartsWithSegments("/health") ||
-            context.Request.Path.StartsWithSegments("/swagger") ||
-            context.Request.Path.StartsWithSegments("/api-docs"))
+        var opts = _options.CurrentValue;
+
+        if (!opts.Enabled)
         {
             await _next(context);
             return;
         }
 
-        // Check if API Key validation is enabled
-        var apiKeyEnabled = configuration.GetValue<bool>("ApiKey:Enabled", false);
-        if (!apiKeyEnabled)
+        var requiresApiKey = context.GetEndpoint()?.Metadata?.GetMetadata<RequireApiKeyAttribute>() is not null;
+        if (!requiresApiKey)
         {
             await _next(context);
             return;
         }
 
-        // Check for API Key header
-        if (!context.Request.Headers.TryGetValue(ApiKeyHeaderName, out var extractedApiKey))
+        var headerName = string.IsNullOrWhiteSpace(opts.HeaderName) ? "X-API-Key" : opts.HeaderName;
+
+        if (!context.Request.Headers.TryGetValue(headerName, out var provided) || string.IsNullOrWhiteSpace(provided))
         {
-            _logger.LogWarning("API Key missing in request from {IP}", context.Connection.RemoteIpAddress);
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsJsonAsync(new
-            {
-                error = "API Key is missing",
-                code = "API_KEY_MISSING"
-            });
+            _logger.LogWarning("API key missing (ip={IP})", context.Connection.RemoteIpAddress);
+            await WriteProblemAsync(context, StatusCodes.Status401Unauthorized, "API_KEY_MISSING",
+                "API Key required", $"The '{headerName}' header is required.");
             return;
         }
 
-        // Validate API Key
-        var validApiKeys = configuration.GetSection("ApiKey:ValidKeys").Get<string[]>() ?? Array.Empty<string>();
-        
-        if (!validApiKeys.Contains(extractedApiKey.ToString()))
+        var ok = false;
+        foreach (var k in opts.ValidKeys ?? Array.Empty<string>())
         {
-            _logger.LogWarning("Invalid API Key attempted from {IP}: {Key}", 
-                context.Connection.RemoteIpAddress, 
-                extractedApiKey.ToString().Substring(0, Math.Min(8, extractedApiKey.ToString().Length)));
-            
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsJsonAsync(new
+            if (string.IsNullOrEmpty(k)) continue;
+            var a = System.Text.Encoding.UTF8.GetBytes(k);
+            var b = System.Text.Encoding.UTF8.GetBytes(provided.ToString());
+            if (a.Length == b.Length && CryptographicOperations.FixedTimeEquals(a, b))
             {
-                error = "Invalid API Key",
-                code = "API_KEY_INVALID"
-            });
+                ok = true; break;
+            }
+        }
+
+        if (!ok)
+        {
+            _logger.LogWarning("Invalid API key (ip={IP})", context.Connection.RemoteIpAddress);
+            await WriteProblemAsync(context, StatusCodes.Status401Unauthorized, "API_KEY_INVALID",
+                "Invalid API Key", "Provided API key is invalid.");
             return;
         }
 
-        _logger.LogDebug("Valid API Key authenticated from {IP}", context.Connection.RemoteIpAddress);
+        _logger.LogDebug("API key accepted (ip={IP})", context.Connection.RemoteIpAddress);
         await _next(context);
     }
-}
 
-public static class ApiKeyMiddlewareExtensions
-{
-    public static IApplicationBuilder UseApiKey(this IApplicationBuilder builder)
+    private static async Task WriteProblemAsync(HttpContext ctx, int status, string code, string title, string detail)
     {
-        return builder.UseMiddleware<ApiKeyMiddleware>();
+        if (status == StatusCodes.Status401Unauthorized)
+            ctx.Response.Headers["WWW-Authenticate"] = "ApiKey";
+
+        ctx.Response.StatusCode = status;
+        ctx.Response.ContentType = "application/problem+json";
+
+        string cid;
+        if (ctx.Items.TryGetValue(HeaderNames.CorrelationId, out var v) &&
+            v is string s && !string.IsNullOrWhiteSpace(s))
+        {
+            cid = s;
+        }
+        else
+        {
+            cid = ctx.TraceIdentifier;
+        }
+
+
+        var pd = new ProblemDetails
+        {
+            Type = $"urn:problem:{code}",
+            Title = title,
+            Status = status,
+            Detail = detail,
+            Instance = ctx.Request.Path
+        };
+        pd.Extensions["code"] = code;
+        pd.Extensions["traceId"] = cid;
+
+        await ctx.Response.WriteAsJsonAsync(pd);
     }
 }
-
