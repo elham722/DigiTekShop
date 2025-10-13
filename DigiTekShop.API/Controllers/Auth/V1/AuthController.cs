@@ -1,15 +1,3 @@
-using Asp.Versioning;
-using DigiTekShop.API.Common.Api;
-using DigiTekShop.API.Controllers.Common.V1;
-using DigiTekShop.API.ResultMapping;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
-using DigiTekShop.Contracts.DTOs.Auth.Login;
-using DigiTekShop.Contracts.DTOs.Auth.Logout;
-using DigiTekShop.Contracts.DTOs.Auth.Token;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
-
 namespace DigiTekShop.API.Controllers.Auth.V1;
 
 [ApiController]
@@ -17,7 +5,7 @@ namespace DigiTekShop.API.Controllers.Auth.V1;
 [ApiVersion("1.0")]
 [Produces("application/json")]
 [Consumes("application/json")]
-public sealed class AuthController : ApiControllerBase
+public sealed class AuthController : ControllerBase
 {
     private readonly ILoginService _loginService;
     private readonly ILogger<AuthController> _logger;
@@ -39,8 +27,7 @@ public sealed class AuthController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
     {
-        var enriched = request with { DeviceId = request.DeviceId ?? ClientDeviceId, UserAgent = request.UserAgent ?? UserAgentHeader, Ip = request.Ip ?? ClientIp };
-        var result = await _loginService.LoginAsync(enriched, cancellationToken);
+        var result = await _loginService.LoginAsync(request, cancellationToken);
         return this.ToActionResult(result);
     }
 
@@ -56,9 +43,7 @@ public sealed class AuthController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequestDto request, CancellationToken cancellationToken = default)
     {
-
-        var enriched = request with { DeviceId = request.DeviceId ?? ClientDeviceId, UserAgent = request.UserAgent ?? UserAgentHeader, Ip = request.Ip ?? ClientIp };
-        var result = await _loginService.RefreshAsync(enriched, cancellationToken);
+        var result = await _loginService.RefreshAsync(request, cancellationToken);
         return this.ToActionResult(result);
     }
 

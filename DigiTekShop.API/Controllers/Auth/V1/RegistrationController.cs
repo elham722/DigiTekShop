@@ -1,20 +1,9 @@
-﻿using Asp.Versioning;
-using DigiTekShop.API.Common.Api;
-using DigiTekShop.API.Controllers.Common.V1;
-using DigiTekShop.API.ResultMapping;
-using DigiTekShop.Application.Auth.Register.Command;
-using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
-using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
-using DigiTekShop.Contracts.DTOs.Auth.Register;
-using MediatR;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
+﻿namespace DigiTekShop.API.Controllers.Auth.V1;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-public sealed class RegistrationController : ApiControllerBase
+public sealed class RegistrationController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IEmailConfirmationService _emailConfirm;
@@ -35,17 +24,7 @@ public sealed class RegistrationController : ApiControllerBase
     [ProducesResponseType(typeof(ApiResponse<RegisterResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto request, CancellationToken ct)
     {
-        var enriched = request with
-        {
-            DeviceId = request.DeviceId ?? ClientDeviceId,
-            UserAgent = request.UserAgent ?? UserAgentHeader,
-            IpAddress = request.IpAddress ?? ClientIp
-        };
-
-        var result = await _mediator.Send(new RegisterUserCommand(enriched), ct);
-        //await _mediator.Send(new RegisterCustomerCommand(
-        //    new RegisterCustomerDto(userId, model.FullName ?? model.Email, model.Email, model.PhoneNumber)
-        //), ct);
+        var result = await _mediator.Send(new RegisterUserCommand(request), ct);
 
         return this.ToActionResult(result);
     }
@@ -58,7 +37,7 @@ public sealed class RegistrationController : ApiControllerBase
     public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequestDto dto, CancellationToken ct)
     {
         var result = await _emailConfirm.ConfirmEmailAsync(dto, ct);
-        if (result.IsFailure) return this.ToActionResult(result); // تبدیل به 400 با ProblemDetails
+        if (result.IsFailure) return this.ToActionResult(result);
         return NoContent();
     }
 

@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-
 namespace DigiTekShop.API.Controllers.HealthCheck.V1;
 
 [ApiController]

@@ -1,17 +1,4 @@
-﻿using Asp.Versioning;
-using DigiTekShop.API.Common.Api;
-using DigiTekShop.API.Controllers.Common.V1;
-using DigiTekShop.API.Extensions.ETag;
-using DigiTekShop.API.ResultMapping;
-using DigiTekShop.Application.Customers.Queries.GetCustomerById;
-using DigiTekShop.Application.Customers.Queries.GetMyCustomerProfile;
-using DigiTekShop.Contracts.DTOs.Customer;
-using MediatR;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-
-namespace DigiTekShop.API.Controllers.Customers.V1;
+﻿namespace DigiTekShop.API.Controllers.Customers.V1;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/customers")]
@@ -20,7 +7,7 @@ namespace DigiTekShop.API.Controllers.Customers.V1;
 [Produces("application/json")]
 [ApiExplorerSettings(GroupName = "v1-customers")]
 [Tags("Customers")]
-public sealed class CustomersQueryController : ApiControllerBase
+public sealed class CustomersQueryController : ControllerBase
 {
     private readonly ISender _sender;
     private readonly ILogger<CustomersQueryController> _logger;

@@ -1,18 +1,4 @@
-﻿using Asp.Versioning;
-using DigiTekShop.API.Common.Api;
-using DigiTekShop.API.Controllers.Common.V1;
-using DigiTekShop.API.ResultMapping;
-using DigiTekShop.Application.Customers.Commands.AddAddress;
-using DigiTekShop.Application.Customers.Commands.ChangeEmail;
-using DigiTekShop.Application.Customers.Commands.RegisterCustomer;
-using DigiTekShop.Application.Customers.Commands.SetDefaultAddress;
-using DigiTekShop.Application.Customers.Commands.UpdateProfile;
-using DigiTekShop.Contracts.DTOs.Customer;
-using MediatR;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
-namespace DigiTekShop.API.Controllers.Customers.V1;
+﻿namespace DigiTekShop.API.Controllers.Customers.V1;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/customers")]
@@ -22,7 +8,7 @@ namespace DigiTekShop.API.Controllers.Customers.V1;
 [Consumes("application/json")]
 [ApiExplorerSettings(GroupName = "v1-customers")]
 [Tags("Customers")]
-public sealed class CustomersCommandController : ApiControllerBase
+public sealed class CustomersCommandController : ControllerBase
 {
     private readonly ISender _sender;
     private readonly ILogger<CustomersCommandController> _logger;
@@ -60,11 +46,6 @@ public sealed class CustomersCommandController : ApiControllerBase
                 DateTime.UtcNow
             );
             
-            return CreatedAtAction(
-                nameof(CustomersQueryController.GetCustomerById),
-                "CustomersQuery",
-                new { version = "1.0", customerId = result.Value },
-                response);
         }
         
         return this.ToActionResult(result);
@@ -96,12 +77,7 @@ public sealed class CustomersCommandController : ApiControllerBase
         if (!result.IsSuccess) return this.ToActionResult(result);
 
         _logger.LogInformation("Address added for customer: {CustomerId}", customerId);
-
-        return CreatedAtAction(
-            nameof(CustomersQueryController.GetCustomerById),
-            "CustomersQuery",
-            new { version = "1.0", customerId },
-            null);
+        return null;
     }
 
     /// <summary>Change customer email</summary>

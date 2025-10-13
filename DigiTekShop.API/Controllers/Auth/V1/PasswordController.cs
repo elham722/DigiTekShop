@@ -1,20 +1,11 @@
-﻿using Asp.Versioning;
-using DigiTekShop.API.Controllers.Common.V1;
-using DigiTekShop.API.ResultMapping;
-using DigiTekShop.Contracts.Abstractions.Identity.Password;
-using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
-
-namespace DigiTekShop.API.Controllers.Auth.V1;
+﻿namespace DigiTekShop.API.Controllers.Auth.V1;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
 [Produces("application/json")]
 [Consumes("application/json")]
-public sealed class PasswordController : ApiControllerBase
+public sealed class PasswordController : ControllerBase
 {
     private readonly IPasswordService _passwordService;
     private readonly ILogger<PasswordController> _logger;
@@ -34,13 +25,7 @@ public sealed class PasswordController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Forgot([FromBody] ForgotPasswordRequestDto request, CancellationToken ct)
     {
-        var enriched = request with
-        {
-            IpAddress = request.IpAddress ?? ClientIp,
-            UserAgent = request.UserAgent ?? UserAgentHeader
-        };
-        
-        var result = await _passwordService.ForgotPasswordAsync(enriched, ct);
+        var result = await _passwordService.ForgotPasswordAsync(request, ct);
         return this.ToActionResult(result);
     }
 
@@ -55,13 +40,7 @@ public sealed class PasswordController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Reset([FromBody] ResetPasswordRequestDto request, CancellationToken ct)
     {
-        var enriched = request with
-        {
-            IpAddress = request.IpAddress ?? ClientIp,
-            UserAgent = request.UserAgent ?? UserAgentHeader
-        };
-        
-        var result = await _passwordService.ResetPasswordAsync(enriched, ct);
+        var result = await _passwordService.ResetPasswordAsync(request, ct);
         return this.ToActionResult(result);
     }
 

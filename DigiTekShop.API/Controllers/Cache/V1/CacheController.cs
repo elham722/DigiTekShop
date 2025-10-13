@@ -1,6 +1,3 @@
-using DigiTekShop.Contracts.Abstractions.Caching;
-using Microsoft.AspNetCore.Mvc;
-
 namespace DigiTekShop.API.Controllers.Cache.V1;
 
 [ApiController]

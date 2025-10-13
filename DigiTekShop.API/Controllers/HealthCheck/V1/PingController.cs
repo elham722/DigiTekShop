@@ -1,8 +1,4 @@
-﻿using Asp.Versioning;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
-namespace DigiTekShop.API.Controllers.HealthCheck.V1;
+﻿namespace DigiTekShop.API.Controllers.HealthCheck.V1;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
