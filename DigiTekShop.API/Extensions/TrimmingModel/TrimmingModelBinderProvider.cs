@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
-namespace DigiTekShop.API.Extensions
+namespace DigiTekShop.API.Extensions.TrimmingModel
 {
     public class TrimmingModelBinderProvider : IModelBinderProvider
     {

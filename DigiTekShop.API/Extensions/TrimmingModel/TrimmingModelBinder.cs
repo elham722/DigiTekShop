@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.API.Extensions
+﻿namespace DigiTekShop.API.Extensions.TrimmingModel
 {
     using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -41,7 +41,7 @@
 
             if (skipTrim)
             {
-                ctx.Result = ModelBindingResult.Success(raw); // بدون Trim
+                ctx.Result = ModelBindingResult.Success(raw); 
                 return;
             }
 
