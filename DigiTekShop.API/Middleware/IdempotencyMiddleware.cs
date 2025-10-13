@@ -1,5 +1,7 @@
+﻿using DigiTekShop.API.Common.Idempotency;
 using DigiTekShop.Contracts.Abstractions.Caching;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using System.Text.Json;
 
@@ -9,123 +11,182 @@ public class IdempotencyMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<IdempotencyMiddleware> _logger;
-    private readonly ICacheService _cacheService;
-    private const string IdempotencyKeyHeader = "X-Idempotency-Key";
-    private const string IdempotencyCachePrefix = "idempotency:";
+    private readonly ICacheService _cache;
+    private readonly IDistributedLockService _lockService;
+    private const string KeyHeader1 = "X-Idempotency-Key";
+    private const string KeyHeader2 = "Idempotency-Key";
+    private const string CachePrefix = "idempotency:";
+    private static readonly TimeSpan Ttl = TimeSpan.FromHours(24);
 
-    public IdempotencyMiddleware(
-        RequestDelegate next, 
-        ILogger<IdempotencyMiddleware> logger,
-        ICacheService cacheService)
-    {
-        _next = next;
-        _logger = logger;
-        _cacheService = cacheService;
-    }
+    public IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMiddleware> logger, ICacheService cacheService, IDistributedLockService lockService)
+        => (_next, _logger, _cache,_lockService) = (next, logger, cacheService,lockService);
 
     public async Task InvokeAsync(HttpContext context)
     {
         
-        if (!IsIdempotentMethod(context.Request.Method))
+        if (!IsWriteMethod(context.Request.Method))
         {
             await _next(context);
             return;
         }
 
-        if (!context.Request.Headers.TryGetValue(IdempotencyKeyHeader, out var idempotencyKey) ||
-            StringValues.IsNullOrEmpty(idempotencyKey))
+       
+        if (!TryGetKey(context.Request.Headers, out var idemKey))
         {
             await _next(context);
             return;
         }
 
-        var key = $"{IdempotencyCachePrefix}{idempotencyKey}";
-        
-        try
+        var fingerprint = await BuildFingerprintAsync(context.Request);
+
+        var cacheKey = $"{CachePrefix}{idemKey}";
+        var cached = await _cache.GetAsync<IdempotencyResponse>(cacheKey);
+        if (cached is not null)
         {
-            var cachedResponse = await _cacheService.GetAsync<IdempotencyResponse>(key);
             
-            if (cachedResponse != null)
+            if (!string.Equals(cached.Fingerprint, fingerprint, StringComparison.Ordinal))
             {
-                _logger.LogInformation("Returning cached response for idempotency key: {Key}", idempotencyKey);
-                
-                context.Response.StatusCode = cachedResponse.StatusCode;
-                context.Response.ContentType = cachedResponse.ContentType;
-                
-                if (!string.IsNullOrEmpty(cachedResponse.Headers))
-                {
-                    var headers = JsonSerializer.Deserialize<Dictionary<string, string>>(cachedResponse.Headers);
-                    if (headers != null)
-                    {
-                        foreach (var header in headers)
-                        {
-                            context.Response.Headers[header.Key] = header.Value;
-                        }
-                    }
-                }
-                
-                await context.Response.WriteAsync(cachedResponse.Body);
+                await WriteConflictAsync(context, idemKey);
                 return;
             }
 
-            
-            var originalBodyStream = context.Response.Body;
-            using var responseBody = new MemoryStream();
-            context.Response.Body = responseBody;
+            _logger.LogInformation("Idempotency hit: {Key}", idemKey);
+            await WriteCachedAsync(context, cached);
+            return;
+        }
 
+        
+        var lockKey = $"{cacheKey}:lock";
+        var gotLock = await _lockService.AcquireAsync(lockKey, TimeSpan.FromSeconds(10)); 
+        if (!gotLock)
+        {
+           
+            context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            await context.Response.WriteAsync("Duplicate request in progress. Please retry.");
+            return;
+        }
+
+        
+        var originalBody = context.Response.Body;
+        await using var mem = new MemoryStream();
+        context.Response.Body = mem;
+
+        try
+        {
             await _next(context);
 
-            if (context.Response.StatusCode >= 200 && context.Response.StatusCode < 300)
+            
+            if (context.Response.StatusCode is >= 200 and < 300)
             {
-                responseBody.Seek(0, SeekOrigin.Begin);
-                var responseBodyText = await new StreamReader(responseBody).ReadToEndAsync();
                 
-                var idempotencyResponse = new IdempotencyResponse
+                if (mem.Length <= 256 * 1024)
                 {
-                    StatusCode = context.Response.StatusCode,
-                    ContentType = context.Response.ContentType ?? "application/json",
-                    Body = responseBodyText,
-                    Headers = JsonSerializer.Serialize(context.Response.Headers.ToDictionary(h => h.Key, h => h.Value.ToString()))
-                };
+                    mem.Position = 0;
+                    using var reader = new StreamReader(mem, leaveOpen: true);
+                    var bodyText = await reader.ReadToEndAsync();
 
-               
-                await _cacheService.SetAsync(key, idempotencyResponse, TimeSpan.FromHours(24));
-                
-                _logger.LogInformation("Cached response for idempotency key: {Key}", idempotencyKey);
+                    var headersDict = AllowHeaders(context.Response.Headers);
+
+                    var idemResp = new IdempotencyResponse
+                    {
+                        StatusCode = context.Response.StatusCode,
+                        ContentType = context.Response.ContentType ?? "application/json",
+                        Body = bodyText,
+                        Headers = JsonSerializer.Serialize(headersDict),
+                        Fingerprint = fingerprint
+                    };
+
+                    await _cache.SetAsync(cacheKey, idemResp, Ttl);
+                    _logger.LogInformation("Idempotency cached: {Key}", idemKey);
+                }
             }
 
             
-            responseBody.Seek(0, SeekOrigin.Begin);
-            await responseBody.CopyToAsync(originalBodyStream);
+            mem.Position = 0;
+            await mem.CopyToAsync(originalBody);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling idempotency for key: {Key}", idempotencyKey);
-            await _next(context);
+            _logger.LogError(ex, "Idempotency error (key={Key})", idemKey);
+           
+            throw;
+        }
+        finally
+        {
+            context.Response.Body = originalBody;
+            await _lockService.ReleaseAsync(lockKey);
         }
     }
 
-    private static bool IsIdempotentMethod(string method)
+    private static bool TryGetKey(IHeaderDictionary headers, out string key)
     {
-        return method.Equals("POST", StringComparison.OrdinalIgnoreCase) ||
-               method.Equals("PUT", StringComparison.OrdinalIgnoreCase) ||
-               method.Equals("PATCH", StringComparison.OrdinalIgnoreCase) ||
-               method.Equals("DELETE", StringComparison.OrdinalIgnoreCase);
+        if (headers.TryGetValue(KeyHeader1, out var v1) && !StringValues.IsNullOrEmpty(v1))
+        { key = v1.ToString(); return true; }
+        if (headers.TryGetValue(KeyHeader2, out var v2) && !StringValues.IsNullOrEmpty(v2))
+        { key = v2.ToString(); return true; }
+        key = string.Empty; return false;
+    }
+
+    private static bool IsWriteMethod(string m)
+        => m.Equals("POST", StringComparison.OrdinalIgnoreCase)
+        || m.Equals("PUT", StringComparison.OrdinalIgnoreCase)
+        || m.Equals("PATCH", StringComparison.OrdinalIgnoreCase)
+        || m.Equals("DELETE", StringComparison.OrdinalIgnoreCase);
+
+    private static async Task<string> BuildFingerprintAsync(HttpRequest req)
+    {
+        
+        req.EnableBuffering();
+
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        await using var ms = new MemoryStream();
+        await req.Body.CopyToAsync(ms);
+        var bodyBytes = ms.ToArray();
+        req.Body.Position = 0;
+
+        var userId = req.HttpContext.User?.Identity?.IsAuthenticated == true
+            ? req.HttpContext.User.FindFirst("sub")?.Value ?? req.HttpContext.User.Identity?.Name
+            : null;
+
+        var input = $"{req.Method}|{req.Path}|{userId}|{Convert.ToBase64String(sha.ComputeHash(bodyBytes))}";
+        return Convert.ToBase64String(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input)));
+    }
+
+    private static async Task WriteConflictAsync(HttpContext ctx, string key)
+    {
+        ctx.Response.StatusCode = StatusCodes.Status409Conflict;
+        ctx.Response.ContentType = "application/problem+json";
+        var pd = new ProblemDetails
+        {
+            Type = "urn:problem:IDEMPOTENCY_KEY_REUSE_DIFFERENT_BODY",
+            Title = "Idempotency conflict",
+            Status = StatusCodes.Status409Conflict,
+            Detail = "The same idempotency key was used with a different request payload.",
+            Instance = ctx.Request.Path
+        };
+        pd.Extensions["key"] = key;
+        await ctx.Response.WriteAsJsonAsync(pd);
+    }
+
+    private static async Task WriteCachedAsync(HttpContext ctx, IdempotencyResponse cached)
+    {
+        ctx.Response.StatusCode = cached.StatusCode;
+        ctx.Response.ContentType = cached.ContentType;
+
+        var headers = JsonSerializer.Deserialize<Dictionary<string, string>>(cached.Headers) ?? new();
+        foreach (var kv in headers)
+            ctx.Response.Headers[kv.Key] = kv.Value;
+
+        await ctx.Response.WriteAsync(cached.Body);
+    }
+
+    private static Dictionary<string, string> AllowHeaders(IHeaderDictionary headers)
+    {
+        var allow = new[] { "Location", "ETag", "Cache-Control", "Content-Language" };
+        var dict = new Dictionary<string, string>();
+        foreach (var h in allow)
+            if (headers.TryGetValue(h, out var v)) dict[h] = v.ToString();
+        return dict;
     }
 }
 
-public class IdempotencyResponse
-{
-    public int StatusCode { get; set; }
-    public string ContentType { get; set; } = string.Empty;
-    public string Body { get; set; } = string.Empty;
-    public string Headers { get; set; } = string.Empty;
-}
-
-public static class IdempotencyMiddlewareExtensions
-{
-    public static IApplicationBuilder UseIdempotency(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<IdempotencyMiddleware>();
-    }
-}

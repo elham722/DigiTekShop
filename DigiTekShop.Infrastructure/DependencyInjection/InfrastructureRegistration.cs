@@ -67,6 +67,9 @@ public static class InfrastructureRegistration
 
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
+        services.AddSingleton<IDistributedLockService, RedisLockService>();
+
+
         return services;
     }
 }

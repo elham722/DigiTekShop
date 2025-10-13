@@ -365,10 +365,7 @@ app.UseCors(app.Environment.IsProduction() ? "Production" : "Development");
 #region Performance
 
 
-app.UseResponseCompression();
 
-
-app.UseOutputCache();
 
 app.MapHealthCheckEndpoints();
 
@@ -393,6 +390,12 @@ app.UseAuthorization();
 
 #endregion
 
+app.UseIdempotency();
+
+app.UseResponseCompression();
+
+app.UseOutputCache();
+
 #region Swagger (Development Only)
 
 app.UseSwaggerMinimal(app.Environment);
@@ -402,7 +405,7 @@ app.UseSwaggerMinimal(app.Environment);
 #region Endpoints
 
 app.UseMiddleware<NoStoreAuthMiddleware>();
-app.UseIdempotency(); // Add idempotency middleware
+
 app.MapControllers();
 
 #endregion
