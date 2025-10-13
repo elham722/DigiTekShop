@@ -1,12 +1,9 @@
-﻿using FluentValidation;
-using MediatR;
+﻿using DigiTekShop.Application.Authorization;
+using DigiTekShop.Application.Behaviors;
+using DigiTekShop.Application.Mapping;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
-using DigiTekShop.Application.Authorization;
-using DigiTekShop.Application.Behaviors;
-using Mapster;
-using DigiTekShop.Application.Mapping;
 
 namespace DigiTekShop.Application.DependencyInjection
 {
@@ -16,28 +13,27 @@ namespace DigiTekShop.Application.DependencyInjection
         {
             var assembly = Assembly.GetExecutingAssembly();
 
-           
-            services.AddAutoMapper(cfg =>
-            {
-                cfg.AddMaps(assembly);
-            });
+            #region MediatR & Fluentvalidation & Mapper
+
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
+
             services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
 
-            // Mapster global configuration
             MappingConfig.Register(TypeAdapterConfig.GlobalSettings);
 
-      
-            services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-            
-           
+            #endregion
+
+
+            #region Pipeline Behaviors
+
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-            
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
-            
+            services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
             services.AddScoped(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavior<,>));
 
-            services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-            services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+            #endregion
+
+           
 
 
             return services;

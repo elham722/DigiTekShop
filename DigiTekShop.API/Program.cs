@@ -18,6 +18,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using DigiTekShop.Persistence.DependencyInjection;
 using DigiTekShop.API.Extensions.Options;
+using DigiTekShop.Application.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +37,8 @@ builder.Host.UseSerilog((ctx, lc) => lc
 
 #endregion
 
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 builder.WebHost.ConfigureKestrel(o =>
 {
