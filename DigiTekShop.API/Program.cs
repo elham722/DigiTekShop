@@ -1,7 +1,9 @@
 ﻿using Asp.Versioning;
-using DigiTekShop.API.Errors;
+using DigiTekShop.API.ErrorHandling;
 using DigiTekShop.API.Extensions;
+using DigiTekShop.API.Extensions.Options;
 using DigiTekShop.API.Middleware;
+using DigiTekShop.Application.Authorization;
 using DigiTekShop.Application.DependencyInjection;
 using DigiTekShop.ExternalServices.DependencyInjection;
 using DigiTekShop.ExternalServices.Email;
@@ -15,8 +17,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
-using DigiTekShop.API.Extensions.Options;
-using DigiTekShop.Application.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -76,6 +76,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers(options =>
     {
+        options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
         options.ModelBinderProviders.Insert(0, new TrimmingModelBinderProvider(convertEmptyToNull: true));
     })
     .AddJsonOptions(options =>

@@ -1,7 +1,7 @@
 ﻿using Asp.Versioning;
+using DigiTekShop.API.Contracts;
 using DigiTekShop.API.Controllers.Common.V1;
-using DigiTekShop.API.Extensions;
-using DigiTekShop.API.Models;
+using DigiTekShop.API.ResultMapping;
 using DigiTekShop.Application.Customers.Commands.AddAddress;
 using DigiTekShop.Application.Customers.Commands.ChangeEmail;
 using DigiTekShop.Application.Customers.Commands.RegisterCustomer;

@@ -1,9 +1,10 @@
-﻿using DigiTekShop.API.Models;
+﻿using DigiTekShop.API.Contracts;
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 
-namespace DigiTekShop.API.Extensions;
+namespace DigiTekShop.API.ResultMapping;
 
 public static class ResultToActionResultExtensions
 {
@@ -11,10 +12,9 @@ public static class ResultToActionResultExtensions
     {
         if (result.IsSuccess)
         {
-            var traceId = c.HttpContext?.TraceIdentifier ?? Guid.NewGuid().ToString();
-            // اگر T می‌تونه null باشه، اینجا هندل کن:
+            var traceId = Activity.Current?.Id ?? c.HttpContext?.TraceIdentifier ?? Guid.NewGuid().ToString();
             var payload = result.Value is null ? default : result.Value;
-            return c.StatusCode(okStatus, new ApiResponse<T?>(payload, TraceId: traceId));
+            return c.StatusCode(okStatus, new ApiResponse<T?>(payload, TraceId: traceId, Timestamp: DateTimeOffset.UtcNow));
         }
 
         var info = ErrorCatalog.Resolve(result.ErrorCode);
@@ -31,7 +31,7 @@ public static class ResultToActionResultExtensions
         return c.StatusCode(info.HttpStatus, pd).WithProblemContentType();
     }
 
-    private static ProblemDetails BuildProblemDetails(
+    private static Microsoft.AspNetCore.Mvc.ProblemDetails BuildProblemDetails(
         HttpContext http, int status, string code, string defaultMessage, IEnumerable<string>? errors)
     {
         var env = http.RequestServices.GetRequiredService<IWebHostEnvironment>();
@@ -45,16 +45,15 @@ public static class ResultToActionResultExtensions
             if (!string.IsNullOrWhiteSpace(first)) detail = first!;
         }
 
-        var pd = new ProblemDetails
+        var pd = new Microsoft.AspNetCore.Mvc.ProblemDetails
         {
             Type = $"urn:problem:{code}",
             Title = code,
             Status = status,
             Detail = detail,
-            Instance = path // ← مسیر درخواست
+            Instance = path 
         };
 
-        // TraceId + errors در extensions
         pd.Extensions["traceId"] = traceId;
 
         if (errors is not null && errors.Any())
@@ -78,7 +77,6 @@ public static class ResultToActionResultExtensions
         return pd;
     }
 
-    /// <summary>Ensure RFC 7807 content-type.</summary>
     private static IActionResult WithProblemContentType(this IActionResult result)
     {
         if (result is ObjectResult or)

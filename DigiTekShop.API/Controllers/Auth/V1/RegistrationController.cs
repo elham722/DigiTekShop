@@ -1,7 +1,7 @@
 ﻿using Asp.Versioning;
+using DigiTekShop.API.Contracts;
 using DigiTekShop.API.Controllers.Common.V1;
-using DigiTekShop.API.Extensions;
-using DigiTekShop.API.Models;
+using DigiTekShop.API.ResultMapping;
 using DigiTekShop.Application.Auth.Register.Command;
 using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;

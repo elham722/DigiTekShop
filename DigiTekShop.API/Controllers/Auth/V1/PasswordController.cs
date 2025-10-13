@@ -1,12 +1,11 @@
 ﻿using Asp.Versioning;
 using DigiTekShop.API.Controllers.Common.V1;
+using DigiTekShop.API.ResultMapping;
+using DigiTekShop.Contracts.Abstractions.Identity.Password;
+using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using DigiTekShop.API.Models;
-using DigiTekShop.API.Extensions;
-using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
-using DigiTekShop.Contracts.Abstractions.Identity.Password;
 
 namespace DigiTekShop.API.Controllers.Auth.V1;
 

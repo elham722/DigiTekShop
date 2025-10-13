@@ -1,7 +1,3 @@
 ﻿namespace DigiTekShop.SharedKernel.Errors;
 
-public sealed record ErrorInfo(
-    string Code,
-    int HttpStatus,
-    string DefaultMessage
-);
+public sealed record ErrorInfo(string Code, int HttpStatus, string DefaultMessage, string? Title = null);
