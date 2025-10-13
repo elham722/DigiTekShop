@@ -1,22 +1,14 @@
-using DigiTekShop.API.HealthChecks;
+﻿using DigiTekShop.API.HealthChecks;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System.Text.Json;
+using DigiTekShop.API.Common.Http;
+namespace DigiTekShop.API.Extensions.HealthCheck;
 
-namespace DigiTekShop.API.Extensions;
-
-/// <summary>
-/// Extensions for configuring health checks
-/// </summary>
 public static class HealthCheckExtensions
 {
-    /// <summary>
-    /// Add comprehensive health checks for the application
-    /// </summary>
     public static IServiceCollection AddComprehensiveHealthChecks(this IServiceCollection services)
     {
-        // Note: Redis health check is already registered in Infrastructure layer
-        // We only add custom checks here to avoid duplicate registrations
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>(
                 name: "database",
@@ -27,22 +19,23 @@ public static class HealthCheckExtensions
         return services;
     }
 
-    /// <summary>
-    /// Map health check endpoints with custom response formatting
-    /// </summary>
     public static IEndpointRouteBuilder MapHealthCheckEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        // Detailed health endpoint (JSON)
         endpoints.MapHealthChecks("/health", new HealthCheckOptions
         {
             ResponseWriter = async (context, report) =>
             {
                 context.Response.ContentType = "application/json";
 
+                var env = context.RequestServices.GetRequiredService<IWebHostEnvironment>();
+
+                var cid = context.Items.TryGetValue(HeaderNames.CorrelationId, out var v) ? v?.ToString() : context.TraceIdentifier;
+
                 var result = JsonSerializer.Serialize(new
                 {
                     status = report.Status.ToString(),
                     timestamp = DateTime.UtcNow,
+                    correlationId = cid,
                     duration = report.TotalDuration.TotalMilliseconds,
                     checks = report.Entries.Select(e => new
                     {
@@ -50,27 +43,21 @@ public static class HealthCheckExtensions
                         status = e.Value.Status.ToString(),
                         description = e.Value.Description,
                         duration = e.Value.Duration.TotalMilliseconds,
-                        exception = e.Value.Exception?.Message,
-                        data = e.Value.Data
+                        exception = env.IsDevelopment() ? e.Value.Exception?.Message : null,
+                        data = e.Value.Data?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString())
                     })
-                }, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
+                }, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
                 await context.Response.WriteAsync(result);
             }
         });
 
-        // Simple liveness endpoint (for load balancers)
         endpoints.MapHealthChecks("/health/live", new HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("api"),
             AllowCachingResponses = false
         });
 
-        // Readiness endpoint (for Kubernetes)
         endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("infrastructure"),
@@ -80,4 +67,3 @@ public static class HealthCheckExtensions
         return endpoints;
     }
 }
-

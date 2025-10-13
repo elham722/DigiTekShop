@@ -29,10 +29,9 @@ public static class PerformanceExtensions
             });
         });
 
-        // Configure compression levels
         services.Configure<BrotliCompressionProviderOptions>(options =>
         {
-            options.Level = CompressionLevel.Fastest; // or Optimal for better compression
+            options.Level = CompressionLevel.Fastest; 
         });
 
         services.Configure<GzipCompressionProviderOptions>(options =>

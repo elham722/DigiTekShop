@@ -20,6 +20,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using DigiTekShop.API.Extensions.Clients;
 using DigiTekShop.API.Extensions.Headers;
+using DigiTekShop.API.Extensions.HealthCheck;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -301,7 +302,7 @@ app.UseForwardedHeadersSupport(builder.Configuration);
 
 app.UseClientContext();
 
-
+app.MapHealthCheckEndpoints();
 
 app.UseApiKey();
 
@@ -392,8 +393,8 @@ app.UseMiddleware<NoStoreAuthMiddleware>();
 app.UseIdempotency(); // Add idempotency middleware
 app.MapControllers();
 
-// ✅ Health check endpoints
-app.MapHealthCheckEndpoints();
+
+
 
 #endregion
 
