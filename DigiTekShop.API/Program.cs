@@ -26,6 +26,7 @@ using DigiTekShop.API.Common.Idempotency;
 using DigiTekShop.API.Extensions.ApiKey;
 using DigiTekShop.API.Extensions.Idempotency;
 using DigiTekShop.API.Extensions.NoStoreAuth;
+using DigiTekShop.API.Extensions.RequestLogging;
 
 var builder = WebApplication.CreateBuilder(args);
 

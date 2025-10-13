@@ -1,56 +1,72 @@
+using Microsoft.Net.Http.Headers;
+
 namespace DigiTekShop.API.Middleware;
 
-/// <summary>
-/// Middleware to add security headers to all HTTP responses
-/// </summary>
-public class SecurityHeadersMiddleware
+public sealed class SecurityHeadersMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly IConfiguration _config;
+    private static readonly string[] RemoveHeaders =
+        ["Server", "X-Powered-By", "X-AspNet-Version", "X-AspNetMvc-Version"];
 
-    public SecurityHeadersMiddleware(RequestDelegate next)
+    public SecurityHeadersMiddleware(RequestDelegate next, IConfiguration config)
     {
         _next = next;
+        _config = config;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var path = context.Request.Path.Value ?? string.Empty;
+        
+        foreach (var h in RemoveHeaders)
+            context.Response.Headers.Remove(h);
 
-        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
-        context.Response.Headers["X-Frame-Options"] = "DENY";
-        context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
-        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-        context.Response.Headers.Remove("Server");
-        context.Response.Headers.Remove("X-Powered-By");
-        context.Response.Headers.Remove("X-AspNet-Version");
-        context.Response.Headers.Remove("X-AspNetMvc-Version");
+        
+        context.Response.OnStarting(() =>
+        {
+            var path = context.Request.Path.Value ?? string.Empty;
+            var isSwagger = path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase)
+                            || path.StartsWith("/api-docs", StringComparison.OrdinalIgnoreCase);
 
-        var isSwagger = path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
-                        path.StartsWith("/api-docs", StringComparison.OrdinalIgnoreCase);
+            var headers = context.Response.GetTypedHeaders();
 
-        var csp = isSwagger
-            ? "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none';"
-            : "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none';";
+            
+            if (!context.Response.Headers.ContainsKey("X-Content-Type-Options"))
+                context.Response.Headers["X-Content-Type-Options"] = "nosniff";
 
-        context.Response.Headers["Content-Security-Policy"] = csp;
-        context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+            if (!context.Response.Headers.ContainsKey("X-Frame-Options"))
+                context.Response.Headers["X-Frame-Options"] = "DENY";
 
-        if (context.Request.IsHttps)
-            context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload";
+            
+            if (!context.Response.Headers.ContainsKey("Referrer-Policy"))
+                context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+
+            if (!context.Response.Headers.ContainsKey("Permissions-Policy"))
+                context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+
+            
+            if (!context.Response.Headers.ContainsKey("Content-Security-Policy"))
+            {
+                
+                var csp = isSwagger
+                    ? "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none';"
+                    : "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none';";
+
+                context.Response.Headers["Content-Security-Policy"] = csp;
+            }
+
+            
+            if (context.Request.IsHttps && !context.Response.Headers.ContainsKey("Strict-Transport-Security"))
+            {
+                var maxAgeDays = _config.GetValue("Security:HstsDays", 365);
+                context.Response.Headers["Strict-Transport-Security"] =
+                    $"max-age={maxAgeDays * 24 * 60 * 60}; includeSubDomains; preload";
+            }
+
+            return Task.CompletedTask;
+        });
 
         await _next(context);
-    }
-
-}
-
-/// <summary>
-/// Extension method to register SecurityHeadersMiddleware
-/// </summary>
-public static class SecurityHeadersMiddlewareExtensions
-{
-    public static IApplicationBuilder UseSecurityHeaders(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<SecurityHeadersMiddleware>();
     }
 }
 
