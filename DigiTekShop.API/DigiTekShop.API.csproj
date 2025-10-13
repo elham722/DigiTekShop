@@ -41,8 +41,4 @@
     <ProjectReference Include="..\DigiTekShop.Persistence\DigiTekShop.Persistence.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Extensions\Options\NewFolder\OptionsValidators\" />
-  </ItemGroup>
-
 </Project>

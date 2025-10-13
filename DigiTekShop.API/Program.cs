@@ -9,14 +9,12 @@ using DigiTekShop.Identity.Context;
 using DigiTekShop.Identity.Data;
 using DigiTekShop.Identity.DependencyInjection;
 using DigiTekShop.Infrastructure.DependencyInjection;
+using DigiTekShop.Persistence.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
-using DigiTekShop.Persistence.DependencyInjection;
 using DigiTekShop.API.Extensions.Options;
 using DigiTekShop.Application.Authorization;
 
@@ -26,6 +24,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseSetting(WebHostDefaults.DetailedErrorsKey, "false");
 
 const string CorrelationHeader = "X-Request-ID";
+
+builder.Services.AddAppOptionsLite(builder.Configuration);
 
 #region Logging Configuration
 
@@ -37,8 +37,7 @@ builder.Host.UseSerilog((ctx, lc) => lc
 
 #endregion
 
-builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
 
 builder.WebHost.ConfigureKestrel(o =>
 {
@@ -153,9 +152,6 @@ builder.Services.AddRateLimiter(options =>
 
 #region Infrastructure & Application Services
 
-// Add options validation
-builder.Services.AddOptionsValidation(builder.Configuration);
-
 builder.Services.AddInfrastructure(builder.Configuration,builder.Environment);
 builder.Services.AddPersistenceServices(builder.Configuration);
 
@@ -166,10 +162,7 @@ builder.Services
 builder.Services.AddExternalServices(builder.Configuration);
 
 builder.Services.ConfigureApplicationCore();
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssemblies();
-});
+
 
 #endregion
 
@@ -218,6 +211,9 @@ builder.Services.AddApiVersioning(options =>
 #endregion
 
 #region Authorization Policies
+
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 builder.Services.AddAuthorization(options =>
 {

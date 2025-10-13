@@ -33,9 +33,6 @@ namespace DigiTekShop.Application.DependencyInjection
 
             #endregion
 
-           
-
-
             return services;
         }
     }
