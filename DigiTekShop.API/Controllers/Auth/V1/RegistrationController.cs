@@ -1,5 +1,5 @@
 ﻿using Asp.Versioning;
-using DigiTekShop.API.Contracts;
+using DigiTekShop.API.Common.Api;
 using DigiTekShop.API.Controllers.Common.V1;
 using DigiTekShop.API.ResultMapping;
 using DigiTekShop.Application.Auth.Register.Command;

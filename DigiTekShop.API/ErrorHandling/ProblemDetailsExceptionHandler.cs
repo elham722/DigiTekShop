@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using DigiTekShop.API.Common.Http;
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Exceptions.Common;
 using FluentValidation;
@@ -25,7 +26,10 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
     {
         if (http.Response.HasStarted) return false;
 
-        var traceId = Activity.Current?.Id ?? http.TraceIdentifier;
+        var traceId =
+            (http.Items.TryGetValue(HeaderNames.CorrelationId, out var cid) && cid is string s && !string.IsNullOrWhiteSpace(s))
+                ? s
+                : (Activity.Current?.Id ?? http.TraceIdentifier);
 
         if (ex is ValidationException or DomainException)
             _logger.LogWarning(ex, "Handled exception (traceId={TraceId})", traceId);
@@ -89,6 +93,8 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
        
         if (ex is SecurityTokenExpiredException)
         {
+            http.Response.Headers["WWW-Authenticate"] =
+                "Bearer error=\"invalid_token\", error_description=\"token expired\"";
             var info = ErrorCatalog.Resolve(ErrorCodes.Common.UNAUTHORIZED)!;
             var extras = new Dictionary<string, object?> { ["traceId"] = traceId, ["code"] = "TOKEN_EXPIRED" };
             var detail = _env.IsDevelopment() ? ex.Message : "Authentication token expired.";
@@ -97,6 +103,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
         }
         if (ex is SecurityTokenException)
         {
+            http.Response.Headers["WWW-Authenticate"] = "Bearer error=\"invalid_token\"";
             var info = ErrorCatalog.Resolve(ErrorCodes.Common.UNAUTHORIZED)!;
             var extras = new Dictionary<string, object?> { ["traceId"] = traceId, ["code"] = info.Code };
             var detail = _env.IsDevelopment() ? ex.Message : info.DefaultMessage;

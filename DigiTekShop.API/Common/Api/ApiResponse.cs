@@ -1,4 +1,4 @@
-namespace DigiTekShop.API.Contracts;
+namespace DigiTekShop.API.Common.Api;
 
 public sealed record ApiResponse<T>(
     T Data,

@@ -1,8 +1,9 @@
-﻿using DigiTekShop.API.Contracts;
+﻿using DigiTekShop.API.Common.Http;
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using DigiTekShop.API.Common.Api;
 
 namespace DigiTekShop.API.ResultMapping;
 
@@ -12,7 +13,12 @@ public static class ResultToActionResultExtensions
     {
         if (result.IsSuccess)
         {
-            var traceId = Activity.Current?.Id ?? c.HttpContext?.TraceIdentifier ?? Guid.NewGuid().ToString();
+            var traceId =
+                Activity.Current?.Id
+                ?? (c.HttpContext?.Items.TryGetValue(HeaderNames.CorrelationId, out var cid) == true ? cid as string : null)
+                ?? c.HttpContext?.TraceIdentifier
+                ?? Guid.NewGuid().ToString();
+
             var payload = result.Value is null ? default : result.Value;
             return c.StatusCode(okStatus, new ApiResponse<T?>(payload, TraceId: traceId, Timestamp: DateTimeOffset.UtcNow));
         }
@@ -36,7 +42,11 @@ public static class ResultToActionResultExtensions
     {
         var env = http.RequestServices.GetRequiredService<IWebHostEnvironment>();
         var path = http.Request.Path.HasValue ? http.Request.Path.Value : null;
-        var traceId = http.TraceIdentifier;
+
+        var correlationId =
+            Activity.Current?.Id
+            ?? (http.Items.TryGetValue(HeaderNames.CorrelationId, out var cid) && cid is string s && !string.IsNullOrWhiteSpace(s) ? s : null)
+            ?? http.TraceIdentifier;
 
         string detail = defaultMessage;
         if (env.IsDevelopment() && errors is not null)
@@ -51,10 +61,10 @@ public static class ResultToActionResultExtensions
             Title = code,
             Status = status,
             Detail = detail,
-            Instance = path 
+            Instance = path
         };
 
-        pd.Extensions["traceId"] = traceId;
+        pd.Extensions["traceId"] = correlationId;
 
         if (errors is not null && errors.Any())
         {

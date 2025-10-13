@@ -3,6 +3,7 @@ using DigiTekShop.API.ErrorHandling;
 using DigiTekShop.API.Extensions;
 using DigiTekShop.API.Extensions.Options;
 using DigiTekShop.API.Middleware;
+using DigiTekShop.API.Swagger;
 using DigiTekShop.Application.Authorization;
 using DigiTekShop.Application.DependencyInjection;
 using DigiTekShop.ExternalServices.DependencyInjection;
@@ -17,6 +18,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using DigiTekShop.API.Extensions.Clients;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -169,7 +171,7 @@ builder.Services.ConfigureApplicationCore();
 
 #region API Documentation (Swagger/OpenAPI)
 
-builder.Services.AddModernSwagger(builder.Configuration);
+builder.Services.AddSwaggerMinimal(includeXmlComments: true);
 builder.Services.AddEndpointsApiExplorer();
 
 #endregion
@@ -261,7 +263,7 @@ builder.Services.AddHttpClientOptimized();
 
 #endregion
 
-
+builder.Services.AddClientContext();
 
 var app = builder.Build();
 
@@ -291,7 +293,7 @@ app.UseForwardedHeadersSupport(builder.Configuration);
 app.UseExceptionHandler();
 
 #endregion
-
+app.UseClientContext();
 
 app.UseCorrelationId(headerName: CorrelationHeader);
 
@@ -374,7 +376,7 @@ app.UseAuthorization();
 
 #region Swagger (Development Only)
 
-app.UseModernSwagger(app.Environment);
+app.UseSwaggerMinimal(app.Environment);
 
 #endregion
 

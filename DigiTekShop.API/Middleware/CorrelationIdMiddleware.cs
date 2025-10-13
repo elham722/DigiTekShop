@@ -1,38 +1,34 @@
-﻿using Serilog.Context;
+﻿using DigiTekShop.API.Common.Http;
+using Serilog.Context;
 
 namespace DigiTekShop.API.Middleware;
 
-/// <summary>
-/// Middleware to add a Correlation ID to each request
-/// </summary>
-public class CorrelationIdMiddleware
+public sealed class CorrelationIdMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly string _headerName;
 
-    public CorrelationIdMiddleware(RequestDelegate next, string headerName = "X-Request-ID")
+    public CorrelationIdMiddleware(RequestDelegate next, string? headerName = null)
     {
         _next = next;
-        _headerName = headerName;
+        _headerName = headerName ?? HeaderNames.CorrelationId;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Get or create correlation ID
-        var correlationId = context.Request.Headers[_headerName].FirstOrDefault() 
-                           ?? Guid.NewGuid().ToString();
+        var correlationId =
+            context.Request.Headers[_headerName].FirstOrDefault()
+            ?? context.TraceIdentifier; 
 
-        // Add to response headers
+        context.Items[_headerName] = correlationId;
+
         context.Response.OnStarting(() =>
         {
             if (!context.Response.Headers.ContainsKey(_headerName))
-            {
                 context.Response.Headers[_headerName] = correlationId;
-            }
             return Task.CompletedTask;
         });
 
-        // Add to Serilog LogContext
         using (LogContext.PushProperty("CorrelationId", correlationId))
         {
             await _next(context);
@@ -40,13 +36,3 @@ public class CorrelationIdMiddleware
     }
 }
 
-/// <summary>
-/// Extension method to register CorrelationIdMiddleware
-/// </summary>
-public static class CorrelationIdMiddlewareExtensions
-{
-    public static IApplicationBuilder UseCorrelationId(this IApplicationBuilder builder, string headerName = "X-Request-ID")
-    {
-        return builder.UseMiddleware<CorrelationIdMiddleware>(headerName);
-    }
-}
