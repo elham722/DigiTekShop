@@ -12,8 +12,6 @@ public sealed class IdempotencyMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<IdempotencyMiddleware> _logger;
-    private readonly ICacheService _cache;
-    private readonly IDistributedLockService _lockService;
     private readonly IdempotencyOptions _opts;
 
     private const string KeyHeader1 = "X-Idempotency-Key";
@@ -23,20 +21,19 @@ public sealed class IdempotencyMiddleware
     public IdempotencyMiddleware(
         RequestDelegate next,
         ILogger<IdempotencyMiddleware> logger,
-        ICacheService cacheService,
-        IDistributedLockService lockService,
         IOptions<IdempotencyOptions> options)
     {
         _next = next;
         _logger = logger;
-        _cache = cacheService;
-        _lockService = lockService;
         _opts = options.Value ?? new IdempotencyOptions();
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
         var ct = context.RequestAborted;
+        var cache = context.RequestServices.GetRequiredService<ICacheService>();
+        var lockSvc = context.RequestServices.GetRequiredService<IDistributedLockService>();
+
 
         if (!IsWriteMethod(context.Request.Method))
         {
@@ -55,7 +52,7 @@ public sealed class IdempotencyMiddleware
         var fingerprint = await BuildFingerprintAsync(context.Request, ct);
 
         var cacheKey = $"{CachePrefix}{idemKey}";
-        var cached = await _cache.GetAsync<IdempotencyResponse>(cacheKey, ct);
+        var cached = await cache.GetAsync<IdempotencyResponse>(cacheKey, ct);
         if (cached is not null)
         {
             if (!string.Equals(cached.Fingerprint, fingerprint, StringComparison.Ordinal))
@@ -71,7 +68,7 @@ public sealed class IdempotencyMiddleware
 
         
         var lockKey = $"{cacheKey}:lock";
-        var gotLock = await _lockService.AcquireAsync(lockKey, TimeSpan.FromSeconds(10), ct);
+        var gotLock = await lockSvc.AcquireAsync(lockKey, TimeSpan.FromSeconds(10), ct);
         if (!gotLock)
         {
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -109,7 +106,7 @@ public sealed class IdempotencyMiddleware
                         Fingerprint = fingerprint
                     };
 
-                    await _cache.SetAsync(cacheKey, idemResp, TimeSpan.FromHours(_opts.TtlHours), ct);
+                    await cache.SetAsync(cacheKey, idemResp, TimeSpan.FromHours(_opts.TtlHours), ct);
                     _logger.LogInformation("Idempotency cached: {Key}", idemKey);
                 }
             }
@@ -129,7 +126,7 @@ public sealed class IdempotencyMiddleware
         {
             context.Response.Body = originalBody;
             if (gotLock) 
-                await _lockService.ReleaseAsync(lockKey, ct);
+                await lockSvc.ReleaseAsync(lockKey, ct);
         }
     }
 

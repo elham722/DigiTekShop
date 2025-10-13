@@ -35,6 +35,8 @@ namespace DigiTekShop.Identity.Configurations
 
             builder.Property(x => x.LockedUntil)
                 .IsRequired(false);
+            // در UserMfaConfiguration
+            builder.HasQueryFilter(um => !um.User.IsDeleted);
 
             builder.HasIndex(x => x.UserId).IsUnique().HasDatabaseName("UX_UserMfa_UserId");
             builder.HasIndex(x => x.IsEnabled).HasDatabaseName("IX_UserMfa_IsEnabled");

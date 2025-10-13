@@ -662,6 +662,11 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("TermsAccepted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
 
@@ -1057,8 +1062,7 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasOne("DigiTekShop.Identity.Models.User", "User")
                         .WithMany("PasswordHistories")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("User");
                 });
@@ -1068,8 +1072,7 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasOne("DigiTekShop.Identity.Models.User", "User")
                         .WithMany("PasswordResetTokens")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("User");
                 });
@@ -1079,8 +1082,7 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasOne("DigiTekShop.Identity.Models.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("User");
                 });
@@ -1109,8 +1111,7 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasOne("DigiTekShop.Identity.Models.User", "User")
                         .WithMany("Devices")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("User");
                 });
@@ -1137,8 +1138,7 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasOne("DigiTekShop.Identity.Models.User", "User")
                         .WithMany("UserPermissions")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Permission");
 
@@ -1201,8 +1201,7 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasOne("DigiTekShop.Identity.Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.Permission", b =>

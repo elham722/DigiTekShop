@@ -13,4 +13,17 @@ global using System.Collections.Generic;
 global using System.Linq;
 global using System.Text;
 global using System.Threading.Tasks;
+global using DigiTekShop.Contracts.Abstractions.Caching;
+global using DigiTekShop.Contracts.Abstractions.Clients;
+global using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
+global using DigiTekShop.Contracts.Abstractions.Identity.Phone;
+global using DigiTekShop.Contracts.Abstractions.Identity.Registration;
+global using DigiTekShop.Contracts.DTOs.Auth.Register;
+global using DigiTekShop.Contracts.Enums.Auth;
+global using DigiTekShop.Identity.Options;
+global using DigiTekShop.Identity.Options.PhoneVerification;
+global using DigiTekShop.SharedKernel.Errors;
+global using DigiTekShop.SharedKernel.Results;
+global using Microsoft.Extensions.Logging;
+global using Microsoft.Extensions.Options;
 

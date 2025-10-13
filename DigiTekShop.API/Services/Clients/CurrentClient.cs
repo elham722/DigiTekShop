@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.API.Services.Clients
+﻿using DigiTekShop.Contracts.Abstractions.Clients;
+
+namespace DigiTekShop.API.Services.Clients
 {
     public sealed class CurrentClient(IHttpContextAccessor accessor) : ICurrentClient
     {

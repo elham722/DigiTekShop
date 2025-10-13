@@ -1,6 +1,4 @@
-﻿using DigiTekShop.API.Services.Clients;
-
-namespace DigiTekShop.API.Controllers.Auth.V1;
+﻿namespace DigiTekShop.API.Controllers.Auth.V1;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
@@ -8,23 +6,24 @@ namespace DigiTekShop.API.Controllers.Auth.V1;
 public sealed class RegistrationController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly ICurrentClient _client;
     private readonly IEmailConfirmationService _emailConfirm;
     private readonly ILogger<RegistrationController> _logger;
 
-    public RegistrationController(IMediator mediator, ICurrentClient client,
+    public RegistrationController(IMediator mediator, 
                                   IEmailConfirmationService emailConfirm,
                                   ILogger<RegistrationController> logger)
     {
         _mediator = mediator;
-        _client = client;
         _emailConfirm = emailConfirm;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+
     [HttpPost("register")]
     [AllowAnonymous]
     [EnableRateLimiting("AuthPolicy")]
+    [Produces("application/json")]
+    [Consumes("application/json")]
     [ProducesResponseType(typeof(ApiResponse<RegisterResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto request, CancellationToken ct)
     {

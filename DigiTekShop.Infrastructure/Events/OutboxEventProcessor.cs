@@ -1,4 +1,4 @@
-using DigiTekShop.Contracts.Abstractions.Events;
+﻿using DigiTekShop.Contracts.Abstractions.Events;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,39 +23,62 @@ public sealed class OutboxEventProcessor : BackgroundService, IOutboxEventProces
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _logger.LogInformation("OutboxEventProcessor started.");
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 await ProcessEventsAsync(stoppingToken);
             }
+            catch (OperationCanceledException)
+            {
+                // لغو طبیعی – از حلقه خارج شو
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing outbox events");
             }
 
-            await Task.Delay(_processingInterval, stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // لغو طبیعی – از حلقه خارج شو
+                break;
+            }
         }
+
+        _logger.LogInformation("OutboxEventProcessor stopped.");
     }
+
 
     public async Task ProcessEventsAsync(CancellationToken ct = default)
     {
         using var scope = _serviceProvider.CreateScope();
         var outboxRepository = scope.ServiceProvider.GetRequiredService<IOutboxEventRepository>();
-        var domainEventPublisher = scope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
+        var publisher = scope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
 
-        var unprocessedEvents = await outboxRepository.GetUnprocessedEventsAsync(ct: ct);
+        var events = await outboxRepository.GetUnprocessedEventsAsync(ct: ct);
 
-        foreach (var outboxEvent in unprocessedEvents)
+        foreach (var e in events)
         {
             try
             {
-                await ProcessEventAsync(outboxEvent, ct);
+                await ProcessEventAsync(e, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                // لغو طبیعی – بازپخش نکن و failed نزن
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process outbox event {EventId}", outboxEvent.Id);
-                await outboxRepository.MarkAsFailedAsync(outboxEvent.Id, ex.Message, ct);
+                _logger.LogError(ex, "Failed to process outbox event {EventId}", e.Id);
+                await outboxRepository.MarkAsFailedAsync(e.Id, ex.Message, ct);
             }
         }
     }

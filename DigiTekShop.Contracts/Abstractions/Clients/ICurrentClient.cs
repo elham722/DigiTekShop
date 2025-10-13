@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.API.Services.Clients
+﻿namespace DigiTekShop.Contracts.Abstractions.Clients
 {
     public interface ICurrentClient
     {

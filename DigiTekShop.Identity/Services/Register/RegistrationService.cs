@@ -1,23 +1,10 @@
-﻿using DigiTekShop.Identity.Options.PhoneVerification;
-using DigiTekShop.SharedKernel.Errors;
-using DigiTekShop.SharedKernel.Results;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.EntityFrameworkCore;
-using DigiTekShop.Contracts.Enums.Auth;
-using DigiTekShop.Identity.Options;
-using DigiTekShop.Contracts.DTOs.Auth.Register;
-using DigiTekShop.Contracts.Abstractions.Caching;
-using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
-using DigiTekShop.Contracts.Abstractions.Identity.Phone;
-using DigiTekShop.Contracts.Abstractions.Identity.Registration;
-
-namespace DigiTekShop.Identity.Services.Register;
+﻿namespace DigiTekShop.Identity.Services.Register;
 
 public sealed class RegistrationService : IRegistrationService
 {
     private const string RATE_LIMIT_TAG = "[RATE_LIMIT]";
 
+    private readonly ICurrentClient _client;
     private readonly UserManager<User> _userManager;
     private readonly IEmailConfirmationService _emailConfirmationService;
     private readonly IPhoneVerificationService _phoneVerificationService;
@@ -28,15 +15,17 @@ public sealed class RegistrationService : IRegistrationService
     private readonly EmailConfirmationSettings _emailSettings;
 
     public RegistrationService(
+        ICurrentClient client,
         UserManager<User> userManager,
         IEmailConfirmationService emailConfirmationService,
         IPhoneVerificationService phoneVerificationService,
         IRateLimiter rateLimiter,
         IOptions<PhoneVerificationSettings> phoneOptions,
-        IOptions<EmailConfirmationSettings> emailOptions, 
+        IOptions<EmailConfirmationSettings> emailOptions,
         DigiTekShopIdentityDbContext context,
         ILogger<RegistrationService> logger)
     {
+        _client = client;
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _emailConfirmationService = emailConfirmationService ?? throw new ArgumentNullException(nameof(emailConfirmationService));
         _phoneVerificationService = phoneVerificationService ?? throw new ArgumentNullException(nameof(phoneVerificationService));
@@ -51,17 +40,20 @@ public sealed class RegistrationService : IRegistrationService
     {
         try
         {
-            
-            var rl = await CheckRateLimitsAsync(request.Email, request.IpAddress, ct);
+            var deviceId = _client.DeviceId;
+            var userAgent = _client.UserAgent;
+            var ip = _client.IpAddress;
+
+            var rl = await CheckRateLimitsAsync(request.Email, ip, ct);
             if (rl.IsFailure)
                 return Result<RegisterResponseDto>.Failure(rl.Errors, rl.ErrorCode);
 
-            var normalized = _userManager.NormalizeEmail(request.Email) ?? request.Email.ToUpperInvariant();
+            var normalizedEmail = _userManager.NormalizeEmail(request.Email) ?? request.Email.ToUpperInvariant();
 
             var existsAny = await _context.Users
                 .AsNoTracking()
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.NormalizedEmail == normalized, ct);
+                .AnyAsync(u => u.NormalizedEmail == normalizedEmail, ct);
 
 
             if (existsAny)
@@ -98,7 +90,7 @@ public sealed class RegistrationService : IRegistrationService
                     emailSent = emailRes.IsSuccess;
                     if (emailRes.IsFailure)
                     {
-                        emailError = emailRes.GetFirstError(); // کمک بزرگ برای دیباگ
+                        emailError = emailRes.GetFirstError(); 
                         _logger.LogWarning("Email confirmation send failed for {Email}: {Err}",
                             request.Email, emailError);
                     }
@@ -110,7 +102,6 @@ public sealed class RegistrationService : IRegistrationService
                 }
             }
 
-            // 6) Phone verification (optional, best effort)
             var requirePhone = _phoneSettings.RequirePhoneConfirmation && !string.IsNullOrWhiteSpace(user.PhoneNumber);
             var phoneCodeSent = false;
             if (requirePhone)
@@ -128,7 +119,7 @@ public sealed class RegistrationService : IRegistrationService
                 }
             }
 
-            // 7) Next step
+           
             var next = RegisterNextStep.None;
             if (requireEmail && !user.EmailConfirmed) next = RegisterNextStep.ConfirmEmail;
             else if (requirePhone && !user.PhoneNumberConfirmed) next = RegisterNextStep.VerifyPhone;
@@ -143,7 +134,7 @@ public sealed class RegistrationService : IRegistrationService
             );
 
             _logger.LogInformation("User {UserId} registered. EmailSent={EmailSent}, PhoneCodeSent={PhoneCodeSent} | DevId={DeviceId} UA={UA} IP={IP}",
-                user.Id, emailSent, phoneCodeSent, request.DeviceId, request.UserAgent, request.IpAddress);
+                user.Id, emailSent, phoneCodeSent, deviceId, userAgent, ip);
 
             return Result<RegisterResponseDto>.Success(response);
         }
@@ -169,6 +160,9 @@ public sealed class RegistrationService : IRegistrationService
             if (!string.IsNullOrWhiteSpace(ip))
                 tasks.Add(_rateLimiter.ShouldAllowAsync($"reg:ip:{ip}", 5, TimeSpan.FromMinutes(10), ct));
             tasks.Add(_rateLimiter.ShouldAllowAsync($"reg:email:{normEmailLower}", 3, TimeSpan.FromMinutes(10), ct));
+            tasks.Add(_rateLimiter.ShouldAllowAsync(
+                $"reg:emailip:{normEmailLower}:{ip}", 3, TimeSpan.FromMinutes(10), ct));
+
 
             var results = await Task.WhenAll(tasks);
             if (results.Any(allowed => allowed == false))
@@ -181,7 +175,7 @@ public sealed class RegistrationService : IRegistrationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "RateLimit check failed");
-            return Result.Success(); // fail-open
+            return Result.Success(); 
         }
     }
 

@@ -6,7 +6,6 @@
         bool EmailSent,
         bool RequirePhoneConfirmation,
         bool PhoneCodeSent,
-        RegisterNextStep NextStep = RegisterNextStep.None,
-        string? TraceId = null 
+        RegisterNextStep NextStep = RegisterNextStep.None
     );
 }

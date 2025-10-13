@@ -1,3 +1,4 @@
+﻿using Asp.Versioning.ApiExplorer;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -51,16 +52,28 @@ public static class SwaggerExtensions
     {
         if (!env.IsDevelopment()) return app;
 
-        app.UseSwagger(); 
+        app.UseSwagger(c =>
+        {
+            // JSON → /api-docs/{documentName}/swagger.json
+            c.RouteTemplate = "api-docs/{documentName}/swagger.json";
+        });
+
         app.UseSwaggerUI(c =>
         {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "DigiTekShop API v1");
+            c.RoutePrefix = "api-docs"; // UI → /api-docs
+            var provider = app.ApplicationServices.GetRequiredService<IApiVersionDescriptionProvider>();
+            foreach (var desc in provider.ApiVersionDescriptions)
+            {
+                c.SwaggerEndpoint($"/api-docs/{desc.GroupName}/swagger.json",
+                    $"DigiTekShop API {desc.GroupName}");
+            }
             c.DocumentTitle = "DigiTekShop API";
             c.DisplayRequestDuration();
         });
 
         return app;
     }
+
 }
 
 

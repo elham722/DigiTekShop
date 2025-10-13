@@ -1,10 +1,8 @@
-﻿
-using DigiTekShop.Application.Auth.Register.Command;
-using FluentValidation;
+﻿using FluentValidation;
 using System.Net;
 using System.Text.RegularExpressions;
 
-namespace DigiTekShop.Application.Auth.Register.Validator;
+namespace DigiTekShop.Application.Auth.Register.Command;
 
 public sealed class RegisterUserCommandValidator : AbstractValidator<RegisterUserCommand>
 {
@@ -41,24 +39,7 @@ public sealed class RegisterUserCommandValidator : AbstractValidator<RegisterUse
             .Equal(x => x.Dto.Password)
             .WithName("تأیید رمز عبور").WithMessage("{PropertyName} باید با «رمز عبور» یکسان باشد.");
 
-        // Terms
-        RuleFor(x => x.Dto.AcceptTerms)
-            .Equal(true)
-            .WithName("پذیرش قوانین")
-            .WithMessage("برای ادامه، {PropertyName} ضروری است.");
-
-        When(x => x.Dto.AcceptTerms, () =>
-        {
-            RuleFor(x => x.Dto.AcceptTermsVersion)
-                .NotEmpty().WithName("نسخه قوانین")
-                .WithMessage("{PropertyName} در صورت پذیرش قوانین الزامی است.")
-                .MaximumLength(32).WithMessage("{PropertyName} نباید بیش از {MaxLength} کاراکتر باشد.");
-
-            RuleFor(x => x.Dto.AcceptedTermsAtUtc)
-                .Must(dt => dt == null || dt <= DateTimeOffset.UtcNow.AddMinutes(2))
-                .WithName("زمان پذیرش قوانین")
-                .WithMessage("{PropertyName} نمی‌تواند در آینده باشد.");
-        });
+      
 
         // Phone (optional)
         When(x => !string.IsNullOrWhiteSpace(x.Dto.PhoneNumber), () =>
@@ -70,33 +51,6 @@ public sealed class RegisterUserCommandValidator : AbstractValidator<RegisterUse
                 .Must(v => v == v.Trim()).WithMessage("{PropertyName} نباید فاصله‌ی ابتدا/پایان داشته باشد.");
         });
 
-        // DeviceId (optional)
-        When(x => !string.IsNullOrWhiteSpace(x.Dto.DeviceId), () =>
-        {
-            RuleFor(x => x.Dto.DeviceId!)
-                .Must(d => DeviceIdPattern.IsMatch(d))
-                .WithName("شناسه دستگاه")
-                .WithMessage("{PropertyName} شامل کاراکتر نامعتبر است یا بیش از حد بلند است.");
-        });
-
-        // UserAgent (optional)
-        When(x => !string.IsNullOrWhiteSpace(x.Dto.UserAgent), () =>
-        {
-            RuleFor(x => x.Dto.UserAgent!).MaximumLength(512)
-                .WithName("مرورگر/دستگاه")
-                .WithMessage("{PropertyName} نباید بیش از {MaxLength} کاراکتر باشد.");
-        });
-
-        When(x => !string.IsNullOrWhiteSpace(x.Dto.IpAddress), () =>
-        {
-            RuleFor(x => x.Dto.IpAddress!)
-                .Must(ip =>
-                {
-                    var first = ip.Split(',')[0].Trim();
-                    return IPAddress.TryParse(first, out _);
-                })
-                .WithName("آدرس IP")
-                .WithMessage("{PropertyName} معتبر نیست.");
-        });
+      
     }
 }

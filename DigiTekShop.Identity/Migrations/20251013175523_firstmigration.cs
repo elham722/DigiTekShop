@@ -116,6 +116,7 @@ namespace DigiTekShop.Identity.Migrations
                     CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     GoogleId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     MicrosoftId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    TermsAccepted = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),

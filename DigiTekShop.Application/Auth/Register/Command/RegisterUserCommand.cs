@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DigiTekShop.Contracts.Abstractions.CQRS.Commands;
-using DigiTekShop.Contracts.DTOs.Auth.Register;
-using DigiTekShop.SharedKernel.Results;
+﻿using DigiTekShop.Contracts.DTOs.Auth.Register;
 
 namespace DigiTekShop.Application.Auth.Register.Command
 {

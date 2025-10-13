@@ -26,7 +26,12 @@
             builder.Property(u => u.LastPasswordChangeAt)
                 .IsRequired(false);
 
-            builder.Property(u => u.LastLoginAt)
+            builder.Property(u => u.TermsAccepted)
+                .HasColumnType("bit")
+                .HasDefaultValue(true)   
+                .IsRequired();
+
+        builder.Property(u => u.LastLoginAt)
                 .HasColumnType("datetime2(3)")
                 .IsRequired(false);
 

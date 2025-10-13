@@ -50,7 +50,7 @@ public static class InfrastructureRegistration
         }
 
         // 4) خدمات کش و ریت‌لیمیت
-        services.AddScoped<ICacheService, DistributedCacheService>();
+        services.AddSingleton<ICacheService, DistributedCacheService>();
         services.AddSingleton<IRateLimiter, RedisRateLimiter>();
         services.AddSingleton<ITokenBlacklistService, RedisTokenBlacklistService>();
 

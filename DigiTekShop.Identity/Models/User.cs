@@ -10,6 +10,7 @@ public class User : IdentityUser<Guid>
     public string? GoogleId { get; private set; }
     public string? MicrosoftId { get; private set; }
 
+    public bool TermsAccepted { get; private set; } = true;
 
     public bool IsDeleted { get; private set; }
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
@@ -40,7 +41,8 @@ public class User : IdentityUser<Guid>
             Email = email.Trim().ToLowerInvariant(),
             UserName = userName,
             CustomerId = customerId,
-            LockoutEnabled = true
+            LockoutEnabled = true,
+            TermsAccepted = true
         };
     }
 
@@ -236,7 +238,6 @@ public class User : IdentityUser<Guid>
         }
         Touch();
     }
-
 
     public bool IsLocked => LockoutEnd.HasValue && LockoutEnd.Value > DateTime.UtcNow;
     public bool IsActive => !IsLocked && EmailConfirmed && !IsDeleted;

@@ -19,7 +19,7 @@ public static class PersistenceRegistration
         IConfiguration configuration)
     {
         // 1. DbContext with SQL Server
-        var connectionString = configuration.GetConnectionString("DigiTekDBConnection")
+        var connectionString = configuration.GetConnectionString("DBConnection")
             ?? throw new InvalidOperationException("Database connection string 'DBConnection' not found");
 
         services.AddDbContext<DigiTekShopDbContext>(opt =>

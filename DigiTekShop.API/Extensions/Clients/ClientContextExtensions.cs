@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using DigiTekShop.API.Middleware;
 using DigiTekShop.API.Services.Clients;
+using DigiTekShop.Contracts.Abstractions.Clients;
 
 namespace DigiTekShop.API.Extensions.Clients;
 
