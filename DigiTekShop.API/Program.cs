@@ -1,43 +1,6 @@
-﻿using Asp.Versioning;
-using DigiTekShop.API.ErrorHandling;
-using DigiTekShop.API.Extensions.Clients;
-using DigiTekShop.API.Extensions.Headers;
-using DigiTekShop.API.Extensions.HealthCheck;
-using DigiTekShop.API.Extensions.Options;
-using DigiTekShop.API.Extensions.Performance;
-using DigiTekShop.API.Extensions.TrimmingModel;
-using DigiTekShop.API.Middleware;
-using DigiTekShop.API.Swagger;
-using DigiTekShop.Application.Authorization;
-using DigiTekShop.Application.DependencyInjection;
-using DigiTekShop.ExternalServices.DependencyInjection;
-using DigiTekShop.ExternalServices.Email;
-using DigiTekShop.Identity.Context;
-using DigiTekShop.Identity.Data;
-using DigiTekShop.Identity.DependencyInjection;
-using DigiTekShop.Infrastructure.DependencyInjection;
-using DigiTekShop.Persistence.DependencyInjection;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.RateLimiting;
-using Serilog;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
-using DigiTekShop.API.Common.Idempotency;
-using DigiTekShop.API.Extensions.ApiKey;
-using DigiTekShop.API.Extensions.Idempotency;
-using DigiTekShop.API.Extensions.NoStoreAuth;
-using DigiTekShop.API.Extensions.RequestLogging;
+﻿var builder = WebApplication.CreateBuilder(args);
 
-var builder = WebApplication.CreateBuilder(args);
-
-
-builder.WebHost.UseSetting(WebHostDefaults.DetailedErrorsKey, "false");
-
-const string CorrelationHeader = "X-Request-ID";
-
-builder.Services.AddAppOptionsLite(builder.Configuration);
-
-#region Logging Configuration
+#region Logging & Options
 
 builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration)
@@ -45,33 +8,37 @@ builder.Host.UseSerilog((ctx, lc) => lc
     .Enrich.WithProperty("Application", "DigiTekShop.API")
     .Enrich.WithProperty("Environment", ctx.HostingEnvironment.EnvironmentName));
 
+builder.WebHost.UseSetting(WebHostDefaults.DetailedErrorsKey, "false");
+
 #endregion
 
-
+#region Kestrel Limits
 
 builder.WebHost.ConfigureKestrel(o =>
 {
-    o.Limits.MaxRequestBodySize = 10 * 1024 * 1024; 
+    o.Limits.MaxRequestBodySize = 10 * 1024 * 1024;
     o.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2);
     o.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30);
 });
 
+#endregion
+
+
+#region Options & Infrastructure
+
+const string CorrelationHeader = "X-Request-ID";
+builder.Services.AddAppOptionsLite(builder.Configuration);
 
 builder.Services.AddForwardedHeadersSupport(builder.Configuration);
 
-#region CORS Configuration
-
-
 builder.Services.AddCors(options =>
 {
-   
-    options.AddPolicy("Development", policy => policy
+    options.AddPolicy("Development", p => p
         .AllowAnyOrigin()
         .AllowAnyHeader()
         .AllowAnyMethod());
 
-    
-    options.AddPolicy("Production", policy => policy
+    options.AddPolicy("Production", p => p
         .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
         .WithHeaders("Authorization", "Content-Type", "X-Device-Id", CorrelationHeader)
         .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
@@ -80,43 +47,34 @@ builder.Services.AddCors(options =>
         .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));
 });
 
-#endregion
-
-#region Controllers & JSON Configuration
-
-builder.Services.AddControllers(options =>
+builder.Services.AddControllers(o =>
     {
-        options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
-        options.ModelBinderProviders.Insert(0, new TrimmingModelBinderProvider(convertEmptyToNull: true));
+        o.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+        o.ModelBinderProviders.Insert(0, new TrimmingModelBinderProvider(convertEmptyToNull: true));
     })
-    .AddJsonOptions(options =>
+    .AddJsonOptions(o =>
     {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-        options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        o.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        o.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
     });
 
 #endregion
 
-#region Rate Limiting
-builder.Services.AddApiKeyAuth(builder.Configuration);
+#region Security: API Key, Rate Limiting 
 
-builder.Services.Configure<IdempotencyOptions>(
-    builder.Configuration.GetSection("Idempotency"));
+builder.Services.AddApiKeyAuth(builder.Configuration);
+builder.Services.Configure<IdempotencyOptions>(builder.Configuration.GetSection("Idempotency"));
 
 builder.Services.AddRateLimiter(options =>
 {
-    
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
     {
         var userId = httpContext.User.Identity?.Name;
-        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var partitionKey = userId ?? ipAddress;
-
-        return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: partitionKey,
-            factory: _ => new FixedWindowRateLimiterOptions
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(userId ?? ip,
+            _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
                 PermitLimit = 100,
@@ -124,31 +82,30 @@ builder.Services.AddRateLimiter(options =>
             });
     });
 
-    
-    options.AddFixedWindowLimiter("AuthPolicy", options =>
+    options.AddFixedWindowLimiter("AuthPolicy", o =>
     {
-        options.PermitLimit = 5;
-        options.Window = TimeSpan.FromMinutes(1);
-        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        options.QueueLimit = 2;
+        o.PermitLimit = 5;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        o.QueueLimit = 2;
     });
 
-    options.AddFixedWindowLimiter("ApiPolicy", options =>
+    options.AddFixedWindowLimiter("ApiPolicy", o =>
     {
-        options.PermitLimit = 50;
-        options.Window = TimeSpan.FromMinutes(1);
-        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        options.QueueLimit = 5;
+        o.PermitLimit = 50;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        o.QueueLimit = 5;
     });
 
-    options.AddFixedWindowLimiter("WebhooksPolicy", opt =>
+    options.AddFixedWindowLimiter("WebhooksPolicy", o =>
     {
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 10;
-        opt.QueueLimit = 0;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.PermitLimit = 10;
+        o.QueueLimit = 0;
     });
 
-    options.OnRejected = async (context, cancellationToken) =>
+    static ValueTask OnRateLimitRejected(OnRejectedContext context, CancellationToken token)
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
 
@@ -159,21 +116,25 @@ builder.Services.AddRateLimiter(options =>
             retryAfterSec = retryAfter.TotalSeconds;
         }
 
-        await context.HttpContext.Response.WriteAsJsonAsync(new
+        var payload = new
         {
             error = "Too many requests. Please try again later.",
             code = "RATE_LIMIT_EXCEEDED",
             retryAfter = retryAfterSec
-        }, cancellationToken);
-    };
+        };
+
+        return new ValueTask(context.HttpContext.Response.WriteAsJsonAsync(payload, token));
+    }
+
+    options.OnRejected = OnRateLimitRejected;
+
 });
 
 #endregion
 
+#region Infra & App Layers
 
-#region Infrastructure & Application Services
-
-builder.Services.AddInfrastructure(builder.Configuration,builder.Environment);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddPersistenceServices(builder.Configuration);
 
 builder.Services
@@ -181,32 +142,31 @@ builder.Services
     .ConfigureJwtAuthentication(builder.Configuration);
 
 builder.Services.AddExternalServices(builder.Configuration);
-
 builder.Services.ConfigureApplicationCore();
-
 
 #endregion
 
-#region API Documentation (Swagger/OpenAPI)
+
+#region Swagger
 
 builder.Services.AddSwaggerMinimal(includeXmlComments: true);
 builder.Services.AddEndpointsApiExplorer();
 
 #endregion
 
-#region HTTPS & HSTS
 
-builder.Services.AddHttpsRedirection(options =>
+#region Https / HSTS
+
+builder.Services.AddHttpsRedirection(o =>
 {
-    options.RedirectStatusCode = StatusCodes.Status308PermanentRedirect;
-    options.HttpsPort = 443;
+    o.RedirectStatusCode = StatusCodes.Status308PermanentRedirect;
+    o.HttpsPort = 443;
 });
-
-builder.Services.AddHsts(options =>
+builder.Services.AddHsts(o =>
 {
-    options.Preload = true;
-    options.IncludeSubDomains = true;
-    options.MaxAge = TimeSpan.FromDays(365);
+    o.Preload = true;
+    o.IncludeSubDomains = true;
+    o.MaxAge = TimeSpan.FromDays(365);
 });
 
 #endregion
@@ -214,43 +174,41 @@ builder.Services.AddHsts(options =>
 #region API Versioning
 
 builder.Services.AddApiVersioning(options =>
-{
-    options.AssumeDefaultVersionWhenUnspecified = true;
-    options.DefaultApiVersion = new ApiVersion(1, 0);
-    options.ReportApiVersions = true;
-    options.ApiVersionReader = ApiVersionReader.Combine(
-        new UrlSegmentApiVersionReader(),
-        new HeaderApiVersionReader("X-API-Version"),
-        new QueryStringApiVersionReader("api-version")
-    );
-}).AddApiExplorer(options =>
-{
-    options.GroupNameFormat = "'v'VVV";
-    options.SubstituteApiVersionInUrl = true;
-});
+    {
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = ApiVersionReader.Combine(
+            new UrlSegmentApiVersionReader(),
+            new HeaderApiVersionReader("X-API-Version"),
+            new QueryStringApiVersionReader("api-version"));
+    })
+    .AddApiExplorer(o =>
+    {
+        o.GroupNameFormat = "'v'VVV";
+        o.SubstituteApiVersionInUrl = true;
+    });
 
 #endregion
 
-#region Authorization Policies
+#region Authorization Policies 
 
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
-
-builder.Services.AddAuthorization(options =>
+builder.Services.AddAuthorization(o =>
 {
-    
-    options.DefaultPolicy = new AuthorizationPolicyBuilder()
+    o.DefaultPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
 });
 
 #endregion
 
+
 #region Health Checks
 
 builder.Services.AddComprehensiveHealthChecks();
 builder.Services.AddHealthChecks().AddCheck<SmtpHealthCheck>("smtp_config");
-
 
 #endregion
 
@@ -261,40 +219,40 @@ builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 
 #endregion
 
-#region Performance Optimizations
 
+#region Performance
 
 builder.Services.AddResponseCompressionOptimized();
-
-
 builder.Services.AddOutputCachingOptimized();
-
-
-builder.Services.AddMemoryCache(options =>
+builder.Services.AddMemoryCache(o =>
 {
-    options.SizeLimit = 1024;
-    options.CompactionPercentage = 0.2;
+    o.SizeLimit = 1024;
+    o.CompactionPercentage = 0.2;
 });
+builder.Services.AddHttpClientOptimized(builder.Configuration);
 
-
-builder.Services.AddHttpClientOptimized();
 
 #endregion
+
+
+#region Client Context
 
 builder.Services.AddClientContext();
 
 var app = builder.Build();
 
-// Seed permissions and roles on startup (Development only)
+#endregion
+
+#region Seed (Dev only)
+
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<DigiTekShopIdentityDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<DigiTekShopIdentityDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    
     try
     {
-        await PermissionSeeder.SeedAllAsync(context, logger);
+        await PermissionSeeder.SeedAllAsync(db, logger);
         logger.LogInformation("✅ Permissions and Roles seeded successfully");
     }
     catch (Exception ex)
@@ -303,122 +261,77 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-
-
-
-#region Exception Handling
-
-app.UseExceptionHandler();
-
 #endregion
 
-app.UseCorrelationId(headerName: CorrelationHeader);
+
+#region Pipeline 
+
 
 app.UseForwardedHeadersSupport(builder.Configuration);
 
-app.UseClientContext();
+
+app.UseExceptionHandler();
 
 
-
-if (builder.Configuration.GetValue<bool>("ApiKey:Enabled"))
-    app.UseApiKeyAuth();
-
-#region Logging
-
-
-app.UseSerilogRequestLogging(options =>
+app.UseSerilogRequestLogging(opts =>
 {
-    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000}ms | TraceId: {TraceId}";
-    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    opts.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000}ms | TraceId: {TraceId}";
+    opts.EnrichDiagnosticContext = (dc, http) =>
     {
-        diagnosticContext.Set("TraceId", httpContext.TraceIdentifier);
-        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
-        diagnosticContext.Set("RemoteIP", httpContext.Connection.RemoteIpAddress?.ToString());
-
-        if (httpContext.User?.Identity?.IsAuthenticated == true)
-        {
-            diagnosticContext.Set("UserName", httpContext.User.Identity.Name);
-        }
+        dc.Set("TraceId", http.TraceIdentifier);
+        dc.Set("RequestHost", http.Request.Host.Value);
+        dc.Set("RemoteIP", http.Connection.RemoteIpAddress?.ToString());
+        if (http.User?.Identity?.IsAuthenticated == true)
+            dc.Set("UserName", http.User.Identity!.Name!);
     };
 });
 
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseRequestLogging();
-}
-
-#endregion
-
-#region Security
+app.UseCorrelationId(headerName: CorrelationHeader);
+app.UseClientContext();
 
 
 if (app.Environment.IsProduction())
-{
     app.UseHsts();
-}
-
-
 app.UseHttpsRedirection();
 
 
 app.UseSecurityHeaders();
 
 
-app.UseCors(app.Environment.IsProduction() ? "Production" : "Development");
-
-#endregion
-
-#region Performance
-
-
-
-
-app.MapHealthCheckEndpoints();
-
-#endregion
-
-#region Routing & Rate Limiting
-
 app.UseRouting();
+
+
+app.UseCors(app.Environment.IsProduction() ? "Production" : "Development");
 
 
 app.UseRateLimiter();
 
-#endregion
 
-#region Authentication & Authorization
-
+if (builder.Configuration.GetValue<bool>("ApiKey:Enabled"))
+    app.UseApiKeyAuth();
 
 app.UseAuthentication();
-
-
 app.UseAuthorization();
 
-#endregion
 
 app.UseIdempotency();
 
-app.UseResponseCompression();
 
+app.UseResponseCompression();
 app.UseOutputCache();
+
 
 app.UseNoStoreForAuth();
 
-#region Swagger (Development Only)
 
 app.UseSwaggerMinimal(app.Environment);
 
-#endregion
 
-#region Endpoints
-
-app.UseMiddleware<NoStoreAuthMiddleware>();
-
+app.MapHealthCheckEndpoints();
 app.MapControllers();
 
 #endregion
-
 
 try
 {
