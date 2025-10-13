@@ -1,5 +1,3 @@
-using DigiTekShop.API.Common.Api;
-
 namespace DigiTekShop.API.Controllers.Cache.V1;
 
 [ApiController]
@@ -20,9 +18,7 @@ public class CacheController : ControllerBase
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    /// <summary>
-    /// Sets a value in cache
-    /// </summary>
+  
     [HttpPost("set")]
     [ProducesResponseType(typeof(ApiResponse<CacheSetResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]

@@ -50,7 +50,6 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers(o =>
     {
         o.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
-        o.ModelBinderProviders.Insert(0, new TrimmingModelBinderProvider(convertEmptyToNull: true));
     })
     .AddJsonOptions(o =>
     {

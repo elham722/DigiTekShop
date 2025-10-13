@@ -61,7 +61,7 @@ public sealed class CustomersQueryController : ControllerBase
             if (notModified != null) return notModified;
 
             HttpContext.Response.SetETag(etag);
-            return Ok(new ApiResponse<CustomerResponse>(response));
+            return this.ToActionResult(result);
         }
 
         return this.ToActionResult(result);

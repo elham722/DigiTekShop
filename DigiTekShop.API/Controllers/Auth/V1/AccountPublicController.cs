@@ -16,9 +16,6 @@ public class AccountPublicController : ControllerBase
         var res = await _emailConfirm.ConfirmEmailAsync(
             new ConfirmEmailRequestDto(userId, token), ct);
 
-        if (res.IsFailure)
-            return BadRequest(new { errors = res.Errors });
-
-        return Ok(new { message = "Email confirmed." });
+        return this.ToActionResult(res);
     }
 }

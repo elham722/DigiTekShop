@@ -19,39 +19,7 @@ public sealed class CustomersCommandController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>Register a new customer</summary>
-    [HttpPost]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(ApiResponse<CustomerRegistrationResponse>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> RegisterCustomer([FromBody] RegisterCustomerRequest request, CancellationToken ct)
-    {
-        // Convert request DTO to command DTO
-        var commandDto = new RegisterCustomerDto(
-            request.UserId,
-            request.FullName,
-            request.Email,
-            request.Phone
-        );
-        
-        var result = await _sender.Send(new RegisterCustomerCommand(commandDto), ct);
-        
-        if (result.IsSuccess)
-        {
-            var response = new CustomerRegistrationResponse(
-                result.Value,
-                request.FullName,
-                request.Email,
-                DateTime.UtcNow
-            );
-            
-        }
-        
-        return this.ToActionResult(result);
-    }
-
-    /// <summary>Add a new address to customer</summary>
+    
     [HttpPost("{customerId:guid}/addresses")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -62,7 +30,7 @@ public sealed class CustomersCommandController : ControllerBase
         [FromQuery] bool asDefault = false,
         CancellationToken ct = default)
     {
-        // Convert request DTO to command DTO
+        
         var addressDto = new AddressDto(
             request.Line1,
             request.Line2,
@@ -77,7 +45,7 @@ public sealed class CustomersCommandController : ControllerBase
         if (!result.IsSuccess) return this.ToActionResult(result);
 
         _logger.LogInformation("Address added for customer: {CustomerId}", customerId);
-        return null;
+        return this.ToActionResult(result);
     }
 
     /// <summary>Change customer email</summary>
@@ -95,7 +63,7 @@ public sealed class CustomersCommandController : ControllerBase
         if (!result.IsSuccess) return this.ToActionResult(result);
 
         _logger.LogInformation("Email changed for customer: {CustomerId}", customerId);
-        return NoContent();
+        return this.ToActionResult(result);
     }
 
     /// <summary>Set default address for customer</summary>
@@ -112,7 +80,7 @@ public sealed class CustomersCommandController : ControllerBase
         if (!result.IsSuccess) return this.ToActionResult(result);
 
         _logger.LogInformation("Default address set: {CustomerId} idx={Index}", customerId, addressIndex);
-        return NoContent();
+        return this.ToActionResult(result);
     }
 
     /// <summary>Update customer profile</summary>
@@ -129,7 +97,7 @@ public sealed class CustomersCommandController : ControllerBase
         if (!result.IsSuccess) return this.ToActionResult(result);
 
         _logger.LogInformation("Profile updated: {CustomerId}", customerId);
-        return NoContent();
+        return this.ToActionResult(result);
     }
 }
 
