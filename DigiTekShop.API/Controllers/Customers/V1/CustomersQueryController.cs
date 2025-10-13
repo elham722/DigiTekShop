@@ -1,7 +1,7 @@
 ﻿using Asp.Versioning;
 using DigiTekShop.API.Common.Api;
 using DigiTekShop.API.Controllers.Common.V1;
-using DigiTekShop.API.Extensions;
+using DigiTekShop.API.Extensions.ETag;
 using DigiTekShop.API.ResultMapping;
 using DigiTekShop.Application.Customers.Queries.GetCustomerById;
 using DigiTekShop.Application.Customers.Queries.GetMyCustomerProfile;

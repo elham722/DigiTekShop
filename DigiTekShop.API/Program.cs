@@ -19,6 +19,7 @@ using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using DigiTekShop.API.Extensions.Clients;
+using DigiTekShop.API.Extensions.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -285,7 +286,7 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-app.UseForwardedHeadersSupport(builder.Configuration);
+
 
 
 #region Exception Handling
@@ -293,9 +294,14 @@ app.UseForwardedHeadersSupport(builder.Configuration);
 app.UseExceptionHandler();
 
 #endregion
-app.UseClientContext();
 
 app.UseCorrelationId(headerName: CorrelationHeader);
+
+app.UseForwardedHeadersSupport(builder.Configuration);
+
+app.UseClientContext();
+
+
 
 app.UseApiKey();
 
