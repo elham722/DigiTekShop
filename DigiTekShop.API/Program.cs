@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using DigiTekShop.API.Common.Idempotency;
 using DigiTekShop.API.Extensions.ApiKey;
 using DigiTekShop.API.Extensions.Idempotency;
 
@@ -98,6 +99,9 @@ builder.Services.AddControllers(options =>
 
 #region Rate Limiting
 builder.Services.AddApiKeyAuth(builder.Configuration);
+
+builder.Services.Configure<IdempotencyOptions>(
+    builder.Configuration.GetSection("Idempotency"));
 
 builder.Services.AddRateLimiter(options =>
 {

@@ -2,90 +2,103 @@
 using DigiTekShop.Contracts.Abstractions.Caching;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Text.Json;
 
 namespace DigiTekShop.API.Middleware;
 
-public class IdempotencyMiddleware
+public sealed class IdempotencyMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<IdempotencyMiddleware> _logger;
     private readonly ICacheService _cache;
     private readonly IDistributedLockService _lockService;
+    private readonly IdempotencyOptions _opts;
+
     private const string KeyHeader1 = "X-Idempotency-Key";
     private const string KeyHeader2 = "Idempotency-Key";
     private const string CachePrefix = "idempotency:";
-    private static readonly TimeSpan Ttl = TimeSpan.FromHours(24);
 
-    public IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMiddleware> logger, ICacheService cacheService, IDistributedLockService lockService)
-        => (_next, _logger, _cache,_lockService) = (next, logger, cacheService,lockService);
+    public IdempotencyMiddleware(
+        RequestDelegate next,
+        ILogger<IdempotencyMiddleware> logger,
+        ICacheService cacheService,
+        IDistributedLockService lockService,
+        IOptions<IdempotencyOptions> options)
+    {
+        _next = next;
+        _logger = logger;
+        _cache = cacheService;
+        _lockService = lockService;
+        _opts = options.Value ?? new IdempotencyOptions();
+    }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        
+        var ct = context.RequestAborted;
+
         if (!IsWriteMethod(context.Request.Method))
         {
             await _next(context);
             return;
         }
 
-       
+        
         if (!TryGetKey(context.Request.Headers, out var idemKey))
         {
             await _next(context);
             return;
         }
 
-        var fingerprint = await BuildFingerprintAsync(context.Request);
+        
+        var fingerprint = await BuildFingerprintAsync(context.Request, ct);
 
         var cacheKey = $"{CachePrefix}{idemKey}";
-        var cached = await _cache.GetAsync<IdempotencyResponse>(cacheKey);
+        var cached = await _cache.GetAsync<IdempotencyResponse>(cacheKey, ct);
         if (cached is not null)
         {
-            
             if (!string.Equals(cached.Fingerprint, fingerprint, StringComparison.Ordinal))
             {
-                await WriteConflictAsync(context, idemKey);
+                await WriteConflictAsync(context, idemKey, ct);
                 return;
             }
 
             _logger.LogInformation("Idempotency hit: {Key}", idemKey);
-            await WriteCachedAsync(context, cached);
+            await WriteCachedAsync(context, cached, idemKey, ct);
             return;
         }
 
         
         var lockKey = $"{cacheKey}:lock";
-        var gotLock = await _lockService.AcquireAsync(lockKey, TimeSpan.FromSeconds(10)); 
+        var gotLock = await _lockService.AcquireAsync(lockKey, TimeSpan.FromSeconds(10), ct);
         if (!gotLock)
         {
-           
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-            await context.Response.WriteAsync("Duplicate request in progress. Please retry.");
+            context.Response.ContentType = "text/plain";
+            await context.Response.WriteAsync("Duplicate request in progress. Please retry.", ct);
             return;
         }
 
-        
         var originalBody = context.Response.Body;
         await using var mem = new MemoryStream();
         context.Response.Body = mem;
 
         try
         {
-            await _next(context);
+            await _next(context); 
 
             
             if (context.Response.StatusCode is >= 200 and < 300)
             {
                 
-                if (mem.Length <= 256 * 1024)
+                if (mem.Length <= _opts.MaxBodySizeBytes)
                 {
                     mem.Position = 0;
                     using var reader = new StreamReader(mem, leaveOpen: true);
                     var bodyText = await reader.ReadToEndAsync();
 
-                    var headersDict = AllowHeaders(context.Response.Headers);
+                    var headersDict = AllowHeaders(context.Response.Headers, _opts.AllowedHeaderNames);
 
                     var idemResp = new IdempotencyResponse
                     {
@@ -96,25 +109,27 @@ public class IdempotencyMiddleware
                         Fingerprint = fingerprint
                     };
 
-                    await _cache.SetAsync(cacheKey, idemResp, Ttl);
+                    await _cache.SetAsync(cacheKey, idemResp, TimeSpan.FromHours(_opts.TtlHours), ct);
                     _logger.LogInformation("Idempotency cached: {Key}", idemKey);
                 }
             }
 
             
+            context.Response.Headers["Idempotency-Key"] = idemKey;
+
             mem.Position = 0;
-            await mem.CopyToAsync(originalBody);
+            await mem.CopyToAsync(originalBody, ct);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Idempotency error (key={Key})", idemKey);
-           
             throw;
         }
         finally
         {
             context.Response.Body = originalBody;
-            await _lockService.ReleaseAsync(lockKey);
+            if (gotLock) 
+                await _lockService.ReleaseAsync(lockKey, ct);
         }
     }
 
@@ -133,29 +148,33 @@ public class IdempotencyMiddleware
         || m.Equals("PATCH", StringComparison.OrdinalIgnoreCase)
         || m.Equals("DELETE", StringComparison.OrdinalIgnoreCase);
 
-    private static async Task<string> BuildFingerprintAsync(HttpRequest req)
+    private static async Task<string> BuildFingerprintAsync(HttpRequest req, CancellationToken ct)
     {
-        
         req.EnableBuffering();
 
         using var sha = System.Security.Cryptography.SHA256.Create();
+
+        
         await using var ms = new MemoryStream();
-        await req.Body.CopyToAsync(ms);
+        await req.Body.CopyToAsync(ms, ct);
         var bodyBytes = ms.ToArray();
         req.Body.Position = 0;
+        var bodyHash = Convert.ToBase64String(sha.ComputeHash(bodyBytes));
 
         var userId = req.HttpContext.User?.Identity?.IsAuthenticated == true
-            ? req.HttpContext.User.FindFirst("sub")?.Value ?? req.HttpContext.User.Identity?.Name
+            ? (req.HttpContext.User.FindFirst("sub")?.Value ?? req.HttpContext.User.Identity?.Name)
             : null;
 
-        var input = $"{req.Method}|{req.Path}|{userId}|{Convert.ToBase64String(sha.ComputeHash(bodyBytes))}";
-        return Convert.ToBase64String(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input)));
+        var input = $"{req.Method}|{req.Path}{req.QueryString}|{userId}|{bodyHash}";
+        var fp = Convert.ToBase64String(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input)));
+        return fp;
     }
 
-    private static async Task WriteConflictAsync(HttpContext ctx, string key)
+    private static async Task WriteConflictAsync(HttpContext ctx, string key, CancellationToken ct)
     {
         ctx.Response.StatusCode = StatusCodes.Status409Conflict;
         ctx.Response.ContentType = "application/problem+json";
+
         var pd = new ProblemDetails
         {
             Type = "urn:problem:IDEMPOTENCY_KEY_REUSE_DIFFERENT_BODY",
@@ -165,26 +184,31 @@ public class IdempotencyMiddleware
             Instance = ctx.Request.Path
         };
         pd.Extensions["key"] = key;
-        await ctx.Response.WriteAsJsonAsync(pd);
+
+        await ctx.Response.WriteAsJsonAsync(pd, ct);
     }
 
-    private static async Task WriteCachedAsync(HttpContext ctx, IdempotencyResponse cached)
+    private static async Task WriteCachedAsync(HttpContext ctx, IdempotencyResponse cached, string idemKey, CancellationToken ct)
     {
         ctx.Response.StatusCode = cached.StatusCode;
         ctx.Response.ContentType = cached.ContentType;
 
         var headers = JsonSerializer.Deserialize<Dictionary<string, string>>(cached.Headers) ?? new();
+
         foreach (var kv in headers)
             ctx.Response.Headers[kv.Key] = kv.Value;
 
-        await ctx.Response.WriteAsync(cached.Body);
+        
+        ctx.Response.Headers["Idempotency-Key"] = idemKey;
+        ctx.Response.Headers["Idempotent-Replay"] = "true";
+
+        await ctx.Response.WriteAsync(cached.Body, ct);
     }
 
-    private static Dictionary<string, string> AllowHeaders(IHeaderDictionary headers)
+    private static Dictionary<string, string> AllowHeaders(IHeaderDictionary headers, string[] allowList)
     {
-        var allow = new[] { "Location", "ETag", "Cache-Control", "Content-Language" };
-        var dict = new Dictionary<string, string>();
-        foreach (var h in allow)
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var h in allowList)
             if (headers.TryGetValue(h, out var v)) dict[h] = v.ToString();
         return dict;
     }
