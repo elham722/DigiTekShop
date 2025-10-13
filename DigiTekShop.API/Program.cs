@@ -25,6 +25,7 @@ using System.Threading.RateLimiting;
 using DigiTekShop.API.Common.Idempotency;
 using DigiTekShop.API.Extensions.ApiKey;
 using DigiTekShop.API.Extensions.Idempotency;
+using DigiTekShop.API.Extensions.NoStoreAuth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -400,6 +401,8 @@ app.UseIdempotency();
 app.UseResponseCompression();
 
 app.UseOutputCache();
+
+app.UseNoStoreForAuth();
 
 #region Swagger (Development Only)
 
