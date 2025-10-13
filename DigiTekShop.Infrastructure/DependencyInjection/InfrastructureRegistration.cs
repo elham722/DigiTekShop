@@ -1,6 +1,7 @@
 ﻿
 using DigiTekShop.Contracts.Abstractions.Caching;
 using DigiTekShop.Contracts.Abstractions.Events;
+using DigiTekShop.Contracts.Abstractions.Events.Outbox;
 using DigiTekShop.Contracts.Abstractions.Time;
 using DigiTekShop.Infrastructure.Caching;
 using DigiTekShop.Infrastructure.Events;
@@ -68,6 +69,9 @@ public static class InfrastructureRegistration
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         services.AddSingleton<IDistributedLockService, RedisLockService>();
+
+        services.AddScoped<IAppOutboxBridge, AppOutboxBridge>();
+
 
 
         return services;
