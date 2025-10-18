@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Identity.Migrations
 {
     [DbContext(typeof(DigiTekShopIdentityDbContext))]
-    [Migration("20251013175523_firstmigration")]
-    partial class firstmigration
+    [Migration("20251018060410_firstmig")]
+    partial class firstmig
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -144,11 +144,9 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("varchar(256)");
 
                     b.Property<string>("LoginNameOrEmailNormalized")
-                        .ValueGeneratedOnAddOrUpdate()
                         .HasMaxLength(256)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(256)")
-                        .HasComputedColumnSql("LOWER([LoginNameOrEmail])", true);
+                        .HasColumnType("varchar(256)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -168,7 +166,7 @@ namespace DigiTekShop.Identity.Migrations
 
                     b.HasIndex("LoginNameOrEmailNormalized")
                         .HasDatabaseName("IX_LoginAttempts_LoginNameOrEmailNorm")
-                        .HasFilter("[LoginNameOrEmail] IS NOT NULL");
+                        .HasFilter("[LoginNameOrEmailNormalized] IS NOT NULL");
 
                     b.HasIndex("Status", "AttemptedAt")
                         .HasDatabaseName("IX_LoginAttempts_Status_AttemptedAt");

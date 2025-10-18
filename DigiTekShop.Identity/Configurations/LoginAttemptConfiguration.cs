@@ -24,9 +24,7 @@ public class LoginAttemptConfiguration : IEntityTypeConfiguration<LoginAttempt>
 
 
         builder.Property(la => la.LoginNameOrEmailNormalized)
-            .HasMaxLength(256)
-            .IsUnicode(false)
-            .HasComputedColumnSql("LOWER([LoginNameOrEmail])", stored: true);
+            .HasMaxLength(256).IsUnicode(false).IsRequired(false);
 
 
         builder.Property(la => la.AttemptedAt)
@@ -53,7 +51,7 @@ public class LoginAttemptConfiguration : IEntityTypeConfiguration<LoginAttempt>
             .IncludeProperties(la => new { la.Status, la.IpAddress });
 
         builder.HasIndex(la => la.LoginNameOrEmailNormalized)
-            .HasFilter("[LoginNameOrEmail] IS NOT NULL") 
+            .HasFilter("[LoginNameOrEmailNormalized] IS NOT NULL")
             .HasDatabaseName("IX_LoginAttempts_LoginNameOrEmailNorm");
 
         builder.HasIndex(la => la.IpAddress)

@@ -141,11 +141,9 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("varchar(256)");
 
                     b.Property<string>("LoginNameOrEmailNormalized")
-                        .ValueGeneratedOnAddOrUpdate()
                         .HasMaxLength(256)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(256)")
-                        .HasComputedColumnSql("LOWER([LoginNameOrEmail])", true);
+                        .HasColumnType("varchar(256)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -165,7 +163,7 @@ namespace DigiTekShop.Identity.Migrations
 
                     b.HasIndex("LoginNameOrEmailNormalized")
                         .HasDatabaseName("IX_LoginAttempts_LoginNameOrEmailNorm")
-                        .HasFilter("[LoginNameOrEmail] IS NOT NULL");
+                        .HasFilter("[LoginNameOrEmailNormalized] IS NOT NULL");
 
                     b.HasIndex("Status", "AttemptedAt")
                         .HasDatabaseName("IX_LoginAttempts_Status_AttemptedAt");

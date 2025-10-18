@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DigiTekShop.Identity.Migrations
 {
     /// <inheritdoc />
-    public partial class firstmigration : Migration
+    public partial class firstmig : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -47,7 +47,7 @@ namespace DigiTekShop.Identity.Migrations
                     Status = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     IpAddress = table.Column<string>(type: "varchar(45)", unicode: false, maxLength: 45, nullable: true),
                     UserAgent = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
-                    LoginNameOrEmailNormalized = table.Column<string>(type: "varchar(256)", unicode: false, maxLength: 256, nullable: true, computedColumnSql: "LOWER([LoginNameOrEmail])", stored: true)
+                    LoginNameOrEmailNormalized = table.Column<string>(type: "varchar(256)", unicode: false, maxLength: 256, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -529,7 +529,7 @@ namespace DigiTekShop.Identity.Migrations
                 name: "IX_LoginAttempts_LoginNameOrEmailNorm",
                 table: "LoginAttempts",
                 column: "LoginNameOrEmailNormalized",
-                filter: "[LoginNameOrEmail] IS NOT NULL");
+                filter: "[LoginNameOrEmailNormalized] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_LoginAttempts_Status_AttemptedAt",
