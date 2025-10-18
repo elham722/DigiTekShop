@@ -4,6 +4,7 @@ using DigiTekShop.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Persistence.Migrations
 {
     [DbContext(typeof(DigiTekShopDbContext))]
-    partial class DigiTekShopDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251018150645_foroutboxmessage")]
+    partial class foroutboxmessage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
