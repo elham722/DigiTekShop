@@ -1,5 +1,5 @@
 ﻿using DigiTekShop.Application.Common.Events;
-using DigiTekShop.SharedKernel.DomainShared.Events;       // IHasDomainEvents
+using DigiTekShop.SharedKernel.DomainShared.Events;       // IHasDomainEvents + IDomainEventSink
 using DigiTekShop.SharedKernel.Enums.Outbox;
 using DigiTekShop.SharedKernel.Time;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -11,26 +11,30 @@ public sealed class IdentityOutboxBeforeCommitInterceptor : SaveChangesIntercept
 {
     private readonly IIntegrationEventMapper _mapper;
     private readonly IDateTimeProvider _clock;
+    private readonly IDomainEventSink _sink;
 
-    public IdentityOutboxBeforeCommitInterceptor(IIntegrationEventMapper mapper, IDateTimeProvider clock)
+    public IdentityOutboxBeforeCommitInterceptor(
+        IIntegrationEventMapper mapper,
+        IDateTimeProvider clock,
+        IDomainEventSink sink)
     {
-        _mapper = mapper; _clock = clock;
+        _mapper = mapper; _clock = clock; _sink = sink;
     }
 
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
         if (eventData.Context is not DigiTekShopIdentityDbContext ctx) return result;
 
-        // جمع کردن رویدادها از همه‌ی entityهایی که IHasDomainEvents هستند
-        var aggregates = ctx.ChangeTracker.Entries()
+        // 1) از Aggregateها (اگر داشته باشیم)
+        var fromAggregates = ctx.ChangeTracker.Entries()
             .Where(e => e.Entity is IHasDomainEvents)
             .Select(e => (IHasDomainEvents)e.Entity)
-            .ToList();
+            .SelectMany(a => a.PullDomainEvents());
 
-        var domainEvents = aggregates
-            .SelectMany(a => a.PullDomainEvents())  // حتماً این متد در AggregateRoot<TId> پیاده شده باشد
-            .ToList();
+        // 2) از Sink (برای سناریوهایی مثل UserManager)
+        var fromSink = _sink.PullAll();
 
+        var domainEvents = fromAggregates.Concat(fromSink).ToList();
         if (domainEvents.Count == 0) return result;
 
         var integrationEvents = _mapper.MapDomainEventsToIntegrationEvents(domainEvents);

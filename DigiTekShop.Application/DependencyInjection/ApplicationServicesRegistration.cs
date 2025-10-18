@@ -35,7 +35,7 @@ namespace DigiTekShop.Application.DependencyInjection
             #endregion
 
             services.AddScoped<ShopIntegrationEventMapper>();
-            services.AddScoped<IdentityIntegrationEventMapper>();
+           
 
 
             return services;

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Identity.Migrations
 {
     [DbContext(typeof(DigiTekShopIdentityDbContext))]
-    [Migration("20251018150528_foroutboxmessage")]
+    [Migration("20251018173927_foroutboxmessage")]
     partial class foroutboxmessage
     {
         /// <inheritdoc />

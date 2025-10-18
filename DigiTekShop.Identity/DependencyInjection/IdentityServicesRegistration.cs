@@ -1,5 +1,4 @@
-﻿using DigiTekShop.Application.Outbox;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 using DigiTekShop.Contracts.Abstractions.Identity.DeviceManagement;
 using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
 using DigiTekShop.Contracts.Abstractions.Identity.Encryption;
@@ -10,6 +9,7 @@ using DigiTekShop.Contracts.Abstractions.Identity.Phone;
 using DigiTekShop.Contracts.Abstractions.Identity.Registration;
 using DigiTekShop.Contracts.Abstractions.Identity.Security;
 using DigiTekShop.Contracts.Abstractions.Identity.Token;
+using DigiTekShop.Identity.Events;
 using DigiTekShop.Identity.Interceptors;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Identity.Options.PhoneVerification;
@@ -17,6 +17,7 @@ using DigiTekShop.Identity.Options.Security;
 using DigiTekShop.Identity.Services;
 using DigiTekShop.Identity.Services.Register;
 using DigiTekShop.Identity.Services.Tokens;
+using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Time;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
@@ -35,7 +36,8 @@ public static class IdentityServicesRegistration
             opt.UseSqlServer(configuration.GetConnectionString("IdentityDBConnection"));
             var mapper = sp.GetRequiredService<IdentityIntegrationEventMapper>();
             var clock = sp.GetRequiredService<IDateTimeProvider>();
-            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock));
+            var sink = sp.GetRequiredService<IDomainEventSink>();
+            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock, sink));
         });
 
         #endregion
@@ -144,7 +146,7 @@ public static class IdentityServicesRegistration
 
         #endregion
 
-
+        services.AddScoped<IdentityIntegrationEventMapper>();
 
 
         return services;

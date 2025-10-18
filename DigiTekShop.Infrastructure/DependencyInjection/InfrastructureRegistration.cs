@@ -3,8 +3,10 @@ using DigiTekShop.Application.Common.Messaging;
 using DigiTekShop.Contracts.Abstractions.Caching;
 using DigiTekShop.Infrastructure.Background;
 using DigiTekShop.Infrastructure.Caching;
+using DigiTekShop.Infrastructure.DomainEvents;
 using DigiTekShop.Infrastructure.Messaging;
 using DigiTekShop.Infrastructure.Time;
+using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Time;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
@@ -73,6 +75,7 @@ public static class InfrastructureRegistration
         services.AddHostedService<ShopOutboxPublisherService>();
         services.AddHostedService<IdentityOutboxPublisherService>();
 
+        services.AddScoped<IDomainEventSink, DomainEventSink>();
 
         return services;
     }

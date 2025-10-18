@@ -1,4 +1,6 @@
-﻿using DigiTekShop.SharedKernel.Enums.Auth;
+﻿using DigiTekShop.Identity.Events;
+using DigiTekShop.SharedKernel.DomainShared.Events;
+using DigiTekShop.SharedKernel.Enums.Auth;
 
 namespace DigiTekShop.Identity.Services.Register;
 
@@ -15,6 +17,8 @@ public sealed class RegistrationService : IRegistrationService
     private readonly PhoneVerificationSettings _phoneSettings;
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly EmailConfirmationSettings _emailSettings;
+    private readonly IDomainEventSink _domainEvents;
+
 
     public RegistrationService(
         ICurrentClient client,
@@ -25,7 +29,8 @@ public sealed class RegistrationService : IRegistrationService
         IOptions<PhoneVerificationSettings> phoneOptions,
         IOptions<EmailConfirmationSettings> emailOptions,
         DigiTekShopIdentityDbContext context,
-        ILogger<RegistrationService> logger)
+        ILogger<RegistrationService> logger,
+        IDomainEventSink domainEvents)
     {
         _client = client;
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
@@ -36,6 +41,7 @@ public sealed class RegistrationService : IRegistrationService
         _emailSettings = emailOptions?.Value ?? new EmailConfirmationSettings { RequireEmailConfirmation = true };
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _domainEvents = domainEvents ?? throw new ArgumentNullException(nameof(domainEvents));
     }
 
     public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default)
@@ -83,8 +89,17 @@ public sealed class RegistrationService : IRegistrationService
                 return Result<RegisterResponseDto>.Failure(errors, ErrorCodes.Common.OPERATION_FAILED);
             }
 
-            // 4) (اختیاری، ولی توصیه‌شده) Customer provisioning (idempotent)
-            // await _customerProvisioner.CreateIfNotExistsAsync(user.Id, ct);
+            
+            _domainEvents.Raise(new UserRegisteredDomainEvent(
+                user.Id,
+                user.Email!,
+                req.Email,               
+                DateTimeOffset.UtcNow,
+                CorrelationId:null
+            ));
+
+            await _context.SaveChangesAsync(ct);
+
 
             // 5) Send confirmations
             var requireEmail = _emailSettings.RequireEmailConfirmation;
