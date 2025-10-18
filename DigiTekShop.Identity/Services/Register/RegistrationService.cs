@@ -78,6 +78,14 @@ public sealed class RegistrationService : IRegistrationService
             user.Email = req.Email;   
             if (req.PhoneNumber is not null) user.PhoneNumber = req.PhoneNumber;
 
+            _domainEvents.Raise(new UserRegisteredDomainEvent(
+                user.Id,
+                user.Email!,
+                FullName: null,
+                DateTimeOffset.UtcNow,
+                CorrelationId: null
+            ));
+
             var createResult = await _userManager.CreateAsync(user, req.Password);
             if (!createResult.Succeeded)
             {
@@ -88,18 +96,6 @@ public sealed class RegistrationService : IRegistrationService
                     MaskEmail(req.Email), string.Join(" | ", errors));
                 return Result<RegisterResponseDto>.Failure(errors, ErrorCodes.Common.OPERATION_FAILED);
             }
-
-            
-            _domainEvents.Raise(new UserRegisteredDomainEvent(
-                user.Id,
-                user.Email!,
-                req.Email,               
-                DateTimeOffset.UtcNow,
-                CorrelationId:null
-            ));
-
-            await _context.SaveChangesAsync(ct);
-
 
             // 5) Send confirmations
             var requireEmail = _emailSettings.RequireEmailConfirmation;

@@ -1,4 +1,5 @@
-﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+﻿using DigiTekShop.Application.Common.Events;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 using DigiTekShop.Contracts.Abstractions.Identity.DeviceManagement;
 using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
 using DigiTekShop.Contracts.Abstractions.Identity.Encryption;
@@ -34,7 +35,7 @@ public static class IdentityServicesRegistration
         services.AddDbContext<DigiTekShopIdentityDbContext>((sp, opt) =>
         {
             opt.UseSqlServer(configuration.GetConnectionString("IdentityDBConnection"));
-            var mapper = sp.GetRequiredService<IdentityIntegrationEventMapper>();
+            var mapper = sp.GetRequiredService<IIntegrationEventMapper>();
             var clock = sp.GetRequiredService<IDateTimeProvider>();
             var sink = sp.GetRequiredService<IDomainEventSink>();
             opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock, sink));
@@ -146,7 +147,7 @@ public static class IdentityServicesRegistration
 
         #endregion
 
-        services.AddScoped<IdentityIntegrationEventMapper>();
+        services.AddScoped<IIntegrationEventMapper, IdentityIntegrationEventMapper>();
 
 
         return services;
