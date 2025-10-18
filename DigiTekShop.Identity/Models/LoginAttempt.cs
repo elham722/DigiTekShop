@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.Enums.Auth;
+﻿using DigiTekShop.SharedKernel.Enums.Auth;
 
 namespace DigiTekShop.Identity.Models;
     public class LoginAttempt

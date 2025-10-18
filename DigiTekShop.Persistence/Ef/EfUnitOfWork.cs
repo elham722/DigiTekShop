@@ -1,26 +1,22 @@
-﻿using DigiTekShop.Contracts.Abstractions.Events;
-using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
+﻿using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using DigiTekShop.Persistence.Context;                // AppDbContext شما
 using DigiTekShop.SharedKernel.DomainShared.Events;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace DigiTekShop.Persistence.Ef;
 
 public sealed class EfUnitOfWork : IUnitOfWork
 {
-    private readonly DigiTekShopDbContext _db;            // فقط AppDbContext
-    private readonly IOutboxEventRepository _outbox;
+    private readonly DigiTekShopDbContext _db;          
     private readonly ILogger<EfUnitOfWork> _logger;
 
     public EfUnitOfWork(
         DigiTekShopDbContext db,
-        IOutboxEventRepository outbox,
         ILogger<EfUnitOfWork> logger)
     {
         _db = db;
-        _outbox = outbox;
         _logger = logger;
     }
 
@@ -62,8 +58,7 @@ public sealed class EfUnitOfWork : IUnitOfWork
                 affected = await _db.SaveChangesAsync(ct);
 
                 // 2) رویدادهای دامنه -> Outbox
-                await SaveDomainEventsToOutboxAsync(ct);
-
+               
                 // 3) ذخیره Outbox
                 await _db.SaveChangesAsync(ct);
 
@@ -125,35 +120,7 @@ public sealed class EfUnitOfWork : IUnitOfWork
         return result;
     }
 
-    private async Task SaveDomainEventsToOutboxAsync(CancellationToken ct)
-    {
-        var aggregates = _db.ChangeTracker.Entries()
-            .Where(e => e.Entity is IHasDomainEvents)
-            .Select(e => (IHasDomainEvents)e.Entity)
-            .ToList();
-
-        var events = aggregates.SelectMany(a => a.PullDomainEvents()).ToList();
-        if (events.Count == 0) return;
-
-        _logger.LogInformation("Saving {Count} domain events to outbox.", events.Count);
-
-        foreach (var ev in events)
-        {
-            var outbox = new OutboxEvent
-            {
-                Id = Guid.NewGuid(),
-                EventType = ev.GetType().AssemblyQualifiedName!,
-                EventData = JsonSerializer.Serialize(ev),
-                AggregateId = GetAggregateId(ev),
-                AggregateType = GetAggregateType(ev),
-                CreatedAt = DateTime.UtcNow,
-                RetryCount = 0
-            };
-
-            await _outbox.AddAsync(outbox, ct);
-        }
-    }
-
+   
     private static string GetAggregateId(IDomainEvent e)
         => e.GetType().GetProperties()
             .FirstOrDefault(p => p.Name.EndsWith("Id") && p.PropertyType == typeof(Guid))

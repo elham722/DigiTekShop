@@ -1,10 +1,7 @@
 ﻿
 using DigiTekShop.Contracts.Abstractions.Caching;
-using DigiTekShop.Contracts.Abstractions.Events;
-using DigiTekShop.Contracts.Abstractions.Events.Outbox;
 using DigiTekShop.Contracts.Abstractions.Time;
 using DigiTekShop.Infrastructure.Caching;
-using DigiTekShop.Infrastructure.Events;
 using DigiTekShop.Infrastructure.Time;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
@@ -55,12 +52,7 @@ public static class InfrastructureRegistration
         services.AddSingleton<IRateLimiter, RedisRateLimiter>();
         services.AddSingleton<ITokenBlacklistService, RedisTokenBlacklistService>();
 
-               // DomainEvent Publisher (in-process MediatR)
-               services.AddScoped<IDomainEventPublisher, MediatRDomainEventPublisher>();
-
-               // Outbox pattern for reliable messaging
-               services.AddScoped<IOutboxEventRepository, InfrastructureOutboxEventRepository>();
-               services.AddHostedService<OutboxEventProcessor>();
+         
 
         // 5) HealthCheck
         services.AddHealthChecks().AddRedis(redisCs, name: "redis");
@@ -70,7 +62,6 @@ public static class InfrastructureRegistration
 
         services.AddSingleton<IDistributedLockService, RedisLockService>();
 
-        services.AddScoped<IAppOutboxBridge, AppOutboxBridge>();
 
 
 

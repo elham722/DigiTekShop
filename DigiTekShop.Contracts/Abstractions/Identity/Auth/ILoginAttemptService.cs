@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Identity.Auth
+﻿using DigiTekShop.SharedKernel.Enums.Auth;
+
+namespace DigiTekShop.Contracts.Abstractions.Identity.Auth
 {
     public interface ILoginAttemptService
     {

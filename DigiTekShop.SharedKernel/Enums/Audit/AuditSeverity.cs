@@ -1,3 +1,3 @@
-﻿namespace DigiTekShop.Contracts.Enums.Audit;
+﻿namespace DigiTekShop.SharedKernel.Enums.Audit;
 public enum AuditSeverity { Trace = 0, Debug = 1, Info = 2, Warning = 3, Error = 4, Critical = 5 }
 

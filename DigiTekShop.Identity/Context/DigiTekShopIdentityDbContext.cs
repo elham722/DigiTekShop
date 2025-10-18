@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Identity.Context;
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace DigiTekShop.Identity.Context;
 
 public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
 {
@@ -18,27 +20,15 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
     public DbSet<PasswordHistory> PasswordHistories => Set<PasswordHistory>();
     public DbSet<UserMfa> UserMfa => Set<UserMfa>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
-        builder.ApplyConfiguration(new UserConfiguration());
-        builder.ApplyConfiguration(new RoleConfiguration());
-        builder.ApplyConfiguration(new PermissionConfiguration());
-        builder.ApplyConfiguration(new RolePermissionConfiguration());
-        builder.ApplyConfiguration(new UserPermissionConfiguration());
-        builder.ApplyConfiguration(new UserDeviceConfiguration());
-        builder.ApplyConfiguration(new RefreshTokenConfiguration());
-        builder.ApplyConfiguration(new AuditLogConfiguration());
-        builder.ApplyConfiguration(new SecurityEventConfiguration());
-        builder.ApplyConfiguration(new LoginAttemptConfiguration());
-        builder.ApplyConfiguration(new PhoneVerificationConfiguration());
-        builder.ApplyConfiguration(new PasswordHistoryConfiguration());
-        builder.ApplyConfiguration(new UserMfaConfiguration());
-        builder.ApplyConfiguration(new PasswordResetTokenConfiguration());
+        builder.ApplyConfigurationsFromAssembly(typeof(DigiTekShopIdentityDbContext).Assembly);
 
-        
+
         builder.Entity<User>().ToTable("Users");
         builder.Entity<Role>().ToTable("Roles");
         builder.Entity<IdentityUserRole<Guid>>().ToTable("UserRoles");

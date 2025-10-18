@@ -1,9 +1,9 @@
 ﻿using DigiTekShop.Contracts.Abstractions.ExternalServices.EmailSender;
 using DigiTekShop.Contracts.Abstractions.Identity.Password;
 using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
-using DigiTekShop.Contracts.Enums.Audit;
 using DigiTekShop.Identity.Helpers.EmailTemplates;
 using DigiTekShop.Identity.Options;
+using DigiTekShop.SharedKernel.Enums.Audit;
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
 using FluentValidation;

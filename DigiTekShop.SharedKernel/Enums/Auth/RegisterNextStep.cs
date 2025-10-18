@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.Enums.Auth
+﻿namespace DigiTekShop.SharedKernel.Enums.Auth
 {
     public enum RegisterNextStep
     {

@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Identity.Security
+﻿using DigiTekShop.SharedKernel.Enums.Security;
+
+namespace DigiTekShop.Contracts.Abstractions.Identity.Security
 {
     public interface ISecurityEventService
     {

@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Contracts.DTOs.Auth.SecurityEvent
+﻿using DigiTekShop.SharedKernel.Enums.Security;
+
+namespace DigiTekShop.Contracts.DTOs.Auth.SecurityEvent
 {
     public sealed record SecurityEventDto(
         Guid Id,

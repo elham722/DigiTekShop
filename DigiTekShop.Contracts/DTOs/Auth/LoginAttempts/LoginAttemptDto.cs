@@ -1,3 +1,5 @@
+using DigiTekShop.SharedKernel.Enums.Auth;
+
 namespace DigiTekShop.Contracts.DTOs.Auth.LoginAttempts;
 
 public record LoginAttemptDto

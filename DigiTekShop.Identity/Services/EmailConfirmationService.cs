@@ -1,6 +1,6 @@
 ﻿using DigiTekShop.Contracts.Abstractions.ExternalServices.EmailSender;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
-using DigiTekShop.Contracts.Enums.Audit;
+using DigiTekShop.SharedKernel.Enums.Audit;
 using FluentValidation;
 using Microsoft.AspNetCore.WebUtilities;
 

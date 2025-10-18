@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Contracts.DTOs.Auth.Register
+﻿using DigiTekShop.SharedKernel.Enums.Auth;
+
+namespace DigiTekShop.Contracts.DTOs.Auth.Register
 {
     public record RegisterResponseDto(
         Guid UserId,

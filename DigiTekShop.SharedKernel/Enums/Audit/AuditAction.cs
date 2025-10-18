@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.Enums.Audit;
+﻿namespace DigiTekShop.SharedKernel.Enums.Audit;
     public enum AuditAction
     {
         Created,

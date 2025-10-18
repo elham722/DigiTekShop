@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.Enums.Audit;
+﻿using DigiTekShop.SharedKernel.Enums.Audit;
 
 namespace DigiTekShop.Identity.Models;
 

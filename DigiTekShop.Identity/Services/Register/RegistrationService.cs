@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Identity.Services.Register;
+﻿using DigiTekShop.SharedKernel.Enums.Auth;
+
+namespace DigiTekShop.Identity.Services.Register;
 
 public sealed class RegistrationService : IRegistrationService
 {

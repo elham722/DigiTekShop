@@ -10,11 +10,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using DigiTekShop.SharedKernel.Errors;
-using DigiTekShop.Contracts.Enums.Security;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
 using DigiTekShop.Contracts.Abstractions.Caching;
 using DigiTekShop.Contracts.Abstractions.Identity.Token;
 using DigiTekShop.Contracts.Abstractions.Identity.Security;
+using DigiTekShop.SharedKernel.Enums.Security;
 
 namespace DigiTekShop.Identity.Services.Tokens;
 

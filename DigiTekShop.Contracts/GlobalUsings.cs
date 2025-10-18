@@ -10,8 +10,6 @@ global using DigiTekShop.Contracts.DTOs.Auth.SecurityEvent;
 global using DigiTekShop.Contracts.DTOs.Auth.Token;
 global using DigiTekShop.Contracts.DTOs.Auth.TwoFactor;
 global using DigiTekShop.Contracts.DTOs.Auth.UserDevice;
-global using DigiTekShop.Contracts.Enums.Auth;
-global using DigiTekShop.Contracts.Enums.Security;
 global using DigiTekShop.Domain.Customer.Entities;
 global using DigiTekShop.SharedKernel.DomainShared.Primitives;
 global using DigiTekShop.SharedKernel.Results;
