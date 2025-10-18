@@ -1,6 +1,7 @@
 ﻿using DigiTekShop.Application.Authorization;
 using DigiTekShop.Application.Behaviors;
 using DigiTekShop.Application.Mapping;
+using DigiTekShop.Application.Outbox;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -32,6 +33,10 @@ namespace DigiTekShop.Application.DependencyInjection
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavior<,>));
 
             #endregion
+
+            services.AddScoped<ShopIntegrationEventMapper>();
+            services.AddScoped<IdentityIntegrationEventMapper>();
+
 
             return services;
         }

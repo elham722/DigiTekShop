@@ -1,10 +1,13 @@
-﻿using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
+﻿using DigiTekShop.Application.Outbox;
+using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.Persistence.Ef;
+using DigiTekShop.Persistence.Interceptors;
 using DigiTekShop.Persistence.Repositories.Customer;
+using DigiTekShop.SharedKernel.Time;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +24,7 @@ public static class PersistenceRegistration
         var connectionString = configuration.GetConnectionString("DBConnection")
             ?? throw new InvalidOperationException("Database connection string 'DBConnection' not found");
 
-        services.AddDbContext<DigiTekShopDbContext>(opt =>
+        services.AddDbContext<DigiTekShopDbContext>((sp, opt) =>
         {
             opt.UseSqlServer(connectionString, sqlOptions =>
             {
@@ -31,11 +34,14 @@ public static class PersistenceRegistration
                     errorNumbersToAdd: null);
                 sqlOptions.CommandTimeout(30);
             });
-
+            var mapper = sp.GetRequiredService<ShopIntegrationEventMapper>();
+            var clock = sp.GetRequiredService<IDateTimeProvider>();
+            opt.AddInterceptors(new ShopOutboxBeforeCommitInterceptor(mapper, clock));
             // Enable detailed errors only in Development
             // opt.EnableDetailedErrors();
             // opt.EnableSensitiveDataLogging();
         });
+
 
         // 2. Generic Repositories (Base)
         services.AddScoped(typeof(ICommandRepository<,>), typeof(EfCommandRepository<,>));

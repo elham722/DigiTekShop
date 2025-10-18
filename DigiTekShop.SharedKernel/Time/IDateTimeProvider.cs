@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Time
+﻿namespace DigiTekShop.SharedKernel.Time
 {
     public interface IDateTimeProvider
     {

@@ -1,4 +1,5 @@
-﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+﻿using DigiTekShop.Application.Outbox;
+using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 using DigiTekShop.Contracts.Abstractions.Identity.DeviceManagement;
 using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
 using DigiTekShop.Contracts.Abstractions.Identity.Encryption;
@@ -9,12 +10,14 @@ using DigiTekShop.Contracts.Abstractions.Identity.Phone;
 using DigiTekShop.Contracts.Abstractions.Identity.Registration;
 using DigiTekShop.Contracts.Abstractions.Identity.Security;
 using DigiTekShop.Contracts.Abstractions.Identity.Token;
+using DigiTekShop.Identity.Interceptors;
 using DigiTekShop.Identity.Options;
 using DigiTekShop.Identity.Options.PhoneVerification;
 using DigiTekShop.Identity.Options.Security;
 using DigiTekShop.Identity.Services;
 using DigiTekShop.Identity.Services.Register;
 using DigiTekShop.Identity.Services.Tokens;
+using DigiTekShop.SharedKernel.Time;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -27,8 +30,13 @@ public static class IdentityServicesRegistration
     {
         #region DbContext
 
-        services.AddDbContext<DigiTekShopIdentityDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("IdentityDBConnection")));
+        services.AddDbContext<DigiTekShopIdentityDbContext>((sp, opt) =>
+        {
+            opt.UseSqlServer(configuration.GetConnectionString("IdentityDBConnection"));
+            var mapper = sp.GetRequiredService<IdentityIntegrationEventMapper>();
+            var clock = sp.GetRequiredService<IDateTimeProvider>();
+            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock));
+        });
 
         #endregion
 

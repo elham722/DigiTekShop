@@ -5,7 +5,7 @@
         public DateTimeOffset CreatedAtUtc { get; protected set; }
         public DateTimeOffset? UpdatedAtUtc { get; protected set; }
 
-        protected void TouchCreated(DateTime utc) => CreatedAtUtc = utc;
-        protected void TouchUpdated(DateTime utc) => UpdatedAtUtc = utc;
+        protected void TouchCreated(DateTimeOffset utc) => CreatedAtUtc = utc;
+        protected void TouchUpdated(DateTimeOffset utc) => UpdatedAtUtc = utc;
     }
 }

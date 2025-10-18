@@ -9,13 +9,17 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="9.0.9" />
+    <PackageReference Include="Polly" Version="8.6.4" />
     <PackageReference Include="StackExchange.Redis" Version="2.9.25" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.9" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DigiTekShop.Application\DigiTekShop.Application.csproj" />
     <ProjectReference Include="..\DigiTekShop.Contracts\DigiTekShop.Contracts.csproj" />
+    <ProjectReference Include="..\DigiTekShop.Identity\DigiTekShop.Identity.csproj" />
+    <ProjectReference Include="..\DigiTekShop.Persistence\DigiTekShop.Persistence.csproj" />
     <ProjectReference Include="..\DigiTekShop.SharedKernel\DigiTekShop.SharedKernel.csproj" />
   </ItemGroup>
 

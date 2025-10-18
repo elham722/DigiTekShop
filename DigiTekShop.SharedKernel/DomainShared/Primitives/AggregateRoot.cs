@@ -2,7 +2,7 @@
 
 namespace DigiTekShop.SharedKernel.DomainShared.Primitives;
 
-public abstract class AggregateRoot<TId> : Entity<TId>, IHasDomainEvents
+public abstract class AggregateRoot<TId> : Entity<TId>,IAggregateRoot, IHasDomainEvents
 {
     private readonly List<IDomainEvent> _domainEvents = new();
 

@@ -1,8 +1,11 @@
 ﻿
+using DigiTekShop.Application.Common.Messaging;
 using DigiTekShop.Contracts.Abstractions.Caching;
-using DigiTekShop.Contracts.Abstractions.Time;
+using DigiTekShop.Infrastructure.Background;
 using DigiTekShop.Infrastructure.Caching;
+using DigiTekShop.Infrastructure.Messaging;
 using DigiTekShop.Infrastructure.Time;
+using DigiTekShop.SharedKernel.Time;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,6 +66,12 @@ public static class InfrastructureRegistration
         services.AddSingleton<IDistributedLockService, RedisLockService>();
 
 
+        // Bus (فعلاً لاگ؛ بعداً Rabbit/Kafka/Redis جایگزین کن)
+        services.AddSingleton<IMessageBus, LoggingMessageBus>();
+
+        // Workers
+        services.AddHostedService<ShopOutboxPublisherService>();
+        services.AddHostedService<IdentityOutboxPublisherService>();
 
 
         return services;

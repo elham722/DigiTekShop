@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.Abstractions.Time;
+﻿using DigiTekShop.SharedKernel.Time;
 
 namespace DigiTekShop.Infrastructure.Time
 {
