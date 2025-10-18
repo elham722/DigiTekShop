@@ -37,8 +37,7 @@ public static class IdentityServicesRegistration
             opt.UseSqlServer(configuration.GetConnectionString("IdentityDBConnection"));
             var mapper = sp.GetRequiredService<IIntegrationEventMapper>();
             var clock = sp.GetRequiredService<IDateTimeProvider>();
-            var sink = sp.GetRequiredService<IDomainEventSink>();
-            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock, sink));
+            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock));
         });
 
         #endregion
@@ -147,6 +146,7 @@ public static class IdentityServicesRegistration
 
         #endregion
 
+        services.AddScoped<OutboxFlusher>();
         services.AddScoped<IIntegrationEventMapper, IdentityIntegrationEventMapper>();
 
 

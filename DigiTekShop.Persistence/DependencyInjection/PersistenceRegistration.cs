@@ -5,8 +5,10 @@ using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.Persistence.Ef;
+using DigiTekShop.Persistence.Handlers;
 using DigiTekShop.Persistence.Interceptors;
 using DigiTekShop.Persistence.Repositories.Customer;
+using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Time;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -53,7 +55,7 @@ public static class PersistenceRegistration
 
                // 4. Unit of Work
                services.AddScoped<IUnitOfWork, EfUnitOfWork>();
-
+               services.AddScoped<IIntegrationEventHandler<DigiTekShop.Contracts.Integration.Events.Identity.UserRegisteredIntegrationEvent>, UserRegisteredHandler>();
 
         return services;
     }

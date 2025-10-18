@@ -69,13 +69,18 @@ public static class InfrastructureRegistration
 
 
         // Bus (فعلاً لاگ؛ بعداً Rabbit/Kafka/Redis جایگزین کن)
-        services.AddSingleton<IMessageBus, LoggingMessageBus>();
+        services.AddSingleton<IMessageBus, RedisMessageBus>();
 
         // Workers
         services.AddHostedService<ShopOutboxPublisherService>();
         services.AddHostedService<IdentityOutboxPublisherService>();
 
         services.AddScoped<IDomainEventSink, DomainEventSink>();
+
+        // Dispatcher + Handler + Consumer
+        services.AddSingleton<IntegrationEventDispatcher>();
+        services.AddHostedService<ShopIntegrationEventConsumer>();
+
 
         return services;
     }

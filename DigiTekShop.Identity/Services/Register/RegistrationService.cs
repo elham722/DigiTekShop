@@ -18,6 +18,7 @@ public sealed class RegistrationService : IRegistrationService
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly EmailConfirmationSettings _emailSettings;
     private readonly IDomainEventSink _domainEvents;
+    private readonly OutboxFlusher _outboxFlusher;
 
 
     public RegistrationService(
@@ -30,7 +31,8 @@ public sealed class RegistrationService : IRegistrationService
         IOptions<EmailConfirmationSettings> emailOptions,
         DigiTekShopIdentityDbContext context,
         ILogger<RegistrationService> logger,
-        IDomainEventSink domainEvents)
+        IDomainEventSink domainEvents,
+        OutboxFlusher outboxFlusher)
     {
         _client = client;
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
@@ -42,6 +44,7 @@ public sealed class RegistrationService : IRegistrationService
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _domainEvents = domainEvents ?? throw new ArgumentNullException(nameof(domainEvents));
+        _outboxFlusher = outboxFlusher;
     }
 
     public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default)
@@ -78,13 +81,7 @@ public sealed class RegistrationService : IRegistrationService
             user.Email = req.Email;   
             if (req.PhoneNumber is not null) user.PhoneNumber = req.PhoneNumber;
 
-            _domainEvents.Raise(new UserRegisteredDomainEvent(
-                user.Id,
-                user.Email!,
-                FullName: null,
-                DateTimeOffset.UtcNow,
-                CorrelationId: null
-            ));
+           
 
             var createResult = await _userManager.CreateAsync(user, req.Password);
             if (!createResult.Succeeded)
@@ -97,6 +94,16 @@ public sealed class RegistrationService : IRegistrationService
                 return Result<RegisterResponseDto>.Failure(errors, ErrorCodes.Common.OPERATION_FAILED);
             }
 
+            _domainEvents.Raise(new UserRegisteredDomainEvent(
+                user.Id,
+                user.Email!,
+                FullName: null,
+                DateTimeOffset.UtcNow,
+                CorrelationId: null
+            ));
+
+            _outboxFlusher.Flush(_domainEvents, _context);
+            await _context.SaveChangesAsync(ct);
             // 5) Send confirmations
             var requireEmail = _emailSettings.RequireEmailConfirmation;
             var emailSent = false;
