@@ -38,6 +38,5 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse> : IPipelineBehavior<
         typeof(T).GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICommand<>));
 
     static bool IsNonTransactional(TRequest req) =>
-        req is INonTransactionalCommand
-        || req.GetType().GetCustomAttributes(typeof(INonTransactionalCommand), inherit: true).Any();
+        req is INonTransactionalCommand;
 }

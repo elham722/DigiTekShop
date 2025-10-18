@@ -1,29 +1,29 @@
-﻿namespace DigiTekShop.API.Controllers.Customers.V1;
+﻿namespace DigiTekShop.API.Controllers.Users.V1;
 
 [ApiController]
-[Route("api/v{version:apiVersion}/customers")]
+[Route("api/v{version:apiVersion}/users")]
 [ApiVersion("1.0")]
 [Authorize]
 [Produces("application/json")]
-[ApiExplorerSettings(GroupName = "v1-customers")]
-[Tags("Customers")]
-public sealed class CustomersQueryController : ControllerBase
+[ApiExplorerSettings(GroupName = "v1-users")]
+[Tags("Users")]
+public sealed class UsersQueryController : ControllerBase
 {
     private readonly ISender _sender;
-    private readonly ILogger<CustomersQueryController> _logger;
+    private readonly ILogger<UsersQueryController> _logger;
 
-    public CustomersQueryController(ISender sender, ILogger<CustomersQueryController> logger)
+    public UsersQueryController(ISender sender, ILogger<UsersQueryController> logger)
     {
         _sender = sender;
         _logger = logger;
     }
 
-    [HttpGet("{customerId:guid}", Name = "GetCustomerById")]
+    [HttpGet("{customerId:guid}", Name = "GetUserById")]
     [ProducesResponseType(typeof(ApiResponse<CustomerResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status304NotModified)]
-    public async Task<IActionResult> GetCustomerById([FromRoute] Guid customerId, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserById([FromRoute] Guid customerId, CancellationToken ct = default)
     {
         var result = await _sender.Send(new GetCustomerByIdQuery(customerId), ct);
 

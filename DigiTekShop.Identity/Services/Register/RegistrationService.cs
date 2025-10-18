@@ -40,48 +40,53 @@ public sealed class RegistrationService : IRegistrationService
     {
         try
         {
+            var req = Normalize(request);
+
             var deviceId = _client.DeviceId;
             var userAgent = _client.UserAgent;
             var ip = _client.IpAddress;
 
-            var rl = await CheckRateLimitsAsync(request.Email, ip, ct);
+            
+            var rl = await CheckRateLimitsAsync(req.Email, ip, ct);
             if (rl.IsFailure)
                 return Result<RegisterResponseDto>.Failure(rl.Errors, rl.ErrorCode);
 
-            var normalizedEmail = _userManager.NormalizeEmail(request.Email) ?? request.Email.ToUpperInvariant();
-
-            var existsAny = await _context.Users
-                .AsNoTracking()
-                .IgnoreQueryFilters()
+            
+            var normalizedEmail = _userManager.NormalizeEmail(req.Email) ?? req.Email.ToUpperInvariant();
+            var existsAny = await _context.Users.AsNoTracking().IgnoreQueryFilters()
                 .AnyAsync(u => u.NormalizedEmail == normalizedEmail, ct);
-
 
             if (existsAny)
             {
-                _logger.LogWarning("Registration attempt with existing email: {Email}", request.Email);
+                _logger.LogInformation("Registration idempotent/exists for {Email}", MaskEmail(req.Email));
                 return Result<RegisterResponseDto>.Failure(
                     new[] { "email: Email already registered." },
-                    ErrorCodes.Identity.USER_EXISTS
-                );
+                    ErrorCodes.Identity.USER_EXISTS);
             }
 
-           
-            var user = User.Create(request.Email,request.Email);
+            
+            var user = User.Create(req.Email, req.Email); 
+            user.UserName = req.Email; 
+            user.Email = req.Email;   
+            if (req.PhoneNumber is not null) user.PhoneNumber = req.PhoneNumber;
 
-            if (request.PhoneNumber is not null)
-                user.PhoneNumber = request.PhoneNumber;
-
-            var createResult = await _userManager.CreateAsync(user, request.Password);
+            var createResult = await _userManager.CreateAsync(user, req.Password);
             if (!createResult.Succeeded)
             {
-                var errors = createResult.Errors.Select(e => $"password: {e.Description}").ToList();
-                _logger.LogWarning("User creation failed for {Email}. Errors: {Errors}", request.Email, string.Join(" | ", errors));
+                var errors = createResult.Errors
+                    .Select(e => $"{MapField(e)}: {e.Description}")
+                    .ToList();
+                _logger.LogWarning("User creation failed for {Email}. Errors: {Errors}",
+                    MaskEmail(req.Email), string.Join(" | ", errors));
                 return Result<RegisterResponseDto>.Failure(errors, ErrorCodes.Common.OPERATION_FAILED);
             }
 
+            // 4) (اختیاری، ولی توصیه‌شده) Customer provisioning (idempotent)
+            // await _customerProvisioner.CreateIfNotExistsAsync(user.Id, ct);
+
+            // 5) Send confirmations
             var requireEmail = _emailSettings.RequireEmailConfirmation;
             var emailSent = false;
-            string? emailError = null;
             if (requireEmail)
             {
                 try
@@ -89,16 +94,12 @@ public sealed class RegistrationService : IRegistrationService
                     var emailRes = await _emailConfirmationService.SendAsync(user.Id.ToString(), ct);
                     emailSent = emailRes.IsSuccess;
                     if (emailRes.IsFailure)
-                    {
-                        emailError = emailRes.GetFirstError(); 
                         _logger.LogWarning("Email confirmation send failed for {Email}: {Err}",
-                            request.Email, emailError);
-                    }
+                            MaskEmail(req.Email), emailRes.GetFirstError());
                 }
                 catch (Exception ex)
                 {
-                    emailError = ex.Message;
-                    _logger.LogError(ex, "Email confirmation exception for {Email}", request.Email);
+                    _logger.LogError(ex, "Email confirmation exception for {Email}", MaskEmail(req.Email));
                 }
             }
 
@@ -111,7 +112,8 @@ public sealed class RegistrationService : IRegistrationService
                     var phoneRes = await _phoneVerificationService.SendVerificationCodeAsync(user.Id, user.PhoneNumber!, ct);
                     phoneCodeSent = phoneRes.IsSuccess;
                     if (phoneRes.IsFailure)
-                        _logger.LogWarning("Phone verification send failed for {Phone}: {Err}", user.PhoneNumber, phoneRes.GetFirstError());
+                        _logger.LogWarning("Phone verification send failed for {Phone}: {Err}",
+                            user.PhoneNumber, phoneRes.GetFirstError());
                 }
                 catch (Exception ex)
                 {
@@ -119,7 +121,7 @@ public sealed class RegistrationService : IRegistrationService
                 }
             }
 
-           
+            // 6) NextStep
             var next = RegisterNextStep.None;
             if (requireEmail && !user.EmailConfirmed) next = RegisterNextStep.ConfirmEmail;
             else if (requirePhone && !user.PhoneNumberConfirmed) next = RegisterNextStep.VerifyPhone;
@@ -140,7 +142,7 @@ public sealed class RegistrationService : IRegistrationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error during registration for email {Email}", request.Email);
+            _logger.LogError(ex, "Unexpected error during registration for email {Email}", MaskEmail(request.Email));
             return Result<RegisterResponseDto>.Failure(
                 new[] { "general: An unexpected error occurred during registration." },
                 ErrorCodes.Common.OPERATION_FAILED
@@ -157,12 +159,18 @@ public sealed class RegistrationService : IRegistrationService
             var normEmailLower = _userManager.NormalizeEmail(email)?.ToLowerInvariant() ?? email.ToLowerInvariant();
 
             var tasks = new List<Task<bool>>();
-            if (!string.IsNullOrWhiteSpace(ip))
-                tasks.Add(_rateLimiter.ShouldAllowAsync($"reg:ip:{ip}", 5, TimeSpan.FromMinutes(10), ct));
-            tasks.Add(_rateLimiter.ShouldAllowAsync($"reg:email:{normEmailLower}", 3, TimeSpan.FromMinutes(10), ct));
-            tasks.Add(_rateLimiter.ShouldAllowAsync(
-                $"reg:emailip:{normEmailLower}:{ip}", 3, TimeSpan.FromMinutes(10), ct));
 
+            tasks.Add(_rateLimiter.ShouldAllowAsync(
+                $"reg:email:{normEmailLower}", 5, TimeSpan.FromMinutes(30), ct));
+
+          
+            if (!string.IsNullOrWhiteSpace(ip))
+                tasks.Add(_rateLimiter.ShouldAllowAsync(
+                    $"reg:ip:{ip}", 20, TimeSpan.FromMinutes(10), ct));
+
+            if (!string.IsNullOrWhiteSpace(ip))
+                tasks.Add(_rateLimiter.ShouldAllowAsync(
+                    $"reg:emailip:{normEmailLower}:{ip}", 3, TimeSpan.FromMinutes(10), ct));
 
             var results = await Task.WhenAll(tasks);
             if (results.Any(allowed => allowed == false))
@@ -178,6 +186,25 @@ public sealed class RegistrationService : IRegistrationService
             return Result.Success(); 
         }
     }
+
+    private static RegisterRequestDto Normalize(RegisterRequestDto d) => d with
+    {
+        Email = d.Email.Trim().ToLowerInvariant(),
+        PhoneNumber = string.IsNullOrWhiteSpace(d.PhoneNumber) ? null : d.PhoneNumber.Trim()
+    };
+
+    private static string MaskEmail(string e)
+    {
+        if (string.IsNullOrWhiteSpace(e) || !e.Contains('@')) return "***";
+        var parts = e.Split('@'); var local = parts[0];
+        var maskedLocal = local.Length <= 2 ? "*".PadLeft(local.Length, '*') : $"{local[0]}***{local[^1]}";
+        return $"{maskedLocal}@{parts[1]}";
+    }
+
+    private static string MapField(IdentityError e)
+        => e.Code.Contains("Password", StringComparison.OrdinalIgnoreCase) ? "password"
+            : e.Code.Contains("UserName", StringComparison.OrdinalIgnoreCase) ? "email"
+            : "general";
 
 
     #endregion

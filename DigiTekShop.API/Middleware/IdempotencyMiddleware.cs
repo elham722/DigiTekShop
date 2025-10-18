@@ -1,8 +1,4 @@
-﻿using DigiTekShop.API.Common.Idempotency;
-using DigiTekShop.Contracts.Abstractions.Caching;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Text.Json;
 
@@ -162,7 +158,8 @@ public sealed class IdempotencyMiddleware
             ? (req.HttpContext.User.FindFirst("sub")?.Value ?? req.HttpContext.User.Identity?.Name)
             : null;
 
-        var input = $"{req.Method}|{req.Path}{req.QueryString}|{userId}|{bodyHash}";
+        var canonicalQuery = CanonicalQuery(req.Query);
+        var input = $"{req.Method}|{req.Path}?{canonicalQuery}|{userId}|{bodyHash}";
         var fp = Convert.ToBase64String(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input)));
         return fp;
     }
@@ -209,5 +206,10 @@ public sealed class IdempotencyMiddleware
             if (headers.TryGetValue(h, out var v)) dict[h] = v.ToString();
         return dict;
     }
+
+    private static string CanonicalQuery(IQueryCollection q) =>
+        string.Join("&", q.OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .SelectMany(kv => kv.Value.Order().Select(v => $"{kv.Key}={v}")));
+
 }
 

@@ -8,12 +8,12 @@
 [Consumes("application/json")]
 [ApiExplorerSettings(GroupName = "v1-customers")]
 [Tags("Customers")]
-public sealed class CustomersCommandController : ControllerBase
+public sealed class UsersCommandController : ControllerBase
 {
     private readonly ISender _sender;
-    private readonly ILogger<CustomersCommandController> _logger;
+    private readonly ILogger<UsersCommandController> _logger;
 
-    public CustomersCommandController(ISender sender, ILogger<CustomersCommandController> logger)
+    public UsersCommandController(ISender sender, ILogger<UsersCommandController> logger)
     {
         _sender = sender;
         _logger = logger;

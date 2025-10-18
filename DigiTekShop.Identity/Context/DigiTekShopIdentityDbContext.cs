@@ -6,7 +6,6 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
     {
     }
 
-    // DbSets for custom entities
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UserDevice> UserDevices => Set<UserDevice>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -24,7 +23,6 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
     {
         base.OnModelCreating(builder);
 
-        // Apply all configurations
         builder.ApplyConfiguration(new UserConfiguration());
         builder.ApplyConfiguration(new RoleConfiguration());
         builder.ApplyConfiguration(new PermissionConfiguration());
@@ -40,7 +38,7 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
         builder.ApplyConfiguration(new UserMfaConfiguration());
         builder.ApplyConfiguration(new PasswordResetTokenConfiguration());
 
-        // Configure Identity table names (optional - for custom naming)
+        
         builder.Entity<User>().ToTable("Users");
         builder.Entity<Role>().ToTable("Roles");
         builder.Entity<IdentityUserRole<Guid>>().ToTable("UserRoles");

@@ -3,17 +3,11 @@ namespace DigiTekShop.Identity.Options;
 public sealed class EmailConfirmationSettings
 {
     public string BaseUrl { get; set; } = string.Empty;
-
     public string ConfirmEmailPath { get; set; } = "account/confirm-email";
-
-    public int TokenValidityMinutes { get; set; } = 60 * 24; // 24 ساعت
-
+    public TimeSpan TokenValidity { get; set; } = TimeSpan.FromHours(24);
     public bool RequireEmailConfirmation { get; set; } = true;
-
     public bool AllowResendConfirmation { get; set; } = true;
-
-    public int ResendCooldownMinutes { get; set; } = 5;
-
+    public TimeSpan ResendCooldown { get; set; } = TimeSpan.FromMinutes(5);
     public EmailTemplateSettings Template { get; set; } = new();
 }
 
