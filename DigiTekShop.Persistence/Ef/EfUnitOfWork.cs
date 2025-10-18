@@ -1,146 +1,167 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Events;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
-using DigiTekShop.Persistence.Context;
+using DigiTekShop.Persistence.Context;                // AppDbContext شما
 using DigiTekShop.SharedKernel.DomainShared.Events;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace DigiTekShop.Persistence.Ef;
 
 public sealed class EfUnitOfWork : IUnitOfWork
 {
-    private readonly DigiTekShopDbContext _db;
-    private readonly IDomainEventPublisher _publisher;
-    private readonly IOutboxEventRepository _outboxRepository;
+    private readonly DigiTekShopDbContext _db;            // فقط AppDbContext
+    private readonly IOutboxEventRepository _outbox;
     private readonly ILogger<EfUnitOfWork> _logger;
-    private IDbContextTransaction? _tx;
 
     public EfUnitOfWork(
         DigiTekShopDbContext db,
-        IDomainEventPublisher publisher,
-        IOutboxEventRepository outboxRepository,
+        IOutboxEventRepository outbox,
         ILogger<EfUnitOfWork> logger)
     {
         _db = db;
-        _publisher = publisher;
-        _outboxRepository = outboxRepository;
+        _outbox = outbox;
         _logger = logger;
-    }
-
-    public async Task BeginTransactionAsync(CancellationToken ct = default)
-    {
-        _tx = await _db.Database.BeginTransactionAsync(ct);
-        _logger.LogDebug("Database transaction started");
-    }
-
-    public async Task CommitTransactionAsync(CancellationToken ct = default)
-    {
-        if (_tx is null)
-        {
-            _logger.LogWarning("Attempted to commit null transaction");
-            return;
-        }
-
-        await _tx.CommitAsync(ct);
-        _logger.LogDebug("Database transaction committed successfully");
-        
-        _tx.Dispose();
-        _tx = null;
-    }
-
-    public async Task RollbackTransactionAsync(CancellationToken ct = default)
-    {
-        if (_tx is null)
-        {
-            _logger.LogWarning("Attempted to rollback null transaction");
-            return;
-        }
-
-        await _tx.RollbackAsync(ct);
-        _logger.LogDebug("Database transaction rolled back");
-        
-        _tx.Dispose();
-        _tx = null;
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        var affectedRows = await _db.SaveChangesAsync(ct);
-        _logger.LogDebug("Saved {AffectedRows} rows to database", affectedRows);
-        return affectedRows;
+        var strategy = _db.Database.CreateExecutionStrategy();
+        int affected = 0;
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                affected = await _db.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                _logger.LogDebug("UoW committed ({Rows} rows).", affected);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
+
+        return affected;
     }
 
-    public async Task DispatchDomainEventsAsync(CancellationToken ct = default)
+    public async Task<int> SaveChangesWithOutboxAsync(CancellationToken ct = default)
     {
-        // Find all Aggregates that have Domain Events
-        var aggregates = _db.ChangeTracker
-            .Entries()
+        var strategy = _db.Database.CreateExecutionStrategy();
+        int affected = 0;
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                // 1) ذخیره تغییرات دامنه
+                affected = await _db.SaveChangesAsync(ct);
+
+                // 2) رویدادهای دامنه -> Outbox
+                await SaveDomainEventsToOutboxAsync(ct);
+
+                // 3) ذخیره Outbox
+                await _db.SaveChangesAsync(ct);
+
+                await tx.CommitAsync(ct);
+                _logger.LogDebug("UoW committed with outbox ({Rows} rows).", affected);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
+
+        return affected;
+    }
+
+    public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken ct = default)
+    {
+        var strategy = _db.Database.CreateExecutionStrategy();
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                await action(ct);
+                await _db.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
+    }
+
+    public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken ct = default)
+    {
+        var strategy = _db.Database.CreateExecutionStrategy();
+        T result = default!;
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                result = await action(ct);
+                await _db.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
+
+        return result;
+    }
+
+    private async Task SaveDomainEventsToOutboxAsync(CancellationToken ct)
+    {
+        var aggregates = _db.ChangeTracker.Entries()
             .Where(e => e.Entity is IHasDomainEvents)
             .Select(e => (IHasDomainEvents)e.Entity)
             .ToList();
 
-        if (aggregates.Count == 0)
-        {
-            _logger.LogDebug("No aggregates with domain events found");
-            return;
-        }
+        var events = aggregates.SelectMany(a => a.PullDomainEvents()).ToList();
+        if (events.Count == 0) return;
 
-        // Collect all events from aggregates
-        var allEvents = new List<IDomainEvent>();
-        foreach (var agg in aggregates)
-        {
-            var events = agg.PullDomainEvents();
-            allEvents.AddRange(events);
-        }
+        _logger.LogInformation("Saving {Count} domain events to outbox.", events.Count);
 
-        if (allEvents.Count == 0)
+        foreach (var ev in events)
         {
-            _logger.LogDebug("No domain events to dispatch");
-            return;
-        }
-
-        _logger.LogInformation("Saving {EventCount} domain events to outbox from {AggregateCount} aggregates",
-            allEvents.Count, aggregates.Count);
-
-        // Save events to outbox for reliable processing
-        foreach (var domainEvent in allEvents)
-        {
-            var outboxEvent = new OutboxEvent
+            var outbox = new OutboxEvent
             {
                 Id = Guid.NewGuid(),
-                EventType = domainEvent.GetType().AssemblyQualifiedName!,
-                EventData = JsonSerializer.Serialize(domainEvent),
-                AggregateId = GetAggregateId(domainEvent),
-                AggregateType = GetAggregateType(domainEvent),
+                EventType = ev.GetType().AssemblyQualifiedName!,
+                EventData = JsonSerializer.Serialize(ev),
+                AggregateId = GetAggregateId(ev),
+                AggregateType = GetAggregateType(ev),
                 CreatedAt = DateTime.UtcNow,
                 RetryCount = 0
             };
 
-            await _outboxRepository.AddAsync(outboxEvent, ct);
+            await _outbox.AddAsync(outbox, ct);
         }
-
-        _logger.LogDebug("Domain events saved to outbox successfully");
     }
 
-    private static string GetAggregateId(IDomainEvent domainEvent)
-    {
-        // Try to get aggregate ID from common properties
-        var aggregateIdProperty = domainEvent.GetType()
-            .GetProperties()
-            .FirstOrDefault(p => p.Name.EndsWith("Id") && p.PropertyType == typeof(Guid));
+    private static string GetAggregateId(IDomainEvent e)
+        => e.GetType().GetProperties()
+            .FirstOrDefault(p => p.Name.EndsWith("Id") && p.PropertyType == typeof(Guid))
+            ?.GetValue(e)?.ToString()
+           ?? Guid.NewGuid().ToString();
 
-        return aggregateIdProperty?.GetValue(domainEvent)?.ToString() ?? Guid.NewGuid().ToString();
-    }
-
-    private static string GetAggregateType(IDomainEvent domainEvent)
-    {
-        // Extract aggregate type from event type name
-        var eventTypeName = domainEvent.GetType().Name;
-        if (eventTypeName.EndsWith("Event"))
-        {
-            return eventTypeName[..^5]; // Remove "Event" suffix
-        }
-        return eventTypeName;
-    }
+    private static string GetAggregateType(IDomainEvent e)
+        => e.GetType().Name.EndsWith("Event")
+           ? e.GetType().Name[..^5]
+           : e.GetType().Name;
 }

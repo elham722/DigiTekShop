@@ -1,14 +1,13 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
-
-public interface IUnitOfWork
+﻿namespace DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork
 {
-    Task BeginTransactionAsync(CancellationToken ct = default);
+    public interface IUnitOfWork
+    {
+        Task<int> SaveChangesAsync(CancellationToken ct = default);
 
-    Task CommitTransactionAsync(CancellationToken ct = default);
+        Task<int> SaveChangesWithOutboxAsync(CancellationToken ct = default);
 
-    Task RollbackTransactionAsync(CancellationToken ct = default);
+        Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken ct = default);
 
-    Task<int> SaveChangesAsync(CancellationToken ct = default);
-
-    Task DispatchDomainEventsAsync(CancellationToken ct = default);
+        Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken ct = default);
+    }
 }

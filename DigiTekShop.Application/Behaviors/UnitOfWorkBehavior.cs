@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 
 namespace DigiTekShop.Application.Behaviors;
 
-
 public sealed class UnitOfWorkBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
@@ -13,52 +12,32 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse> : IPipelineBehavior<
     private readonly ILogger<UnitOfWorkBehavior<TRequest, TResponse>> _logger;
 
     public UnitOfWorkBehavior(IUnitOfWork uow, ILogger<UnitOfWorkBehavior<TRequest, TResponse>> logger)
-    {
-        _uow = uow;
-        _logger = logger;
-    }
+        => (_uow, _logger) = (uow, logger);
 
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
     {
-        if (!IsCommand())
-        {
+        // فقط روی Commandها
+        if (!IsCommand<TRequest>())
             return await next();
-        }
 
-        var requestName = typeof(TRequest).Name;
-        _logger.LogDebug("Starting transaction for command: {CommandName}", requestName);
+        // اگر NonTransactional بود (فقط Identity)، بدون UoW رد شو
+        if (IsNonTransactional(request))
+            return await next();
 
-        await _uow.BeginTransactionAsync(ct);
-        
-        try
-        {
-            var response = await next();
-            
-            await _uow.SaveChangesAsync(ct);
-            
-            await _uow.DispatchDomainEventsAsync(ct);
-           
-            await _uow.CommitTransactionAsync(ct);
-            
-            _logger.LogDebug("Transaction completed successfully for: {CommandName}", requestName);
-            
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Transaction failed for {CommandName}, rolling back", requestName);
-            
-            await _uow.RollbackTransactionAsync(ct);
-            throw;
-        }
+        // transactional-command:
+        var response = await next();
+
+        // تغییرات AppDb + Outbox
+        await _uow.SaveChangesWithOutboxAsync(ct);
+
+        return response;
     }
 
-    private static bool IsCommand()
-    {
-        return typeof(TRequest).IsAssignableTo(typeof(ICommand)) ||
-               (typeof(TRequest).IsGenericType &&
-                typeof(TRequest).GetGenericTypeDefinition() == typeof(ICommand<>)) ||
-               typeof(TRequest).GetInterfaces()
-                   .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICommand<>));
-    }
+    static bool IsCommand<T>() =>
+        typeof(T).IsAssignableTo(typeof(ICommand)) ||
+        typeof(T).GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICommand<>));
+
+    static bool IsNonTransactional(TRequest req) =>
+        req is INonTransactionalCommand
+        || req.GetType().GetCustomAttributes(typeof(INonTransactionalCommand), inherit: true).Any();
 }
