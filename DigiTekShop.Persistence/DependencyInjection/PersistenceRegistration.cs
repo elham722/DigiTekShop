@@ -61,8 +61,8 @@ public static class PersistenceRegistration
                services.AddScoped<IUnitOfWork, EfUnitOfWork>();
                services.AddScoped<IIntegrationEventHandler<UserRegisteredIntegrationEvent>, UserRegisteredHandler>();
                
-               // 5. Integration Event Mapper
-               services.AddScoped<IIntegrationEventMapper, PersistenceIntegrationEventMapper>();
+               // 5. Integration Event Mapper (Register as concrete type, will be used by CompositeMapper)
+               services.AddScoped<PersistenceIntegrationEventMapper>();
 
         return services;
     }

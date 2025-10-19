@@ -1,22 +1,29 @@
-﻿
 {
   "profiles": {
     "DigiTekShop.API": {
       "commandName": "Project",
       "launchBrowser": true,
-      "launchUrl": "api-docs", 
-      "applicationUrl": "https://localhost:7055;http://localhost:5248",
+      "launchUrl": "api-docs",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      }
+      },
+      "applicationUrl": "https://localhost:7055;http://localhost:5248"
     },
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
-      "launchUrl": "api-docs", 
+      "launchUrl": "api-docs",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
+    }
+  },
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:4872/",
+      "sslPort": 44389
     }
   }
 }

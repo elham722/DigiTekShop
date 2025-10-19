@@ -148,7 +148,8 @@ public static class IdentityServicesRegistration
         #endregion
 
 
-        services.AddScoped<IIntegrationEventMapper, IdentityIntegrationEventMapper>();
+        // Register as concrete type, not interface (will be used by CompositeMapper)
+        services.AddScoped<IdentityIntegrationEventMapper>();
         services.AddScoped<IIntegrationEventHandler<AddCustomerIdIntegrationEvent>, CustomerCreatedHandler>();
 
 

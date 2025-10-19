@@ -31,7 +31,7 @@ public sealed class Customer : VersionedAggregateRoot<CustomerId>
         EnsureInvariants();
     }
 
-    public static Customer Register(Guid userId, string fullName, string email, string? phone = null)
+    public static Customer Register(Guid userId, string fullName, string email, string? phone = null, string? correlationId = null)
     {
         var customer = new Customer(CustomerId.New(), userId, fullName, email, phone);
 
@@ -40,7 +40,7 @@ public sealed class Customer : VersionedAggregateRoot<CustomerId>
             CustomerId: customer.Id.Value,
             UserId: userId,
             OccurredOn: DateTimeOffset.UtcNow,    
-            CorrelationId: null                  
+            CorrelationId: correlationId                  
         ));
 
         return customer;

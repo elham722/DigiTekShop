@@ -1,12 +1,15 @@
 ﻿
+using DigiTekShop.Application.Common.Events;
 using DigiTekShop.Application.Common.Messaging;
 using DigiTekShop.Contracts.Abstractions.Caching;
 using DigiTekShop.Contracts.Options.RabbitMq;
+using DigiTekShop.Identity.Events;
 using DigiTekShop.Infrastructure.Background;
 using DigiTekShop.Infrastructure.Caching;
 using DigiTekShop.Infrastructure.DomainEvents;
 using DigiTekShop.Infrastructure.Messaging;
 using DigiTekShop.Infrastructure.Time;
+using DigiTekShop.Persistence.Events;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Time;
 using Microsoft.AspNetCore.DataProtection;
@@ -78,6 +81,14 @@ public static class InfrastructureRegistration
         services.AddHostedService<IdentityOutboxPublisherService>();
 
         services.AddScoped<IDomainEventSink, DomainEventSink>();
+
+        // Integration Event Mapper (Composite that combines Identity and Persistence mappers)
+        services.AddScoped<IIntegrationEventMapper>(sp =>
+        {
+            var identityMapper = sp.GetRequiredService<IdentityIntegrationEventMapper>();
+            var persistenceMapper = sp.GetRequiredService<PersistenceIntegrationEventMapper>();
+            return new CompositeIntegrationEventMapper(new IIntegrationEventMapper[] { identityMapper, persistenceMapper });
+        });
 
         // Dispatcher + Handler + Consumer
         services.AddSingleton<IntegrationEventDispatcher>();

@@ -31,7 +31,7 @@ namespace DigiTekShop.Infrastructure.Messaging
                     _log.LogInformation("Dispatched UserRegisteredIntegrationEvent for UserId {UserId}", evt.UserId);
                     break;
                 }
-                case "DigiTekShop.Contracts.Integration.Events.Customers.CustomerCreatedIntegrationEvent":
+                case "DigiTekShop.Contracts.Integration.Events.Customers.AddCustomerIdIntegrationEvent":
                     {
                     var evt = JsonSerializer.Deserialize<AddCustomerIdIntegrationEvent>(payload)!;
                     using var scope = _sp.CreateScope();

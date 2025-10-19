@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 using DigiTekShop.Application.Common.Events;
-using DigiTekShop.Contracts.Abstractions.Telemetry;  // اگر خواستی Correlation بگیری
+using DigiTekShop.Contracts.Abstractions.Telemetry; 
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Enums.Outbox;
@@ -15,7 +15,7 @@ public sealed class ShopOutboxBeforeCommitInterceptor : SaveChangesInterceptor
 {
     private readonly IIntegrationEventMapper _mapper;
     private readonly IDateTimeProvider _clock;
-    private readonly ICorrelationContext? _corr; // اختیاری
+    private readonly ICorrelationContext? _corr; 
 
     public ShopOutboxBeforeCommitInterceptor(
         IIntegrationEventMapper mapper,

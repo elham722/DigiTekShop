@@ -28,12 +28,12 @@ namespace DigiTekShop.Persistence.Handlers
             if (exists) return;
 
             var fullName = string.IsNullOrWhiteSpace(evt.FullName) ? evt.Email : evt.FullName;
-            var customer = Customer.Register(evt.UserId, fullName, evt.Email, phone: evt.PhoneNumber);
+            var customer = Customer.Register(evt.UserId, fullName, evt.Email, phone: evt.PhoneNumber, correlationId: evt.CorrelationId);
 
             _db.Customers.Add(customer);
             await _db.SaveChangesAsync(ct);
 
-            _log.LogInformation("Customer created for user {UserId}", evt.UserId);
+            _log.LogInformation("Customer created for user {UserId} with CorrelationId {CorrelationId}", evt.UserId, evt.CorrelationId);
             _log.LogInformation("CustomerRegistered domain event will be processed by ShopOutboxBeforeCommitInterceptor");
         }
     }

@@ -1,4 +1,5 @@
-﻿using DigiTekShop.Identity.Events;
+﻿using DigiTekShop.Contracts.Abstractions.Telemetry;
+using DigiTekShop.Identity.Events;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Enums.Auth;
 
@@ -18,6 +19,7 @@ public sealed class RegistrationService : IRegistrationService
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly EmailConfirmationSettings _emailSettings;
     private readonly IDomainEventSink _domainEvents;
+    private readonly ICorrelationContext _correlationContext;
 
 
     public RegistrationService(
@@ -30,7 +32,8 @@ public sealed class RegistrationService : IRegistrationService
         IOptions<EmailConfirmationSettings> emailOptions,
         DigiTekShopIdentityDbContext context,
         ILogger<RegistrationService> logger,
-        IDomainEventSink domainEvents)
+        IDomainEventSink domainEvents,
+        ICorrelationContext correlationContext)
     {
         _client = client;
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
@@ -42,6 +45,7 @@ public sealed class RegistrationService : IRegistrationService
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _domainEvents = domainEvents ?? throw new ArgumentNullException(nameof(domainEvents));
+        _correlationContext = correlationContext ?? throw new ArgumentNullException(nameof(correlationContext));
     }
 
     public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default)
@@ -89,14 +93,15 @@ public sealed class RegistrationService : IRegistrationService
 
             // ✅ حالا User در دیتابیس ذخیره شده و ID واقعی دارد
             // Domain Event را raise می‌کنیم و SaveChanges می‌زنیم تا interceptor آن را پردازش کند
-            _logger.LogInformation("Raising UserRegisteredDomainEvent for user {UserId}", user.Id);
+            var correlationId = _correlationContext.GetCorrelationId();
+            _logger.LogInformation("Raising UserRegisteredDomainEvent for user {UserId} with CorrelationId {CorrelationId}", user.Id, correlationId);
             _domainEvents.Raise(new UserRegisteredDomainEvent(
                 UserId: user.Id,
                 Email: user.Email!,
                 PhoneNumber: user.PhoneNumber,
                 FullName: null,
                 OccurredOn: DateTimeOffset.UtcNow,
-                CorrelationId: null
+                CorrelationId: correlationId
             ));
 
             // این SaveChanges فقط برای Outbox است (User قبلاً ذخیره شده)
