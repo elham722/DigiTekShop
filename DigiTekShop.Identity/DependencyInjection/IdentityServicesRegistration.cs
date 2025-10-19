@@ -8,7 +8,9 @@ using DigiTekShop.Contracts.Abstractions.Identity.Permission;
 using DigiTekShop.Contracts.Abstractions.Identity.Security;
 using DigiTekShop.Contracts.Abstractions.Identity.Token;
 using DigiTekShop.Contracts.Abstractions.Telemetry;
+using DigiTekShop.Contracts.Integration.Events.Customers;
 using DigiTekShop.Identity.Events;
+using DigiTekShop.Identity.Handlers.Customers;
 using DigiTekShop.Identity.Interceptors;
 using DigiTekShop.Identity.Options.Security;
 using DigiTekShop.Identity.Services;
@@ -147,6 +149,7 @@ public static class IdentityServicesRegistration
 
 
         services.AddScoped<IIntegrationEventMapper, IdentityIntegrationEventMapper>();
+        services.AddScoped<IIntegrationEventHandler<AddCustomerIdIntegrationEvent>, CustomerCreatedHandler>();
 
 
         return services;

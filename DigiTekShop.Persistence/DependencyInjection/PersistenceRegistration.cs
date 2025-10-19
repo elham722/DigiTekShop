@@ -3,7 +3,7 @@ using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
-using DigiTekShop.Contracts.Integration.Events.Identity;
+using DigiTekShop.Contracts.Integration.Events.Customers;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.Persistence.Ef;
 using DigiTekShop.Persistence.Handlers;

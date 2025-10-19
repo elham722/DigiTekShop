@@ -1,6 +1,5 @@
 ﻿using DigiTekShop.Application.Common.Events;
-using DigiTekShop.Contracts.Integration.Events.Identity;
-using DigiTekShop.Identity.Events; // ✅ اینو بذار
+using DigiTekShop.Contracts.Integration.Events.Customers;
 
 namespace DigiTekShop.Identity.Events;
 

@@ -1,4 +1,5 @@
-﻿using DigiTekShop.SharedKernel.DomainShared.Events;
+﻿using DigiTekShop.Contracts.Integration.Events.Customers;
+using DigiTekShop.SharedKernel.DomainShared.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -22,9 +23,9 @@ namespace DigiTekShop.Infrastructure.Messaging
             {
                 case "DigiTekShop.Contracts.Integration.Events.Identity.UserRegisteredIntegrationEvent":
                 {
-                    var evt = JsonSerializer.Deserialize<DigiTekShop.Contracts.Integration.Events.Identity.UserRegisteredIntegrationEvent>(payload)!;
+                    var evt = JsonSerializer.Deserialize<UserRegisteredIntegrationEvent>(payload)!;
                     using var scope = _sp.CreateScope();
-                    var handler = scope.ServiceProvider.GetRequiredService<IIntegrationEventHandler<DigiTekShop.Contracts.Integration.Events.Identity.UserRegisteredIntegrationEvent>>();
+                    var handler = scope.ServiceProvider.GetRequiredService<IIntegrationEventHandler<UserRegisteredIntegrationEvent>>();
                     await handler.HandleAsync(evt, ct);
                     break;
                 }
