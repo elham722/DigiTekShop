@@ -60,8 +60,20 @@ services:
       timeout: 10s
       retries: 3
 
+rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: digitek-rabbit
+    restart: unless-stopped
+    ports:
+      - "5672:5672"     # AMQP (برنامه‌ها)
+      - "15672:15672"   # UI مدیریتی
+    environment:
+      RABBITMQ_DEFAULT_USER: digitek
+      RABBITMQ_DEFAULT_PASS: digitek
+
 volumes:
   sqlserver_data:
   redis_data:
+  rabbitmq_data:
 
 

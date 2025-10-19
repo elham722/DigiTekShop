@@ -1,6 +1,7 @@
 ﻿
 using DigiTekShop.Application.Common.Messaging;
 using DigiTekShop.Contracts.Abstractions.Caching;
+using DigiTekShop.Contracts.Options.RabbitMq;
 using DigiTekShop.Infrastructure.Background;
 using DigiTekShop.Infrastructure.Caching;
 using DigiTekShop.Infrastructure.DomainEvents;
@@ -69,7 +70,8 @@ public static class InfrastructureRegistration
 
 
         // Bus (فعلاً لاگ؛ بعداً Rabbit/Kafka/Redis جایگزین کن)
-        services.AddSingleton<IMessageBus, RedisMessageBus>();
+        services.Configure<RabbitMqOptions>(config.GetSection("RabbitMq"));
+        services.AddSingleton<IMessageBus, RabbitMqMessageBus>();
 
         // Workers
         services.AddHostedService<ShopOutboxPublisherService>();
@@ -79,7 +81,7 @@ public static class InfrastructureRegistration
 
         // Dispatcher + Handler + Consumer
         services.AddSingleton<IntegrationEventDispatcher>();
-        services.AddHostedService<ShopIntegrationEventConsumer>();
+        services.AddHostedService<RabbitIntegrationEventConsumer>();
 
 
         return services;
