@@ -72,13 +72,20 @@ public sealed class RegistrationService : IRegistrationService
                     ErrorCodes.Identity.USER_EXISTS);
             }
 
-            
-            var user = User.Create(req.Email, req.Email); 
+            var newUserId = Guid.NewGuid();
+            var user = User.Create(req.Email, req.Email);
+            user.Id = newUserId;
             user.UserName = req.Email; 
             user.Email = req.Email;   
             if (req.PhoneNumber is not null) user.PhoneNumber = req.PhoneNumber;
 
-           
+            _domainEvents.Raise(new UserRegisteredDomainEvent(
+                UserId: newUserId,
+                Email: user.Email!,
+                FullName: null,
+                OccurredOn: DateTimeOffset.UtcNow,
+                CorrelationId: null
+            ));
 
             var createResult = await _userManager.CreateAsync(user, req.Password);
             if (!createResult.Succeeded)
@@ -91,13 +98,7 @@ public sealed class RegistrationService : IRegistrationService
                 return Result<RegisterResponseDto>.Failure(errors, ErrorCodes.Common.OPERATION_FAILED);
             }
 
-            _domainEvents.Raise(new UserRegisteredDomainEvent(
-                user.Id,
-                user.Email!,
-                FullName: null,
-                DateTimeOffset.UtcNow,
-                CorrelationId: null
-            ));
+           
 
             await _context.SaveChangesAsync(ct);
             // 5) Send confirmations

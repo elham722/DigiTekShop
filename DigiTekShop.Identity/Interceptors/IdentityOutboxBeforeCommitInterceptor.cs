@@ -23,7 +23,6 @@ namespace DigiTekShop.Identity.Interceptors
         {
             if (e.Context is not DigiTekShopIdentityDbContext ctx) return r;
 
-            // ✅ همینجا Sink را از اسکوپِ همان DbContext بگیر
             var sink = ctx.GetService<IDomainEventSink>();
 
             var fromAggregates = ctx.ChangeTracker.Entries()
@@ -37,11 +36,11 @@ namespace DigiTekShop.Identity.Interceptors
             if (domainEvents.Count == 0) return r;
 
             var integrationEvents = _mapper.MapDomainEventsToIntegrationEvents(domainEvents);
+            var set = ctx.Set<DigiTekShop.Identity.Models.IdentityOutboxMessage>();
 
-            var set = ctx.Set<DigiTekShop.Identity.Models.IdentityOutboxMessage>(); // مطمئن و بدون ابهام
             foreach (var ie in integrationEvents)
             {
-                set.Add(new DigiTekShop.Identity.Models.IdentityOutboxMessage
+                set.Add(new DigiTekShop.Identity.Models.IdentityOutboxMessage()
                 {
                     Id = Guid.NewGuid(),
                     OccurredAtUtc = _clock.UtcNow,
@@ -53,6 +52,7 @@ namespace DigiTekShop.Identity.Interceptors
             }
             return r;
         }
+
     }
 
 }
