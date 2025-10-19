@@ -9,8 +9,11 @@ using DigiTekShop.Contracts.Abstractions.Identity.Security;
 using DigiTekShop.Contracts.Abstractions.Identity.Token;
 using DigiTekShop.Contracts.Abstractions.Telemetry;
 using DigiTekShop.Contracts.Integration.Events.Customers;
+using DigiTekShop.Contracts.Integration.Events.Identity;
+using DigiTekShop.Contracts.Options.Features;
 using DigiTekShop.Identity.Events;
 using DigiTekShop.Identity.Handlers.Customers;
+using DigiTekShop.Identity.Handlers.Notifications;
 using DigiTekShop.Identity.Interceptors;
 using DigiTekShop.Identity.Options.Security;
 using DigiTekShop.Identity.Services;
@@ -150,7 +153,13 @@ public static class IdentityServicesRegistration
 
         // Register as concrete type, not interface (will be used by CompositeMapper)
         services.AddScoped<IdentityIntegrationEventMapper>();
+        
+        // Integration Event Handlers
         services.AddScoped<IIntegrationEventHandler<AddCustomerIdIntegrationEvent>, CustomerCreatedHandler>();
+        services.AddScoped<IIntegrationEventHandler<UserRegisteredIntegrationEvent>, UserRegisteredNotificationHandler>();
+        
+        // Feature Flags
+        services.Configure<NotificationFeatureFlags>(configuration.GetSection(NotificationFeatureFlags.SectionName));
 
 
         return services;

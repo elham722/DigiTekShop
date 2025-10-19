@@ -11,8 +11,6 @@ public sealed class RegistrationService : IRegistrationService
 
     private readonly ICurrentClient _client;
     private readonly UserManager<User> _userManager;
-    private readonly IEmailConfirmationService _emailConfirmationService;
-    private readonly IPhoneVerificationService _phoneVerificationService;
     private readonly IRateLimiter _rateLimiter;
     private readonly ILogger<RegistrationService> _logger;
     private readonly PhoneVerificationSettings _phoneSettings;
@@ -21,12 +19,9 @@ public sealed class RegistrationService : IRegistrationService
     private readonly IDomainEventSink _domainEvents;
     private readonly ICorrelationContext _correlationContext;
 
-
     public RegistrationService(
         ICurrentClient client,
         UserManager<User> userManager,
-        IEmailConfirmationService emailConfirmationService,
-        IPhoneVerificationService phoneVerificationService,
         IRateLimiter rateLimiter,
         IOptions<PhoneVerificationSettings> phoneOptions,
         IOptions<EmailConfirmationSettings> emailOptions,
@@ -37,8 +32,6 @@ public sealed class RegistrationService : IRegistrationService
     {
         _client = client;
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-        _emailConfirmationService = emailConfirmationService ?? throw new ArgumentNullException(nameof(emailConfirmationService));
-        _phoneVerificationService = phoneVerificationService ?? throw new ArgumentNullException(nameof(phoneVerificationService));
         _rateLimiter = rateLimiter ?? throw new ArgumentNullException(nameof(rateLimiter));
         _phoneSettings = phoneOptions?.Value ?? throw new ArgumentNullException(nameof(phoneOptions));
         _emailSettings = emailOptions?.Value ?? new EmailConfirmationSettings { RequireEmailConfirmation = true };
@@ -109,42 +102,11 @@ public sealed class RegistrationService : IRegistrationService
             _logger.LogInformation("Calling SaveChangesAsync for outbox processing");
             await _context.SaveChangesAsync(ct);
             _logger.LogInformation("SaveChangesAsync completed");
-            // 5) Send confirmations
+            
+            // ✅ Email/SMS sending moved to UserRegisteredNotificationHandler (async consumer)
+            // This provides fast 201 response - confirmations happen in background
             var requireEmail = _emailSettings.RequireEmailConfirmation;
-            var emailSent = false;
-            if (requireEmail)
-            {
-                try
-                {
-                    var emailRes = await _emailConfirmationService.SendAsync(user.Id.ToString(), ct);
-                    emailSent = emailRes.IsSuccess;
-                    if (emailRes.IsFailure)
-                        _logger.LogWarning("Email confirmation send failed for {Email}: {Err}",
-                            MaskEmail(req.Email), emailRes.GetFirstError());
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Email confirmation exception for {Email}", MaskEmail(req.Email));
-                }
-            }
-
             var requirePhone = _phoneSettings.RequirePhoneConfirmation && !string.IsNullOrWhiteSpace(user.PhoneNumber);
-            var phoneCodeSent = false;
-            if (requirePhone)
-            {
-                try
-                {
-                    var phoneRes = await _phoneVerificationService.SendVerificationCodeAsync(user.Id, user.PhoneNumber!, ct);
-                    phoneCodeSent = phoneRes.IsSuccess;
-                    if (phoneRes.IsFailure)
-                        _logger.LogWarning("Phone verification send failed for {Phone}: {Err}",
-                            user.PhoneNumber, phoneRes.GetFirstError());
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Phone verification exception for {Phone}", user.PhoneNumber);
-                }
-            }
 
             // 6) NextStep
             var next = RegisterNextStep.None;
@@ -154,14 +116,14 @@ public sealed class RegistrationService : IRegistrationService
             var response = new RegisterResponseDto(
                 UserId: user.Id,
                 RequireEmailConfirmation: requireEmail,
-                EmailSent: emailSent,
+                EmailSent: requireEmail, // Will be sent async by consumer
                 RequirePhoneConfirmation: requirePhone,
-                PhoneCodeSent: phoneCodeSent,
+                PhoneCodeSent: requirePhone, // Will be sent async by consumer
                 NextStep: next
             );
 
-            _logger.LogInformation("User {UserId} registered. EmailSent={EmailSent}, PhoneCodeSent={PhoneCodeSent} | DevId={DeviceId} UA={UA} IP={IP}",
-                user.Id, emailSent, phoneCodeSent, deviceId, userAgent, ip);
+            _logger.LogInformation("User {UserId} registered (201). Email/SMS will be sent async. | DevId={DeviceId} UA={UA} IP={IP}",
+                user.Id, deviceId, userAgent, ip);
 
             return Result<RegisterResponseDto>.Success(response);
         }

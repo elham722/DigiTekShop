@@ -24,22 +24,37 @@ namespace DigiTekShop.Infrastructure.Messaging
             {
                 case "DigiTekShop.Contracts.Integration.Events.Identity.UserRegisteredIntegrationEvent":
                     {
-                    var evt = JsonSerializer.Deserialize<UserRegisteredIntegrationEvent>(payload)!;
-                    using var scope = _sp.CreateScope();
-                    var handler = scope.ServiceProvider.GetRequiredService<IIntegrationEventHandler<UserRegisteredIntegrationEvent>>();
-                    await handler.HandleAsync(evt, ct);
-                    _log.LogInformation("Dispatched UserRegisteredIntegrationEvent for UserId {UserId}", evt.UserId);
-                    break;
-                }
+                        var evt = JsonSerializer.Deserialize<UserRegisteredIntegrationEvent>(payload)!;
+                        using var scope = _sp.CreateScope();
+                        
+                        // Dispatch to all registered handlers for this event
+                        var handlers = scope.ServiceProvider.GetServices<IIntegrationEventHandler<UserRegisteredIntegrationEvent>>();
+                        foreach (var handler in handlers)
+                        {
+                            try
+                            {
+                                await handler.HandleAsync(evt, ct);
+                                _log.LogInformation("✅ Dispatched UserRegisteredIntegrationEvent to {Handler} for UserId {UserId}", 
+                                    handler.GetType().Name, evt.UserId);
+                            }
+                            catch (Exception ex)
+                            {
+                                _log.LogError(ex, "❌ Handler {Handler} failed for UserRegisteredIntegrationEvent UserId {UserId}", 
+                                    handler.GetType().Name, evt.UserId);
+                                // Don't rethrow - allow other handlers to process
+                            }
+                        }
+                        break;
+                    }
                 case "DigiTekShop.Contracts.Integration.Events.Customers.AddCustomerIdIntegrationEvent":
                     {
-                    var evt = JsonSerializer.Deserialize<AddCustomerIdIntegrationEvent>(payload)!;
-                    using var scope = _sp.CreateScope();
-                    var handler = scope.ServiceProvider.GetRequiredService<IIntegrationEventHandler<AddCustomerIdIntegrationEvent>>();
-                    await handler.HandleAsync(evt, ct);
-                    _log.LogInformation("Dispatched AddCustomerIdIntegrationEvent for UserId {UserId} -> CustomerId {CustomerId}", evt.UserId, evt.CustomerId);
-                    break;
-                }
+                        var evt = JsonSerializer.Deserialize<AddCustomerIdIntegrationEvent>(payload)!;
+                        using var scope = _sp.CreateScope();
+                        var handler = scope.ServiceProvider.GetRequiredService<IIntegrationEventHandler<AddCustomerIdIntegrationEvent>>();
+                        await handler.HandleAsync(evt, ct);
+                        _log.LogInformation("Dispatched AddCustomerIdIntegrationEvent for UserId {UserId} -> CustomerId {CustomerId}", evt.UserId, evt.CustomerId);
+                        break;
+                    }
                 // اینجا بقیه‌ی ایونت‌ها را هم اضافه کن ...
                 default:
                     _log.LogWarning("No handler for integration event type {Type}", type);
