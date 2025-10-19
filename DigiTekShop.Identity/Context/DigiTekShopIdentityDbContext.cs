@@ -20,7 +20,7 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
     public DbSet<PasswordHistory> PasswordHistories => Set<PasswordHistory>();
     public DbSet<UserMfa> UserMfa => Set<UserMfa>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
-    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<IdentityOutboxMessage> IdentityOutboxMessages => Set<IdentityOutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

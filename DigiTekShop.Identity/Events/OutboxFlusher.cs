@@ -23,11 +23,11 @@ public sealed class OutboxFlusher
         if (domainEvents.Count == 0) return;
 
         var integration = _mapper.MapDomainEventsToIntegrationEvents(domainEvents);
-        var set = ctx.Set<OutboxMessage>();
+        var set = ctx.Set<IdentityOutboxMessage>();
 
         foreach (var ie in integration)
         {
-            set.Add(new OutboxMessage
+            set.Add(new IdentityOutboxMessage
             {
                 Id = Guid.NewGuid(),
                 OccurredAtUtc = _clock.UtcNow,

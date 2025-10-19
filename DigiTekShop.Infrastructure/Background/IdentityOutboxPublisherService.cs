@@ -28,7 +28,7 @@ public sealed class IdentityOutboxPublisherService : BackgroundService
                 var db = scope.ServiceProvider.GetRequiredService<DigiTekShopIdentityDbContext>();
                 var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
-                var ids = await db.Set<OutboxMessage>()
+                var ids = await db.Set<IdentityOutboxMessage>()
                     .Where(x => x.Status == OutboxStatus.Pending)
                     .OrderBy(x => x.OccurredAtUtc)
                     .Select(x => x.Id)
@@ -46,7 +46,7 @@ public sealed class IdentityOutboxPublisherService : BackgroundService
                     if (!await OutboxSqlHelpers.TryClaimAsync(db, id, ct))
                         continue;
 
-                    var msg = await db.Set<OutboxMessage>().FirstAsync(x => x.Id == id, ct);
+                    var msg = await db.Set<IdentityOutboxMessage>().FirstAsync(x => x.Id == id, ct);
 
                     try
                     {

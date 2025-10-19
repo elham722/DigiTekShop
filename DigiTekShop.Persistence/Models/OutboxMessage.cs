@@ -13,6 +13,10 @@ public sealed class OutboxMessage
     public DateTime? ProcessedAtUtc { get; set; }
     public int Attempts { get; set; }
     public OutboxStatus Status { get; set; } 
-    public string? Error { get; set; }        
+    public string? Error { get; set; }
+
+    public DateTime? LockedUntilUtc { get; set; }
+    public string? LockedBy { get; set; }
+    public DateTime? NextRetryUtc { get; set; }
 }
 

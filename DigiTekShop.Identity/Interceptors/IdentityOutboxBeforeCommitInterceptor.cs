@@ -38,10 +38,10 @@ namespace DigiTekShop.Identity.Interceptors
 
             var integrationEvents = _mapper.MapDomainEventsToIntegrationEvents(domainEvents);
 
-            var set = ctx.Set<DigiTekShop.Identity.Models.OutboxMessage>(); // مطمئن و بدون ابهام
+            var set = ctx.Set<DigiTekShop.Identity.Models.IdentityOutboxMessage>(); // مطمئن و بدون ابهام
             foreach (var ie in integrationEvents)
             {
-                set.Add(new DigiTekShop.Identity.Models.OutboxMessage
+                set.Add(new DigiTekShop.Identity.Models.IdentityOutboxMessage
                 {
                     Id = Guid.NewGuid(),
                     OccurredAtUtc = _clock.UtcNow,

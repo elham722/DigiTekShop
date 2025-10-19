@@ -18,7 +18,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
             .ValueGeneratedNever();
 
         b.Property(x => x.OccurredAtUtc)
-            .IsRequired();
+            .IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
         b.Property(x => x.Type)
             .HasMaxLength(512)     
@@ -50,6 +50,11 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
             .HasDefaultValue(OutboxStatus.Pending)
             .IsRequired();
 
+        b.Property(x => x.LockedUntilUtc);
+        b.Property(x => x.LockedBy).HasMaxLength(64).IsUnicode(false);
+        b.Property(x => x.NextRetryUtc);
+
+
         b.Property(x => x.Error)
             .HasColumnType("nvarchar(max)");
 
@@ -58,5 +63,13 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
 
         b.HasIndex(x => x.CorrelationId)
             .HasDatabaseName("IX_Outbox_CorrelationId");
+
+
+        b.HasIndex(x => new { x.Status, x.NextRetryUtc, x.OccurredAtUtc })
+            .HasDatabaseName("IX_Outbox_Status_NextRetry_OccurredAt");
+
+
+        b.HasIndex(x => x.LockedUntilUtc)
+            .HasDatabaseName("IX_Outbox_LockedUntilUtc");
     }
 }
