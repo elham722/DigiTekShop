@@ -1,8 +1,8 @@
 ﻿using DigiTekShop.Contracts.Integration.Events.Customers;
 using DigiTekShop.SharedKernel.DomainShared.Events;
-using Microsoft.EntityFrameworkCore;
 
 namespace DigiTekShop.Identity.Handlers.Customers;
+
 
 public sealed class CustomerCreatedHandler : IIntegrationEventHandler<AddCustomerIdIntegrationEvent>
 {
@@ -21,10 +21,9 @@ public sealed class CustomerCreatedHandler : IIntegrationEventHandler<AddCustome
             return;
         }
 
-        // idempotency
-        if (user.CustomerId == e.CustomerId) return;
+        if (user.CustomerId == e.CustomerId) return; 
 
-        user.SetCustomerId(e.CustomerId);
+        user.SetCustomerId(e.CustomerId);           
         await _idb.SaveChangesAsync(ct);
 
         _log.LogInformation("Linked User {UserId} -> Customer {CustomerId}", e.UserId, e.CustomerId);

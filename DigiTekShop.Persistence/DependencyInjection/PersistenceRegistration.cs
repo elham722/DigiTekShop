@@ -3,9 +3,11 @@ using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
-using DigiTekShop.Contracts.Integration.Events.Customers;
+using DigiTekShop.Contracts.Abstractions.Telemetry;
+using DigiTekShop.Contracts.Integration.Events.Identity;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.Persistence.Ef;
+using DigiTekShop.Persistence.Events;
 using DigiTekShop.Persistence.Handlers;
 using DigiTekShop.Persistence.Interceptors;
 using DigiTekShop.Persistence.Repositories.Customer;
@@ -39,7 +41,8 @@ public static class PersistenceRegistration
             });
             var mapper = sp.GetRequiredService<IIntegrationEventMapper>();
             var clock = sp.GetRequiredService<IDateTimeProvider>();
-            opt.AddInterceptors(new ShopOutboxBeforeCommitInterceptor(mapper, clock));
+            var corr = sp.GetService<ICorrelationContext>(); // اگر ثبت کردی
+            opt.AddInterceptors(new ShopOutboxBeforeCommitInterceptor(mapper, clock, corr));
             // Enable detailed errors only in Development
             // opt.EnableDetailedErrors();
             // opt.EnableSensitiveDataLogging();
@@ -57,6 +60,9 @@ public static class PersistenceRegistration
                // 4. Unit of Work
                services.AddScoped<IUnitOfWork, EfUnitOfWork>();
                services.AddScoped<IIntegrationEventHandler<UserRegisteredIntegrationEvent>, UserRegisteredHandler>();
+               
+               // 5. Integration Event Mapper
+               services.AddScoped<IIntegrationEventMapper, PersistenceIntegrationEventMapper>();
 
         return services;
     }

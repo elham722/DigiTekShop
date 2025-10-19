@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.Integration.Events.Customers;
+﻿namespace DigiTekShop.Contracts.Integration.Events.Identity;
 
 public sealed record UserRegisteredIntegrationEvent(
     Guid MessageId,          

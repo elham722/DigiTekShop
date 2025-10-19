@@ -1,12 +1,13 @@
-﻿using DigiTekShop.Application.Common.Events;
+﻿using System.Text.Json;
+using DigiTekShop.Application.Common.Events;
+using DigiTekShop.Contracts.Abstractions.Telemetry;  // اگر خواستی Correlation بگیری
 using DigiTekShop.Persistence.Context;
-using DigiTekShop.Persistence.Models;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Enums.Outbox;
 using DigiTekShop.SharedKernel.Time;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using System.Text.Json;
-
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace DigiTekShop.Persistence.Interceptors;
 
@@ -14,44 +15,85 @@ public sealed class ShopOutboxBeforeCommitInterceptor : SaveChangesInterceptor
 {
     private readonly IIntegrationEventMapper _mapper;
     private readonly IDateTimeProvider _clock;
+    private readonly ICorrelationContext? _corr; // اختیاری
 
-    public ShopOutboxBeforeCommitInterceptor(IIntegrationEventMapper mapper, IDateTimeProvider clock)
+    public ShopOutboxBeforeCommitInterceptor(
+        IIntegrationEventMapper mapper,
+        IDateTimeProvider clock,
+        ICorrelationContext? corr = null)
     {
-        _mapper = mapper;
-        _clock = clock;
+        _mapper = mapper; _clock = clock; _corr = corr;
     }
 
-    public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
+    public override InterceptionResult<int> SavingChanges(DbContextEventData e, InterceptionResult<int> r)
+    { Process(e.Context); return r; }
+
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData e, InterceptionResult<int> r, CancellationToken ct = default)
+    { Process(e.Context); return ValueTask.FromResult(r); }
+
+    private void Process(DbContext? context)
     {
-        if (eventData.Context is not DigiTekShopDbContext ctx) return result;
+        if (context is not DigiTekShopDbContext ctx) return;
 
-        var aggregates = ctx.ChangeTracker.Entries()
-            .Where(e => e.Entity is IHasDomainEvents)
-            .Select(e => (IHasDomainEvents)e.Entity)
+        Console.WriteLine("[ShopOutbox] Interceptor called for DigiTekShopDbContext");
+
+        // از همین scope سرویس‌ها را بردار (اگر sink داری)
+        var sink = ctx.GetService<IDomainEventSink>(); // ممکنه null باشه
+        Console.WriteLine($"[ShopOutbox] DomainEventSink retrieved: {sink != null}");
+
+        // 1) جمع کردن از Aggregateها
+        var fromAggregates = ctx.ChangeTracker.Entries()
+            .Where(x => x.Entity is IHasDomainEvents)
+            .Select(x => (IHasDomainEvents)x.Entity)
+            .SelectMany(a => a.PullDomainEvents())
             .ToList();
 
-        var domainEvents = aggregates
-            .SelectMany(a => a.PullDomainEvents())  // حتماً این متد در AggregateRoot<TId> پیاده شده باشد
-            .ToList();
+        // 2) جمع کردن از Sink (اگر استفاده می‌کنی)
+        var fromSink = sink?.PullAll() ?? Array.Empty<IDomainEvent>();
+        Console.WriteLine($"[ShopOutbox] Domain events from aggregates: {fromAggregates.Count}, from sink: {fromSink.Count()}");
 
-        if (domainEvents.Count == 0) return result;
+        var domainEvents = fromAggregates.Concat(fromSink).ToList();
+        if (domainEvents.Count == 0)
+        {
+            Console.WriteLine("[ShopOutbox] No domain events found, returning early");
+            return;
+        }
 
-        var integrationEvents = _mapper.MapDomainEventsToIntegrationEvents(domainEvents);
+        // Map به IntegrationEvents
+        var integrationEvents = _mapper.MapDomainEventsToIntegrationEvents(domainEvents).ToList();
+        Console.WriteLine($"[ShopOutbox] Mapped to {integrationEvents.Count} integration events");
 
-        var set = ctx.Set<OutboxMessage>();
+        // 👇 توجه: این باید مدل Outbox پرسیستنس خودت باشه
+        var set = ctx.Set<DigiTekShop.Persistence.Models.OutboxMessage>(); // نام دقیق DbSet/Entity خودت
+
+        var ambientCorrelation = _corr?.GetCorrelationId();
+        var ambientCausation = _corr?.GetCausationId();
+
         foreach (var ie in integrationEvents)
         {
-            set.Add(new OutboxMessage
+            var type = ie.GetType().FullName!;
+            var payload = JsonSerializer.Serialize(ie);
+
+            var corr = TryRead(ie, "CorrelationId") ?? ambientCorrelation;
+            var caus = TryRead(ie, "CausationId") ?? ambientCausation ?? TryRead(ie, "MessageId");
+
+            var msg = new DigiTekShop.Persistence.Models.OutboxMessage
             {
                 Id = Guid.NewGuid(),
                 OccurredAtUtc = _clock.UtcNow,
-                Type = ie.GetType().FullName!,
-                Payload = JsonSerializer.Serialize(ie),
+                Type = type,
+                Payload = payload,
                 Status = OutboxStatus.Pending,
-                Attempts = 0
-            });
-        }
+                Attempts = 0,
+                CorrelationId = corr,
+                CausationId = caus
+            };
 
-        return result;
+            set.Add(msg);
+            Console.WriteLine($"[ShopOutbox] Adding message: {type} | Id: {msg.Id} | Corr={corr} | Caus={caus}");
+        }
     }
+
+    private static string? TryRead(object o, string p)
+        => o.GetType().GetProperty(p)?.GetValue(o)?.ToString();
 }

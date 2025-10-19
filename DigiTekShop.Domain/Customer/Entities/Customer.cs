@@ -32,7 +32,20 @@ public sealed class Customer : VersionedAggregateRoot<CustomerId>
     }
 
     public static Customer Register(Guid userId, string fullName, string email, string? phone = null)
-        => new(CustomerId.New(), userId, fullName, email, phone);
+    {
+        var customer = new Customer(CustomerId.New(), userId, fullName, email, phone);
+
+        
+        customer.RaiseDomainEvent(new CustomerRegistered(
+            CustomerId: customer.Id.Value,
+            UserId: userId,
+            OccurredOn: DateTimeOffset.UtcNow,    
+            CorrelationId: null                  
+        ));
+
+        return customer;
+    }
+
 
     public Result ChangeEmail(string newEmail)
     {

@@ -1,5 +1,5 @@
 ﻿using DigiTekShop.Application.Common.Events;
-using DigiTekShop.Contracts.Integration.Events.Customers;
+using DigiTekShop.Contracts.Integration.Events.Identity;
 
 namespace DigiTekShop.Identity.Events;
 
