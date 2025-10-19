@@ -1,5 +1,5 @@
 ﻿using DigiTekShop.Domain.Customer.Entities;
-using DigiTekShop.Persistence.Outbox;
+using DigiTekShop.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace DigiTekShop.Persistence.Context;

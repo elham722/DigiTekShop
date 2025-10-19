@@ -1,6 +1,6 @@
 using DigiTekShop.SharedKernel.Enums.Outbox;
 
-namespace DigiTekShop.Persistence.Outbox;
+namespace DigiTekShop.Persistence.Models;
 
 public sealed class OutboxMessage
 {

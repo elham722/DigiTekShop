@@ -1,6 +1,6 @@
 ﻿using DigiTekShop.Application.Common.Events;
 using DigiTekShop.Persistence.Context;
-using DigiTekShop.Persistence.Outbox;
+using DigiTekShop.Persistence.Models;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Enums.Outbox;
 using DigiTekShop.SharedKernel.Time;

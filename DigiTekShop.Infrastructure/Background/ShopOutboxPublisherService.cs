@@ -1,6 +1,6 @@
 ﻿using DigiTekShop.Application.Common.Messaging;
 using DigiTekShop.Persistence.Context;
-using DigiTekShop.Persistence.Outbox;
+using DigiTekShop.Persistence.Models;
 using DigiTekShop.SharedKernel.Enums.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
