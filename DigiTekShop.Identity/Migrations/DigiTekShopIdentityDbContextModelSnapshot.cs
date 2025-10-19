@@ -120,6 +120,82 @@ namespace DigiTekShop.Identity.Migrations
                     b.ToTable("AuditLogs", (string)null);
                 });
 
+            modelBuilder.Entity("DigiTekShop.Identity.Models.IdentityOutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Attempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("CausationId")
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LockedBy")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("LockedUntilUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("NextRetryUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrelationId")
+                        .HasDatabaseName("IX_Outbox_CorrelationId");
+
+                    b.HasIndex("LockedUntilUtc")
+                        .HasDatabaseName("IX_Outbox_LockedUntilUtc");
+
+                    b.HasIndex("Status", "OccurredAtUtc")
+                        .HasDatabaseName("IX_Outbox_Status_OccurredAtUtc");
+
+                    b.HasIndex("Status", "NextRetryUtc", "OccurredAtUtc")
+                        .HasDatabaseName("IX_Outbox_Status_NextRetry_OccurredAt");
+
+                    b.ToTable("IdentityOutboxMessages", (string)null);
+                });
+
             modelBuilder.Entity("DigiTekShop.Identity.Models.LoginAttempt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -179,63 +255,6 @@ namespace DigiTekShop.Identity.Migrations
                         .HasDatabaseName("IX_LoginAttempts_Ip_Status_AttemptedAt");
 
                     b.ToTable("LoginAttempts", (string)null);
-                });
-
-            modelBuilder.Entity("DigiTekShop.Identity.Models.OutboxMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Attempts")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
-                    b.Property<string>("CausationId")
-                        .HasMaxLength(100)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("CorrelationId")
-                        .HasMaxLength(100)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("Error")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("OccurredAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Payload")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("ProcessedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Pending");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(512)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CorrelationId")
-                        .HasDatabaseName("IX_Outbox_CorrelationId");
-
-                    b.HasIndex("Status", "OccurredAtUtc")
-                        .HasDatabaseName("IX_Outbox_Status_OccurredAtUtc");
-
-                    b.ToTable("OutboxMessages", (string)null);
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.PasswordHistory", b =>

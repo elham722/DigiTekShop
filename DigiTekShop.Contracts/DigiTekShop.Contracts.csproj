@@ -7,12 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="DTOs\Customer\ChangeEmail\**" />
-    <EmbeddedResource Remove="DTOs\Customer\ChangeEmail\**" />
-    <None Remove="DTOs\Customer\ChangeEmail\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="MediatR" Version="13.0.0" />
   </ItemGroup>
 

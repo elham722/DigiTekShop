@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DigiTekShop.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class foroutboxmessage : Migration
+    public partial class firstmig : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -35,7 +35,7 @@ namespace DigiTekShop.Persistence.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    OccurredAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    OccurredAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
                     Type = table.Column<string>(type: "varchar(512)", unicode: false, maxLength: 512, nullable: false),
                     Payload = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CorrelationId = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: true),
@@ -43,7 +43,10 @@ namespace DigiTekShop.Persistence.Migrations
                     ProcessedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Attempts = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Pending"),
-                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LockedUntilUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LockedBy = table.Column<string>(type: "varchar(64)", unicode: false, maxLength: 64, nullable: true),
+                    NextRetryUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -108,6 +111,16 @@ namespace DigiTekShop.Persistence.Migrations
                 name: "IX_Outbox_CorrelationId",
                 table: "OutboxMessages",
                 column: "CorrelationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Outbox_LockedUntilUtc",
+                table: "OutboxMessages",
+                column: "LockedUntilUtc");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Outbox_Status_NextRetry_OccurredAt",
+                table: "OutboxMessages",
+                columns: new[] { "Status", "NextRetryUtc", "OccurredAtUtc" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Outbox_Status_OccurredAtUtc",

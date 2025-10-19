@@ -28,7 +28,7 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse> : IPipelineBehavior<
         var response = await next();
 
         // تغییرات AppDb + Outbox
-        await _uow.SaveChangesWithOutboxAsync(ct);
+        await _uow.SaveChangesAsync(ct);
 
         return response;
     }

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Persistence.Migrations
 {
     [DbContext(typeof(DigiTekShopDbContext))]
-    [Migration("20251018173815_foroutboxmessage")]
-    partial class foroutboxmessage
+    [Migration("20251019041508_firstmig")]
+    partial class firstmig
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -74,7 +74,7 @@ namespace DigiTekShop.Persistence.Migrations
                     b.ToTable("Customers", (string)null);
                 });
 
-            modelBuilder.Entity("DigiTekShop.Persistence.Outbox.OutboxMessage", b =>
+            modelBuilder.Entity("DigiTekShop.Persistence.Models.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
@@ -97,8 +97,21 @@ namespace DigiTekShop.Persistence.Migrations
                     b.Property<string>("Error")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("OccurredAtUtc")
+                    b.Property<string>("LockedBy")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("LockedUntilUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("NextRetryUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<string>("Payload")
                         .IsRequired()
@@ -125,8 +138,14 @@ namespace DigiTekShop.Persistence.Migrations
                     b.HasIndex("CorrelationId")
                         .HasDatabaseName("IX_Outbox_CorrelationId");
 
+                    b.HasIndex("LockedUntilUtc")
+                        .HasDatabaseName("IX_Outbox_LockedUntilUtc");
+
                     b.HasIndex("Status", "OccurredAtUtc")
                         .HasDatabaseName("IX_Outbox_Status_OccurredAtUtc");
+
+                    b.HasIndex("Status", "NextRetryUtc", "OccurredAtUtc")
+                        .HasDatabaseName("IX_Outbox_Status_NextRetry_OccurredAt");
 
                     b.ToTable("OutboxMessages", (string)null);
                 });

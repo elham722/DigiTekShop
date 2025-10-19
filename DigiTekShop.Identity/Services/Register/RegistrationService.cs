@@ -18,7 +18,6 @@ public sealed class RegistrationService : IRegistrationService
     private readonly DigiTekShopIdentityDbContext _context;
     private readonly EmailConfirmationSettings _emailSettings;
     private readonly IDomainEventSink _domainEvents;
-    private readonly OutboxFlusher _outboxFlusher;
 
 
     public RegistrationService(
@@ -31,8 +30,7 @@ public sealed class RegistrationService : IRegistrationService
         IOptions<EmailConfirmationSettings> emailOptions,
         DigiTekShopIdentityDbContext context,
         ILogger<RegistrationService> logger,
-        IDomainEventSink domainEvents,
-        OutboxFlusher outboxFlusher)
+        IDomainEventSink domainEvents)
     {
         _client = client;
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
@@ -44,7 +42,6 @@ public sealed class RegistrationService : IRegistrationService
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _domainEvents = domainEvents ?? throw new ArgumentNullException(nameof(domainEvents));
-        _outboxFlusher = outboxFlusher;
     }
 
     public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default)
@@ -102,7 +99,6 @@ public sealed class RegistrationService : IRegistrationService
                 CorrelationId: null
             ));
 
-            _outboxFlusher.Flush(_domainEvents, _context);
             await _context.SaveChangesAsync(ct);
             // 5) Send confirmations
             var requireEmail = _emailSettings.RequireEmailConfirmation;

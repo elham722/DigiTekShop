@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DigiTekShop.Identity.Migrations
 {
     /// <inheritdoc />
-    public partial class foroutboxmessage : Migration
+    public partial class firstmig : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -37,6 +37,29 @@ namespace DigiTekShop.Identity.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "IdentityOutboxMessages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    OccurredAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
+                    Type = table.Column<string>(type: "varchar(512)", unicode: false, maxLength: 512, nullable: false),
+                    Payload = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CorrelationId = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: true),
+                    CausationId = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: true),
+                    ProcessedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Attempts = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Pending"),
+                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LockedUntilUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LockedBy = table.Column<string>(type: "varchar(64)", unicode: false, maxLength: 64, nullable: true),
+                    NextRetryUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_IdentityOutboxMessages", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "LoginAttempts",
                 columns: table => new
                 {
@@ -52,26 +75,6 @@ namespace DigiTekShop.Identity.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_LoginAttempts", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "OutboxMessages",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    OccurredAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Type = table.Column<string>(type: "varchar(512)", unicode: false, maxLength: 512, nullable: false),
-                    Payload = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CorrelationId = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: true),
-                    CausationId = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: true),
-                    ProcessedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Attempts = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Pending"),
-                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OutboxMessages", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -536,6 +539,26 @@ namespace DigiTekShop.Identity.Migrations
                 column: "Timestamp");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Outbox_CorrelationId",
+                table: "IdentityOutboxMessages",
+                column: "CorrelationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Outbox_LockedUntilUtc",
+                table: "IdentityOutboxMessages",
+                column: "LockedUntilUtc");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Outbox_Status_NextRetry_OccurredAt",
+                table: "IdentityOutboxMessages",
+                columns: new[] { "Status", "NextRetryUtc", "OccurredAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Outbox_Status_OccurredAtUtc",
+                table: "IdentityOutboxMessages",
+                columns: new[] { "Status", "OccurredAtUtc" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_LoginAttempts_Ip_Status_AttemptedAt",
                 table: "LoginAttempts",
                 columns: new[] { "IpAddress", "Status", "AttemptedAt" });
@@ -562,16 +585,6 @@ namespace DigiTekShop.Identity.Migrations
                 table: "LoginAttempts",
                 columns: new[] { "UserId", "AttemptedAt" })
                 .Annotation("SqlServer:Include", new[] { "Status", "IpAddress" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Outbox_CorrelationId",
-                table: "OutboxMessages",
-                column: "CorrelationId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Outbox_Status_OccurredAtUtc",
-                table: "OutboxMessages",
-                columns: new[] { "Status", "OccurredAtUtc" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_PasswordHistory_User_ChangedAt",
@@ -931,10 +944,10 @@ namespace DigiTekShop.Identity.Migrations
                 name: "AuditLogs");
 
             migrationBuilder.DropTable(
-                name: "LoginAttempts");
+                name: "IdentityOutboxMessages");
 
             migrationBuilder.DropTable(
-                name: "OutboxMessages");
+                name: "LoginAttempts");
 
             migrationBuilder.DropTable(
                 name: "PasswordHistories");

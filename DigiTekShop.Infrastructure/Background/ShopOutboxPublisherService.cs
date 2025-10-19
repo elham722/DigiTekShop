@@ -30,13 +30,15 @@ public sealed class ShopOutboxPublisherService : BackgroundService
                 var db = scope.ServiceProvider.GetRequiredService<DigiTekShopDbContext>();
                 var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
-                // فقط آیدی‌ها را بگیر تا سبک باشد
-                var ids = await db.Set<OutboxMessage>()
-                    .Where(x => x.Status == OutboxStatus.Pending)
+                var ids = await db.Set<OutboxMessage>() // یا OutboxMessage
+                    .Where(x => x.Status == OutboxStatus.Pending
+                                && (x.NextRetryUtc == null || x.NextRetryUtc <= DateTime.UtcNow)
+                                && (x.LockedUntilUtc == null || x.LockedUntilUtc <= DateTime.UtcNow))
                     .OrderBy(x => x.OccurredAtUtc)
                     .Select(x => x.Id)
                     .Take(50)
                     .ToListAsync(ct);
+
 
                 if (ids.Count == 0)
                 {

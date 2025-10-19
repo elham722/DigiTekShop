@@ -28,8 +28,6 @@ public sealed class Customer : VersionedAggregateRoot<CustomerId>
         Email = email.Trim();
         Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
 
-        RaiseDomainEvent(new CustomerRegistered(Id.Value, UserId, Email));
-
         EnsureInvariants();
     }
 

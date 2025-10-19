@@ -1,8 +1,9 @@
-﻿using DigiTekShop.Application.Outbox;
+﻿using DigiTekShop.Application.Common.Events;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
 using DigiTekShop.Contracts.Abstractions.Repositories.Customers;
+using DigiTekShop.Contracts.Integration.Events.Identity;
 using DigiTekShop.Persistence.Context;
 using DigiTekShop.Persistence.Ef;
 using DigiTekShop.Persistence.Handlers;
@@ -36,7 +37,7 @@ public static class PersistenceRegistration
                     errorNumbersToAdd: null);
                 sqlOptions.CommandTimeout(30);
             });
-            var mapper = sp.GetRequiredService<ShopIntegrationEventMapper>();
+            var mapper = sp.GetRequiredService<IIntegrationEventMapper>();
             var clock = sp.GetRequiredService<IDateTimeProvider>();
             opt.AddInterceptors(new ShopOutboxBeforeCommitInterceptor(mapper, clock));
             // Enable detailed errors only in Development
@@ -55,7 +56,7 @@ public static class PersistenceRegistration
 
                // 4. Unit of Work
                services.AddScoped<IUnitOfWork, EfUnitOfWork>();
-               services.AddScoped<IIntegrationEventHandler<DigiTekShop.Contracts.Integration.Events.Identity.UserRegisteredIntegrationEvent>, UserRegisteredHandler>();
+               services.AddScoped<IIntegrationEventHandler<UserRegisteredIntegrationEvent>, UserRegisteredHandler>();
 
         return services;
     }
