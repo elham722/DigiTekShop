@@ -1,4 +1,5 @@
-﻿using DigiTekShop.API.Common.Http;
+﻿using System.Diagnostics;
+using DigiTekShop.API.Common.Http;
 using Serilog.Context;
 
 namespace DigiTekShop.API.Middleware;
@@ -18,9 +19,13 @@ public sealed class CorrelationIdMiddleware
     {
         var correlationId =
             context.Request.Headers[_headerName].FirstOrDefault()
-            ?? context.TraceIdentifier; 
+            ?? context.TraceIdentifier;
 
         context.Items[_headerName] = correlationId;
+
+        using var act = new Activity("HTTP Request");
+        act.SetIdFormat(ActivityIdFormat.W3C);
+        act.Start();
 
         context.Response.OnStarting(() =>
         {
@@ -34,5 +39,6 @@ public sealed class CorrelationIdMiddleware
             await _next(context);
         }
     }
+
 }
 

@@ -7,6 +7,7 @@ using DigiTekShop.Contracts.Abstractions.Identity.Password;
 using DigiTekShop.Contracts.Abstractions.Identity.Permission;
 using DigiTekShop.Contracts.Abstractions.Identity.Security;
 using DigiTekShop.Contracts.Abstractions.Identity.Token;
+using DigiTekShop.Contracts.Abstractions.Telemetry;
 using DigiTekShop.Identity.Events;
 using DigiTekShop.Identity.Interceptors;
 using DigiTekShop.Identity.Options.Security;
@@ -29,12 +30,16 @@ public static class IdentityServicesRegistration
         services.AddDbContext<DigiTekShopIdentityDbContext>((sp, opt) =>
         {
             opt.UseSqlServer(configuration.GetConnectionString("IdentityDBConnection"));
+
             var mapper = sp.GetRequiredService<IIntegrationEventMapper>();
             var clock = sp.GetRequiredService<IDateTimeProvider>();
-            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock, sp));
+            var corr = sp.GetRequiredService<ICorrelationContext>(); // 👈 اضافه
+
+            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock, corr)); // 👈 تغییر
         });
 
         #endregion
+
 
         #region Identity
 

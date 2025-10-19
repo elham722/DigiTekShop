@@ -1,4 +1,6 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using DigiTekShop.API.Extensions.Telemetry;
+
+var builder = WebApplication.CreateBuilder(args);
 
 #region Logging & Options
 
@@ -23,6 +25,7 @@ builder.WebHost.ConfigureKestrel(o =>
 
 #endregion
 
+builder.Services.AddCorrelationContext();
 
 #region Options & Infrastructure
 
@@ -288,7 +291,7 @@ app.UseSerilogRequestLogging(opts =>
 
 app.UseCorrelationId(headerName: CorrelationHeader);
 app.UseClientContext();
-
+app.UseIdempotency();
 
 if (app.Environment.IsProduction())
     app.UseHsts();

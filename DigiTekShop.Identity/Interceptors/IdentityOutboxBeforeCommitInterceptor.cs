@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using DigiTekShop.Application.Common.Events;
+using DigiTekShop.Contracts.Abstractions.Telemetry;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Enums.Outbox;
 using DigiTekShop.SharedKernel.Time;
@@ -14,13 +15,16 @@ namespace DigiTekShop.Identity.Interceptors
     {
         private readonly IIntegrationEventMapper _mapper;
         private readonly IDateTimeProvider _clock;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly ICorrelationContext _corr; 
 
-        public IdentityOutboxBeforeCommitInterceptor(IIntegrationEventMapper mapper, IDateTimeProvider clock, IServiceProvider serviceProvider)
+        public IdentityOutboxBeforeCommitInterceptor(
+            IIntegrationEventMapper mapper,
+            IDateTimeProvider clock,
+            ICorrelationContext corr) 
         {
-            _mapper = mapper; 
+            _mapper = mapper;
             _clock = clock;
-            _serviceProvider = serviceProvider;
+            _corr = corr;
         }
 
         public override InterceptionResult<int> SavingChanges(DbContextEventData e, InterceptionResult<int> r)
@@ -44,8 +48,7 @@ namespace DigiTekShop.Identity.Interceptors
 
             Console.WriteLine("[IdentityOutbox] Interceptor called for DigiTekShopIdentityDbContext");
 
-            // ✅ استفاده از ctx.GetService به جای scope جدید
-            // چون باید از همان scope استفاده کنیم که RegistrationService استفاده می‌کند
+           
             var sink = ctx.GetService<IDomainEventSink>();
             Console.WriteLine($"[IdentityOutbox] DomainEventSink retrieved: {sink != null}");
 
@@ -69,8 +72,16 @@ namespace DigiTekShop.Identity.Interceptors
             
             var set = ctx.Set<DigiTekShop.Identity.Models.IdentityOutboxMessage>();
 
+            var ambientCorrelation = _corr.GetCorrelationId();
+            var ambientCausation = _corr.GetCausationId();
+
             foreach (var ie in integrationEvents)
             {
+                
+                var corrId = TryRead(ie, "CorrelationId") ?? ambientCorrelation;
+                var causId = TryRead(ie, "CausationId") ?? ambientCausation ?? TryRead(ie, "MessageId");
+
+
                 var outboxMsg = new DigiTekShop.Identity.Models.IdentityOutboxMessage()
                 {
                     Id = Guid.NewGuid(),
@@ -78,7 +89,9 @@ namespace DigiTekShop.Identity.Interceptors
                     Type = ie.GetType().FullName!,
                     Payload = JsonSerializer.Serialize(ie),
                     Status = OutboxStatus.Pending,
-                    Attempts = 0
+                    Attempts = 0,
+                    CorrelationId = corrId, 
+                    CausationId = causId
                 };
                 set.Add(outboxMsg);
                 
@@ -86,7 +99,8 @@ namespace DigiTekShop.Identity.Interceptors
                 Console.WriteLine($"[IdentityOutbox] Adding message: {outboxMsg.Type} | Id: {outboxMsg.Id}");
             }
         }
-
+        private static string? TryRead(object obj, string propName)
+            => obj.GetType().GetProperty(propName)?.GetValue(obj)?.ToString();
     }
 
 }
