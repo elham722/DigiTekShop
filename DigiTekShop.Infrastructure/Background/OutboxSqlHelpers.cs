@@ -7,8 +7,11 @@ internal static class OutboxSqlHelpers
     // Claim: هم‌زمانی امن با قفل زمانی
     public static async Task<bool> TryClaimAsync(DbContext db, Guid id, CancellationToken ct)
     {
-        var sql = """
-                  UPDATE OutboxMessages
+        // تشخیص نوع جدول بر اساس DbContext
+        var tableName = GetTableName(db);
+        
+        var sql = $"""
+                  UPDATE {tableName}
                   SET Status = @p1,
                       LockedUntilUtc = DATEADD(SECOND, @p3, SYSUTCDATETIME()),
                       LockedBy = @p4
@@ -29,8 +32,11 @@ internal static class OutboxSqlHelpers
 
     public static async Task AckAsync(DbContext db, Guid id, CancellationToken ct)
     {
-        var sql = """
-                  UPDATE OutboxMessages
+        // تشخیص نوع جدول بر اساس DbContext
+        var tableName = GetTableName(db);
+        
+        var sql = $"""
+                  UPDATE {tableName}
                   SET Status = @p1,
                       ProcessedAtUtc = SYSUTCDATETIME(),
                       Error = NULL,
@@ -47,8 +53,11 @@ internal static class OutboxSqlHelpers
         var delayMinutes = Math.Min(60, (int)Math.Pow(2, Math.Max(0, attempts - 1)));
         var next = giveUp ? "Failed" : "Pending";
 
-        var sql = """
-                  UPDATE OutboxMessages
+        // تشخیص نوع جدول بر اساس DbContext
+        var tableName = GetTableName(db);
+
+        var sql = $"""
+                  UPDATE {tableName}
                   SET Status = @p4,
                       Attempts = @p1,
                       Error = LEFT(@p2, 1000),
@@ -58,5 +67,10 @@ internal static class OutboxSqlHelpers
                   WHERE Id = @p0
                   """;
         await db.Database.ExecuteSqlRawAsync(sql, id, attempts, error, giveUp ? 1 : 0, next, delayMinutes);
+    }
+
+    private static string GetTableName(DbContext db)
+    {
+        return db is DigiTekShop.Identity.Context.DigiTekShopIdentityDbContext ? "IdentityOutboxMessages" : "OutboxMessages";
     }
 }

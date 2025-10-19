@@ -71,21 +71,10 @@ public sealed class RegistrationService : IRegistrationService
                     new[] { "email: Email already registered." },
                     ErrorCodes.Identity.USER_EXISTS);
             }
-
-            var newUserId = Guid.NewGuid();
             var user = User.Create(req.Email, req.Email);
-            user.Id = newUserId;
             user.UserName = req.Email; 
             user.Email = req.Email;   
             if (req.PhoneNumber is not null) user.PhoneNumber = req.PhoneNumber;
-
-            _domainEvents.Raise(new UserRegisteredDomainEvent(
-                UserId: newUserId,
-                Email: user.Email!,
-                FullName: null,
-                OccurredOn: DateTimeOffset.UtcNow,
-                CorrelationId: null
-            ));
 
             var createResult = await _userManager.CreateAsync(user, req.Password);
             if (!createResult.Succeeded)
@@ -98,9 +87,22 @@ public sealed class RegistrationService : IRegistrationService
                 return Result<RegisterResponseDto>.Failure(errors, ErrorCodes.Common.OPERATION_FAILED);
             }
 
-           
+            // ✅ حالا User در دیتابیس ذخیره شده و ID واقعی دارد
+            // Domain Event را raise می‌کنیم و SaveChanges می‌زنیم تا interceptor آن را پردازش کند
+            _logger.LogInformation("Raising UserRegisteredDomainEvent for user {UserId}", user.Id);
+            _domainEvents.Raise(new UserRegisteredDomainEvent(
+                UserId: user.Id,
+                Email: user.Email!,
+                FullName: null,
+                OccurredOn: DateTimeOffset.UtcNow,
+                CorrelationId: null
+            ));
 
+            // این SaveChanges فقط برای Outbox است (User قبلاً ذخیره شده)
+            // اما Interceptor domain events را می‌گیرد و در Outbox ذخیره می‌کند
+            _logger.LogInformation("Calling SaveChangesAsync for outbox processing");
             await _context.SaveChangesAsync(ct);
+            _logger.LogInformation("SaveChangesAsync completed");
             // 5) Send confirmations
             var requireEmail = _emailSettings.RequireEmailConfirmation;
             var emailSent = false;

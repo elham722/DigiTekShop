@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using DigiTekShop.SharedKernel.DomainShared.Events;
 
 namespace DigiTekShop.Identity.Context;
 
@@ -7,6 +9,7 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
     public DigiTekShopIdentityDbContext(DbContextOptions<DigiTekShopIdentityDbContext> options) : base(options)
     {
     }
+
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UserDevice> UserDevices => Set<UserDevice>();

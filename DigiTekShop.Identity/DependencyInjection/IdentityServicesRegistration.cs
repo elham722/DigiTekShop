@@ -13,6 +13,7 @@ using DigiTekShop.Identity.Options.Security;
 using DigiTekShop.Identity.Services;
 using DigiTekShop.Identity.Services.Register;
 using DigiTekShop.Identity.Services.Tokens;
+using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Time;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -30,7 +31,7 @@ public static class IdentityServicesRegistration
             opt.UseSqlServer(configuration.GetConnectionString("IdentityDBConnection"));
             var mapper = sp.GetRequiredService<IIntegrationEventMapper>();
             var clock = sp.GetRequiredService<IDateTimeProvider>();
-            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock));
+            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock, sp));
         });
 
         #endregion
