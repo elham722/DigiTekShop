@@ -93,6 +93,7 @@ public sealed class RegistrationService : IRegistrationService
             _domainEvents.Raise(new UserRegisteredDomainEvent(
                 UserId: user.Id,
                 Email: user.Email!,
+                PhoneNumber: user.PhoneNumber,
                 FullName: null,
                 OccurredOn: DateTimeOffset.UtcNow,
                 CorrelationId: null

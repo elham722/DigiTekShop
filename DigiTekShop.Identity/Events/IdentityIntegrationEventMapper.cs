@@ -17,6 +17,7 @@ public sealed class IdentityIntegrationEventMapper : IIntegrationEventMapper
                     UserId: e.UserId,
                     Email: e.Email,
                     FullName: e.FullName,
+                    PhoneNumber: e.PhoneNumber,
                     OccurredOn: e.OccurredOn,
                     CorrelationId: e.CorrelationId
                 );

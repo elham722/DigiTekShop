@@ -27,7 +27,7 @@ namespace DigiTekShop.Persistence.Handlers
             if (exists) return;
 
             var fullName = string.IsNullOrWhiteSpace(evt.FullName) ? evt.Email : evt.FullName;
-            var customer = Customer.Register(evt.UserId, fullName, evt.Email, phone: null);
+            var customer = Customer.Register(evt.UserId, fullName, evt.Email, phone: evt.PhoneNumber);
 
             _db.Customers.Add(customer);
             await _db.SaveChangesAsync(ct);
