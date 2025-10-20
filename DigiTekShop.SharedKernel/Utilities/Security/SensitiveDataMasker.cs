@@ -41,4 +41,12 @@ public static class SensitiveDataMasker
         var maskedLeft = left.Length <= 1 ? "*" : $"{left[0]}***";
         return $"{maskedLeft}@{right}";
     }
+
+    public static string? MaskPhone(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "***";
+        var p = raw.Trim();
+        if (p.Length <= 4) return new string('*', p.Length);
+        return $"{new string('*', p.Length - 4)}{p[^4..]}";
+    }
 }

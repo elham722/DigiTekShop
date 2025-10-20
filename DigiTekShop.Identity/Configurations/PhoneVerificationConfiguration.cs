@@ -14,14 +14,14 @@ namespace DigiTekShop.Identity.Configurations;
                 .IsRequired()
                 .HasMaxLength(256);
 
-            builder.Property(pv => pv.ExpiresAt)
-                .IsRequired();
+            builder.Property(pv => pv.ExpiresAtUtc)
+                .HasColumnType("datetime2(3)").IsRequired();
 
             builder.Property(pv => pv.Attempts)
                 .HasDefaultValue(0);
 
-            builder.Property(pv => pv.CreatedAt)
-                .IsRequired().HasDefaultValueSql("GETUTCDATE()");
+            builder.Property(pv => pv.CreatedAtUtc)
+                .IsRequired().HasColumnType("datetime2(3)").HasDefaultValueSql("GETUTCDATE()");
 
             builder.Property(pv => pv.PhoneNumber)
                 .HasMaxLength(20)
@@ -30,19 +30,22 @@ namespace DigiTekShop.Identity.Configurations;
             builder.Property(pv => pv.IsVerified)
                 .HasDefaultValue(false);
 
-            builder.Property(pv => pv.VerifiedAt)
-                .IsRequired(false);
+            builder.Property(pv => pv.VerifiedAtUtc)
+                .HasColumnType("datetime2(3)").IsRequired(false);
 
             builder.Property(pv => pv.IpAddress)
-                .HasMaxLength(45) // IPv6 max length
+                .HasMaxLength(45) 
                 .IsRequired(false);
 
             builder.Property(pv => pv.UserAgent)
                 .HasMaxLength(512)
                 .IsRequired(false);
 
-            // Configure relationships
-            builder.HasOne<User>()
+            builder.Property(x => x.RowVersion)
+                .IsRowVersion();
+
+        // Configure relationships
+        builder.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(pv => pv.UserId)
                 .OnDelete(DeleteBehavior.Cascade)
@@ -52,19 +55,19 @@ namespace DigiTekShop.Identity.Configurations;
         builder.HasIndex(pv => pv.UserId)
                 .HasDatabaseName("IX_PhoneVerifications_UserId");
 
-            builder.HasIndex(pv => pv.ExpiresAt)
+            builder.HasIndex(pv => pv.ExpiresAtUtc)
                 .HasDatabaseName("IX_PhoneVerifications_ExpiresAt");
 
-            builder.HasIndex(pv => pv.CreatedAt)
+            builder.HasIndex(pv => pv.CreatedAtUtc)
                 .HasDatabaseName("IX_PhoneVerifications_CreatedAt");
 
-            builder.HasIndex(pv => new { pv.UserId, pv.ExpiresAt })
+            builder.HasIndex(pv => new { pv.UserId, pv.ExpiresAtUtc })
                 .HasDatabaseName("IX_PhoneVerifications_UserId_ExpiresAt");
 
-            builder.HasIndex(pv => new { pv.UserId, pv.CreatedAt })
+            builder.HasIndex(pv => new { pv.UserId, pv.CreatedAtUtc })
                 .HasDatabaseName("IX_PhoneVerifications_UserId_CreatedAt");
 
-            builder.HasIndex(pv => new { pv.UserId, pv.CodeHash, pv.ExpiresAt })
+            builder.HasIndex(pv => new { pv.UserId, pv.CodeHash, pv.ExpiresAtUtc })
                 .IsUnique()
                 .HasDatabaseName("UX_PhoneVerifications_User_Code_ExpiresAt");
 
