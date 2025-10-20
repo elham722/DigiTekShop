@@ -1,315 +1,309 @@
 ﻿using DigiTekShop.Contracts.Abstractions.ExternalServices.EmailSender;
-using DigiTekShop.Contracts.Abstractions.Identity.Password;
 using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
 using DigiTekShop.Contracts.Options.Password;
 using DigiTekShop.Identity.Helpers.EmailTemplates;
 using DigiTekShop.SharedKernel.Enums.Audit;
+using DigiTekShop.SharedKernel.Utilities.Text;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Security.Cryptography;
 
 namespace DigiTekShop.Identity.Services.Password;
 
-
 public sealed class PasswordResetService : IPasswordService
 {
-    private readonly UserManager<User> _userManager;
-    private readonly IEmailSender _emailSender;
-    private readonly DigiTekShopIdentityDbContext _context;
-    private readonly PasswordResetOptions _settings;
-    private readonly IPasswordHistoryService _passwordHistory;
-    private readonly ILogger<PasswordResetService> _logger;
+    private static class Events
+    {
+        public static readonly EventId Forgot = new(42001, nameof(ForgotPasswordAsync));
+        public static readonly EventId Reset = new(42002, nameof(ResetPasswordAsync));
+        public static readonly EventId Change = new(42003, nameof(ChangePasswordAsync));
+        public static readonly EventId Cleanup = new(42004, nameof(CleanupExpiredThrottlesAsync));
+        public static readonly EventId Status = new(42005, nameof(GetThrottleStatusAsync));
+    }
+
+    private readonly UserManager<User> _users;
+    private readonly IEmailSender _mail;
+    private readonly DigiTekShopIdentityDbContext _db;
+    private readonly IPasswordHistoryService _history;
+    private readonly ITokenBlacklistService? _blacklist;  
+    private readonly IDateTimeProvider _time;
+    private readonly PasswordResetOptions _opts;
+    private readonly ILogger<PasswordResetService> _log;
 
     public PasswordResetService(
-        UserManager<User> userManager,
-        IEmailSender emailSender,
-        DigiTekShopIdentityDbContext context,
-        IOptions<PasswordResetOptions> settings,
-        IPasswordHistoryService passwordHistory,
-        ILogger<PasswordResetService> logger)
+        UserManager<User> users,
+        IEmailSender mail,
+        DigiTekShopIdentityDbContext db,
+        IOptions<PasswordResetOptions> opts,
+        IPasswordHistoryService history,
+        IDateTimeProvider time,
+        ILogger<PasswordResetService> log,
+        ITokenBlacklistService? blacklist = null)
     {
-        _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-        _emailSender = emailSender ?? throw new ArgumentNullException(nameof(emailSender));
-        _context = context ?? throw new ArgumentNullException(nameof(context));
-        _settings = settings?.Value ?? throw new ArgumentNullException(nameof(settings));
-        _passwordHistory = passwordHistory ?? throw new ArgumentNullException(nameof(passwordHistory));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _users = users ?? throw new ArgumentNullException(nameof(users));
+        _mail = mail ?? throw new ArgumentNullException(nameof(mail));
+        _db = db ?? throw new ArgumentNullException(nameof(db));
+        _history = history ?? throw new ArgumentNullException(nameof(history));
+        _time = time ?? throw new ArgumentNullException(nameof(time));
+        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _opts = opts?.Value ?? new PasswordResetOptions();
+        _blacklist = blacklist; 
     }
 
-   
-
-    public async Task<Result> ForgotPasswordAsync(ForgotPasswordRequestDto request, CancellationToken ct = default)
-    {
-
-        return await SendResetLinkCoreAsync(request, ipAddress: request.IpAddress, userAgent: request.UserAgent, ct);
-    }
-
-    public async Task<Result> ResetPasswordAsync(ResetPasswordRequestDto request, CancellationToken ct = default)
+    public async Task<Result> ForgotPasswordAsync(ForgotPasswordRequestDto req, CancellationToken ct = default)
     {
         try
         {
+            if (!_opts.IsEnabled) return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_DISABLED);
 
-            if (!_settings.IsEnabled)
-                return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_DISABLED);
+            var emailNorm = Normalization.Normalize(req.Email);
+            var user = string.IsNullOrWhiteSpace(emailNorm)
+                ? null
+                : await _users.FindByEmailAsync(emailNorm);
 
+            if (user is null || user.IsDeleted || !user.EmailConfirmed)
+            {
+                _log.LogInformation(Events.Forgot, "Reset requested for non-existent/inactive email");
+                return Result.Success(); 
+            }
 
-            if (!Guid.TryParse(request.UserId, out var userId))
+            if (!await CanRequestPasswordResetAsync(user.Id, ct))
+                return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_COOLDOWN_ACTIVE);
+
+            
+            var identityToken = await _users.GeneratePasswordResetTokenAsync(user);
+
+            
+            await InvalidateActiveResetTokensAsync(user.Id, ct);
+
+            var now = _time.UtcNow;
+            var expiresAt = now.AddMinutes(_opts.TokenValidityMinutes);
+
+            
+            var tokenHash = HashToken(identityToken);
+            var prt = PasswordResetToken.Create(
+                userId: user.Id,
+                tokenHash: tokenHash,
+                expiresAt: expiresAt,
+                ipAddress: req.IpAddress,
+                userAgent: req.UserAgent);
+            _db.PasswordResetTokens.Add(prt);
+
+           
+            var encoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(identityToken));
+            var url = BuildResetUrl(user.Id, encoded);
+
+            
+            var content = CreateResetEmailContent(user.UserName ?? "User", url);
+            var mailRes = await _mail.SendEmailAsync(user.Email!, content.Subject, content.HtmlContent, content.PlainTextContent);
+            if (mailRes.IsFailure)
+            {
+                _db.PasswordResetTokens.Remove(prt);
+                await _db.SaveChangesAsync(ct);
+                return ResultFactories.Fail(ErrorCodes.Common.OPERATION_FAILED);
+            }
+
+            await _db.SaveChangesAsync(ct);
+
+            await LogAuditAsync(user.Id, user.Email!, AuditAction.Created, "ResetLinkSent",
+                $"expires={expiresAt:o}", ct);
+
+            _log.LogInformation(Events.Forgot, "Reset email sent. user={UserId}", user.Id);
+            return Result.Success();
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _log.LogError(Events.Forgot, ex, "ForgotPassword failed");
+            return ResultFactories.Fail(ErrorCodes.Common.OPERATION_FAILED);
+        }
+    }
+
+    public async Task<Result> ResetPasswordAsync(ResetPasswordRequestDto req, CancellationToken ct = default)
+    {
+        try
+        {
+            if (!_opts.IsEnabled) return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_DISABLED);
+            if (!Guid.TryParse(req.UserId, out var uid))
                 return ResultFactories.Fail(ErrorCodes.Identity.INVALID_USER_FOR_PASSWORD_RESET);
 
-            var user = await _userManager.FindByIdAsync(request.UserId);
+            var user = await _users.FindByIdAsync(uid.ToString());
             if (user is null || user.IsDeleted)
                 return ResultFactories.Fail(ErrorCodes.Identity.INVALID_USER_FOR_PASSWORD_RESET);
 
-            string decodedToken;
+            string decoded;
             try
             {
-                decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Token));
+                decoded = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(req.Token));
             }
             catch
             {
                 return ResultFactories.Fail(ErrorCodes.Identity.INVALID_TOKEN);
             }
 
-           
-            var tokenHash = HashToken(decodedToken);
-            var storedToken = await _context.PasswordResetTokens
-                .Where(prt => prt.UserId == userId && prt.TokenHash == tokenHash)
-                .FirstOrDefaultAsync(ct);
+            
+            var tokenHash = HashToken(decoded);
+            var stored = await _db.PasswordResetTokens
+                .FirstOrDefaultAsync(p => p.UserId == uid && p.TokenHash == tokenHash, ct);
+            if (stored is null) return ResultFactories.Fail(ErrorCodes.Identity.INVALID_TOKEN);
+            if (stored.IsExpired) return ResultFactories.Fail(ErrorCodes.Identity.TOKEN_EXPIRED);
+            if (stored.IsUsed) return ResultFactories.Fail(ErrorCodes.Identity.INVALID_TOKEN);
 
-            if (storedToken == null)
-                return ResultFactories.Fail(ErrorCodes.Identity.INVALID_TOKEN);
-
-            if (storedToken.IsExpired)
-                return ResultFactories.Fail(ErrorCodes.Identity.TOKEN_EXPIRED);
-
-            if (storedToken.IsUsed)
-                return ResultFactories.Fail(ErrorCodes.Identity.INVALID_TOKEN); 
-
-            if (storedToken.IsThrottled)
+            if (stored.IsThrottled)
             {
-                storedToken.RecordFailedAttempt(); 
-                _context.PasswordResetTokens.Update(storedToken);
-                await _context.SaveChangesAsync(ct);
-                
+                stored.RecordFailedAttempt(); 
+                _db.PasswordResetTokens.Update(stored);
+                await _db.SaveChangesAsync(ct);
                 return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_COOLDOWN_ACTIVE);
             }
 
-
-            var reused = await _passwordHistory.ExistsInHistoryAsync(
-                user.Id, request.NewPassword, maxToCheck: 5, ct: ct);
-            if (reused)
-                return Result.Failure("New password must not match your recent passwords.");
+            
+            var reused = await _history.ExistsInHistoryAsync(uid, req.NewPassword, maxToCheck: 5, ct);
+            if (reused) return Result.Failure("New password must not match your recent passwords.");
 
             
-            var identityRes = await _userManager.ResetPasswordAsync(user, decodedToken, request.NewPassword);
+            var identityRes = await _users.ResetPasswordAsync(user, decoded, req.NewPassword);
             if (!identityRes.Succeeded)
             {
-               
-                storedToken.RecordFailedAttempt(maxAttempts: 3, TimeSpan.FromMinutes(15));
-                _context.PasswordResetTokens.Update(storedToken);
-                await _context.SaveChangesAsync(ct);
+                stored.RecordFailedAttempt(maxAttempts: 3, TimeSpan.FromMinutes(15));
+                _db.PasswordResetTokens.Update(stored);
+                await _db.SaveChangesAsync(ct);
 
-                var errors = identityRes.Errors.Select(e => e.Description);
-                _logger.LogWarning("Password reset failed for user {UserId}. Errors: {Errors}", userId, string.Join(", ", errors));
+                _log.LogWarning(Events.Reset, "Identity reset failed. user={UserId}, errors={Errors}",
+                    uid, string.Join(", ", identityRes.Errors.Select(e => e.Description)));
                 return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_FAILED);
             }
 
-            storedToken.MarkAsUsed(ipAddress: request.IpAddress); 
-            _context.PasswordResetTokens.Update(storedToken);
+            
+            stored.MarkAsUsed(ipAddress: req.IpAddress);
+            _db.PasswordResetTokens.Update(stored);
 
             
-            var reloaded = await _userManager.FindByIdAsync(user.Id.ToString());
+            var reloaded = await _users.FindByIdAsync(user.Id.ToString());
             var newHash = reloaded?.PasswordHash ?? user.PasswordHash!;
-            await _passwordHistory.AddAsync(user.Id, newHash, keepLastN: 5, ct: ct);
+            await _history.AddAsync(user.Id, newHash, keepLastN: 5, ct);
 
+            
+            await RevokeAllUserTokensAsync(uid, ct);
 
-            await RevokeAllUserTokensAsync(userId, ct);
-            await InvalidateUserResetTokens(userId, ct);
+            
+            if (_blacklist is not null)
+                await _blacklist.RevokeAllUserTokensAsync(uid, "password_reset", ct);
 
-            await _context.SaveChangesAsync(ct);
+            await InvalidateUserResetTokens(uid, ct);
 
-            await LogAuditAsync(userId, user.Email!, AuditAction.Updated, "PasswordResetCompleted", details: null, ct);
-            _logger.LogInformation("Password reset completed successfully for user {UserId}", userId);
+            await _db.SaveChangesAsync(ct);
+
+            await LogAuditAsync(uid, user.Email!, AuditAction.Updated, "PasswordResetCompleted", null, ct);
+            _log.LogInformation(Events.Reset, "Password reset done. user={UserId}", uid);
 
             return Result.Success();
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resetting password for user {UserId}", request.UserId);
+            _log.LogError(Events.Reset, ex, "ResetPassword failed. userId={UserId}", req.UserId);
             return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_FAILED);
         }
     }
 
-    public async Task<Result> ChangePasswordAsync(ChangePasswordRequestDto request, CancellationToken ct = default)
+    public async Task<Result> ChangePasswordAsync(ChangePasswordRequestDto req, CancellationToken ct = default)
     {
         try
         {
-
-            var user = await _userManager.FindByIdAsync(request.UserId.ToString());
+            var user = await _users.FindByIdAsync(req.UserId.ToString());
             if (user is null || user.IsDeleted)
                 return Result.Failure("User not found or inactive.");
 
-           
-            if (request.CurrentPassword == request.NewPassword)
+            if (req.CurrentPassword == req.NewPassword)
                 return Result.Failure("New password must be different from current password.");
 
+            var reused = await _history.ExistsInHistoryAsync(user.Id, req.NewPassword, maxToCheck: 5, ct);
+            if (reused) return Result.Failure("New password must not match your recent passwords.");
 
-            var reused = await _passwordHistory.ExistsInHistoryAsync(
-                user.Id, request.NewPassword, maxToCheck: 5, ct: ct);
-            if (reused)
-                return Result.Failure("New password must not match your recent passwords.");
-
-           
-            var res = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            var res = await _users.ChangePasswordAsync(user, req.CurrentPassword, req.NewPassword);
             if (!res.Succeeded)
-            {
-                var errors = res.Errors.Select(e => e.Description);
-                return Result.Failure(errors);
-            }
+                return Result.Failure(res.Errors.Select(e => e.Description));
 
-            
-            var reloaded = await _userManager.FindByIdAsync(user.Id.ToString());
+            var reloaded = await _users.FindByIdAsync(user.Id.ToString());
             var newHash = reloaded?.PasswordHash ?? user.PasswordHash!;
-            await _passwordHistory.AddAsync(user.Id, newHash, keepLastN: 5, ct: ct);
+            await _history.AddAsync(user.Id, newHash, keepLastN: 5, ct);
 
+            await RevokeAllUserTokensAsync(req.UserId, ct);
+            if (_blacklist is not null)
+                await _blacklist.RevokeAllUserTokensAsync(req.UserId, "password_change", ct);
 
-            await RevokeAllUserTokensAsync(request.UserId, ct);
-
-            _logger.LogInformation("Password changed for user {UserId}", request.UserId);
+            _log.LogInformation(Events.Change, "Password changed. user={UserId}", req.UserId);
             return Result.Success();
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error changing password for user {UserId}", request.UserId);
+            _log.LogError(Events.Change, ex, "ChangePassword failed. userId={UserId}", req.UserId);
             return Result.Failure("Password change failed.");
         }
     }
 
-  
-    private async Task<Result> SendResetLinkCoreAsync(ForgotPasswordRequestDto request, string? ipAddress, string? userAgent, CancellationToken ct)
-    {
-        try
-        {
-            if (!_settings.IsEnabled)
-                return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_DISABLED);
-
-            // Validation قبلاً در ForgotPasswordAsync انجام شده است
-
-            var user = await _userManager.FindByEmailAsync(request.Email);
-            if (user == null || user.IsDeleted || !user.EmailConfirmed)
-            {
-                _logger.LogWarning("Password reset requested for non-existent or inactive email: {Email}", request.Email);
-                return Result.Success(); 
-            }
-
-            if (!await CanRequestPasswordResetAsync(user.Id, ct))
-            {
-                return ResultFactories.Fail(ErrorCodes.Identity.PASSWORD_RESET_COOLDOWN_ACTIVE);
-            }
-
-            var identityToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-
-            await InvalidateActiveResetTokensAsync(user.Id, ct);
-
-            var tokenHash = HashToken(identityToken);
-            var tokenExpires = DateTime.UtcNow.AddMinutes(_settings.TokenValidityMinutes);
-
-            var resetTokenEntity = PasswordResetToken.Create(user.Id, tokenHash, tokenExpires, ipAddress, userAgent);
-            _context.PasswordResetTokens.Add(resetTokenEntity);
-
-            var resetUrl = BuildResetUrl(user.Id, WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(identityToken)));
-
-            var content = CreateResetEmailContent(user.UserName ?? "User", resetUrl);
-
-            var emailResult = await _emailSender.SendEmailAsync(user.Email!, content.Subject, content.HtmlContent, content.PlainTextContent);
-            if (emailResult.IsFailure)
-            {
-                _context.PasswordResetTokens.Remove(resetTokenEntity);
-                await _context.SaveChangesAsync(ct);
-                return ResultFactories.Fail(ErrorCodes.Common.OPERATION_FAILED);
-            }
-
-            await _context.SaveChangesAsync(ct);
-
-            await LogAuditAsync(user.Id, user.Email!, AuditAction.Created, "ResetLinkSent",
-                                $"Email sent successfully, expires at {tokenExpires:yyyy-MM-dd HH:mm:ss} UTC", ct);
-
-            _logger.LogInformation("Password reset email sent successfully to {Email}, expires at {ExpiresAt}", user.Email, tokenExpires);
-            return Result.Success();
-        }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending password reset email to {Email}", request.Email);
-            return ResultFactories.Fail(ErrorCodes.Common.OPERATION_FAILED);
-        }
-    }
-
-
+    #region Helpers
 
     public async Task<bool> CanRequestPasswordResetAsync(Guid userId, CancellationToken ct = default)
     {
-        if (!_settings.AllowMultipleRequests) return true;
+        if (!_opts.AllowMultipleRequests) return true;
 
-        var todayRequests = await _context.AuditLogs
-            .AsNoTracking()
-            .Where(al => al.ActorId == userId &&
-                         al.TargetEntityName == "PasswordReset" &&
-                         al.Action == AuditAction.Created &&
-                         al.Timestamp >= DateTime.UtcNow.Date)
+        var today = _time.TodayUtc.ToDateTime(TimeOnly.MinValue);
+        var requestsToday = await _db.AuditLogs.AsNoTracking()
+            .Where(a => a.ActorId == userId
+                     && a.TargetEntityName == "PasswordReset"
+                     && a.Action == AuditAction.Created
+                     && a.Timestamp >= today)
             .CountAsync(ct);
 
-        if (todayRequests >= _settings.MaxRequestsPerDay)
-            return false;
+        if (requestsToday >= _opts.MaxRequestsPerDay) return false;
 
-        var lastSent = await GetLastPasswordResetRequestAsync(userId, ct);
-        if (lastSent != null && DateTime.UtcNow < lastSent.Timestamp.AddMinutes(_settings.RequestCooldownMinutes))
+        var last = await GetLastPasswordResetRequestAsync(userId, ct);
+        var now = _time.UtcNow;
+        if (last is not null && now < last.Timestamp.AddMinutes(_opts.RequestCooldownMinutes))
             return false;
 
         return true;
     }
 
-    private async Task<AuditLog?> GetLastPasswordResetRequestAsync(Guid userId, CancellationToken ct)
-    {
-        return await _context.AuditLogs
-            .AsNoTracking()
-            .Where(al => al.ActorId == userId &&
-                         al.TargetEntityName == "PasswordReset" &&
-                         al.Action == AuditAction.Created)
-            .OrderByDescending(al => al.Timestamp)
-            .FirstOrDefaultAsync(ct);
-    }
+    private Task<AuditLog?> GetLastPasswordResetRequestAsync(Guid userId, CancellationToken ct)
+        => _db.AuditLogs.AsNoTracking()
+                        .Where(a => a.ActorId == userId
+                                 && a.TargetEntityName == "PasswordReset"
+                                 && a.Action == AuditAction.Created)
+                        .OrderByDescending(a => a.Timestamp)
+                        .FirstOrDefaultAsync(ct);
 
     private string BuildResetUrl(Guid userId, string encodedToken)
     {
-        var baseUrl = _settings.BaseUrl.TrimEnd('/');
-        var path = _settings.ResetPasswordPath.TrimStart('/');
-        return $"{baseUrl}/{path}?userId={userId}&token={encodedToken}";
+        var baseUrl = (_opts.BaseUrl ?? string.Empty).TrimEnd('/');
+        var path = (_opts.ResetPasswordPath ?? "reset-password").TrimStart('/');
+        var uid = Uri.EscapeDataString(userId.ToString());
+        var tok = Uri.EscapeDataString(encodedToken);
+        return $"{baseUrl}/{path}?userId={uid}&token={tok}";
     }
 
     private PasswordResetEmailContent CreateResetEmailContent(string userName, string resetUrl)
     {
-        var t = _settings.Template;
+        var t = _opts.Template;
         var subject = $"Reset Your Password - {t.CompanyName}";
-        var htmlContent = PasswordResetEmailTemplateHelper.CreatePasswordResetHtml(
-            userName, resetUrl, t.CompanyName, t.SupportEmail, t.ContactUrl);
-        var plainTextContent = PasswordResetEmailTemplateHelper.CreatePasswordResetText(
-            userName, resetUrl, t.CompanyName, t.SupportEmail);
-        return new PasswordResetEmailContent(subject, htmlContent, plainTextContent);
+        var html = PasswordResetEmailTemplateHelper.CreatePasswordResetHtml(userName, resetUrl, t.CompanyName, t.SupportEmail, t.ContactUrl);
+        var text = PasswordResetEmailTemplateHelper.CreatePasswordResetText(userName, resetUrl, t.CompanyName, t.SupportEmail);
+        return new PasswordResetEmailContent(subject, html, text);
     }
 
     private async Task LogAuditAsync(Guid userId, string email, AuditAction action, string status, string? details, CancellationToken ct)
     {
         try
         {
-            var description = details != null ? $"{status}: {details}" : status;
-            _context.AuditLogs.Add(AuditLog.Create(userId, action, "PasswordReset", email, description, isSuccess: true));
-            await _context.SaveChangesAsync(ct);
+            var desc = details is null ? status : $"{status}: {details}";
+            _db.AuditLogs.Add(AuditLog.Create(userId, action, "PasswordReset", email, desc, isSuccess: true));
+            await _db.SaveChangesAsync(ct);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to log password reset audit for user {UserId}", userId);
+            _log.LogWarning(ex, "Audit log failed. user={UserId}", userId);
         }
     }
 
@@ -317,19 +311,17 @@ public sealed class PasswordResetService : IPasswordService
     {
         try
         {
-            var activeTokens = await _context.RefreshTokens
-                .Where(rt => rt.UserId == userId && rt.IsActive)
+            var active = await _db.RefreshTokens
+                .Where(t => t.UserId == userId && t.IsActive)
                 .ToListAsync(ct);
 
-            foreach (var token in activeTokens)
-                token.Revoke("Password change/reset - all sessions terminated");
+            foreach (var t in active) t.Revoke("password reset/change: terminate all sessions");
 
-            if (activeTokens.Any())
-                _context.RefreshTokens.UpdateRange(activeTokens);
+            if (active.Count > 0) _db.RefreshTokens.UpdateRange(active);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to revoke tokens for user {UserId}", userId);
+            _log.LogWarning(ex, "Revoke all tokens failed. user={UserId}", userId);
         }
     }
 
@@ -337,22 +329,16 @@ public sealed class PasswordResetService : IPasswordService
     {
         try
         {
-            var activeTokens = await _context.PasswordResetTokens
-                .Where(prt => prt.UserId == userId && !prt.IsUsed && !prt.IsExpired)
+            var active = await _db.PasswordResetTokens
+                .Where(p => p.UserId == userId && !p.IsUsed && !p.IsExpired)
                 .ToListAsync(ct);
 
-            foreach (var token in activeTokens)
-                token.MarkAsUsed("Invalidated by new reset request");
-
-            if (activeTokens.Any())
-            {
-                _context.PasswordResetTokens.UpdateRange(activeTokens);
-                _logger.LogInformation("Invalidated {Count} active reset tokens for user {UserId}", activeTokens.Count, userId);
-            }
+            foreach (var t in active) t.MarkAsUsed("invalidated by new request");
+            if (active.Count > 0) _db.PasswordResetTokens.UpdateRange(active);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to invalidate active reset tokens for user {UserId}", userId);
+            _log.LogWarning(ex, "Invalidate active reset tokens failed. user={UserId}", userId);
         }
     }
 
@@ -360,76 +346,73 @@ public sealed class PasswordResetService : IPasswordService
     {
         try
         {
-            var unused = await _context.PasswordResetTokens
-                .Where(prt => prt.UserId == userId && !prt.IsUsed)
+            var unused = await _db.PasswordResetTokens
+                .Where(p => p.UserId == userId && !p.IsUsed)
                 .ToListAsync(ct);
 
-            foreach (var token in unused)
-                token.MarkAsUsed();
-
-            if (unused.Any())
-                _context.PasswordResetTokens.UpdateRange(unused);
+            foreach (var t in unused) t.MarkAsUsed();
+            if (unused.Count > 0) _db.PasswordResetTokens.UpdateRange(unused);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to invalidate reset tokens for user {UserId}", userId);
+            _log.LogWarning(ex, "Invalidate user reset tokens failed. user={UserId}", userId);
         }
     }
 
- 
     public async Task<int> CleanupExpiredThrottlesAsync(CancellationToken ct = default)
     {
         try
         {
-            var expiredThrottles = await _context.PasswordResetTokens
-                .Where(prt => prt.ThrottleUntil.HasValue && prt.ThrottleUntil.Value <= DateTime.UtcNow)
+            var now = _time.UtcNow;
+            var list = await _db.PasswordResetTokens
+                .Where(p => p.ThrottleUntil.HasValue && p.ThrottleUntil.Value <= now)
                 .ToListAsync(ct);
 
-            foreach (var token in expiredThrottles)
-            {
-                token.ClearThrottle();
-            }
+            foreach (var t in list) t.ClearThrottle();
 
-            if (expiredThrottles.Any())
+            if (list.Count > 0)
             {
-                _context.PasswordResetTokens.UpdateRange(expiredThrottles);
-                await _context.SaveChangesAsync(ct);
-                _logger.LogInformation("Cleaned up {Count} expired throttles", expiredThrottles.Count);
+                _db.PasswordResetTokens.UpdateRange(list);
+                await _db.SaveChangesAsync(ct);
+                _log.LogInformation(Events.Cleanup, "Cleaned {Count} expired throttles", list.Count);
             }
-
-            return expiredThrottles.Count;
+            return list.Count;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error cleaning up expired throttles");
+            _log.LogError(Events.Cleanup, ex, "Cleanup throttles failed");
             return 0;
         }
     }
 
     public async Task<PasswordResetThrottleStatus> GetThrottleStatusAsync(Guid userId, CancellationToken ct = default)
     {
-        var activeTokens = await _context.PasswordResetTokens
-            .Where(prt => prt.UserId == userId && !prt.IsUsed && !prt.IsExpired)
-            .OrderByDescending(prt => prt.CreatedAt)
+        var active = await _db.PasswordResetTokens
+            .Where(p => p.UserId == userId && !p.IsUsed && !p.IsExpired)
+            .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync(ct);
 
-        if (activeTokens == null)
+        if (active is null)
             return new PasswordResetThrottleStatus(false, false, 0, null, null);
 
         return new PasswordResetThrottleStatus(
-            true,
-            activeTokens.IsThrottled,
-            activeTokens.AttemptCount,
-            activeTokens.ThrottleUntil,
-            activeTokens.LastAttemptAt
+            HasActiveToken: true,
+            IsThrottled: active.IsThrottled,
+            AttemptCount: active.AttemptCount,
+            ThrottleUntil: active.ThrottleUntil,
+            LastAttemptAt: active.LastAttemptAt
         );
     }
 
     private string HashToken(string token)
     {
         Guard.AgainstNullOrEmpty(token, nameof(token));
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(token));
-        return Convert.ToBase64String(hashedBytes);
+        using var sha = SHA256.Create();
+        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(token));
+        return Convert.ToBase64String(bytes);
     }
+
+    #endregion
+
+
 }
