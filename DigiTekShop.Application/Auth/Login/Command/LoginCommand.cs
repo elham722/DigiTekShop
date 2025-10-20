@@ -2,4 +2,4 @@
 
 namespace DigiTekShop.Application.Auth.Login.Command;
 public sealed record LoginCommand(LoginRequest Dto)
-    : ICommand<LoginResponse>, INonTransactionalCommand;
+    : ICommand<LoginResultDto>, INonTransactionalCommand;

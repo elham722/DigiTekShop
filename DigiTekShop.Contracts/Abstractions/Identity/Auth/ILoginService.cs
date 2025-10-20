@@ -2,6 +2,6 @@
 {
     public interface ILoginService
     {
-        Task<Result<LoginResponse>> LoginAsync(LoginRequest dto, CancellationToken ct);
+        Task<Result<LoginResultDto>> LoginAsync(LoginRequest dto, CancellationToken ct);
     }
 }
