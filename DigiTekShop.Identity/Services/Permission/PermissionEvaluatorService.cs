@@ -1,7 +1,7 @@
 using DigiTekShop.Contracts.Abstractions.Identity.Permission;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace DigiTekShop.Identity.Services.Security;
+namespace DigiTekShop.Identity.Services.Permission;
 
 
 public class PermissionEvaluatorService : IPermissionEvaluatorService

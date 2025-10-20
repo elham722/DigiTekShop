@@ -9,6 +9,7 @@ using DigiTekShop.Contracts.Options.Phone;
 using DigiTekShop.Contracts.Options.Security;
 using DigiTekShop.Contracts.Options.Token;
 using DigiTekShop.Identity.Services.Device;
+using DigiTekShop.Identity.Services.Permission;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 
@@ -94,6 +95,8 @@ public static class IdentityServicesRegistration
         services.AddSingleton(resolver => resolver.GetRequiredService<IOptions<DeviceLimitsOptions>>().Value);
         services.AddScoped<IDeviceRegistry, DeviceRegistry>();
 
+        services.Configure<SecurityEventsOptions>(configuration.GetSection("SecurityEvents"));
+        services.AddScoped<ISecurityEventService, SecurityEventService>();
 
         services.AddScoped<IPasswordHistoryService, PasswordHistoryService>();
 
@@ -102,8 +105,6 @@ public static class IdentityServicesRegistration
         services.AddScoped<IEncryptionService, EncryptionService>();
 
         services.AddScoped<IPermissionEvaluatorService, PermissionEvaluatorService>();
-
-        services.AddScoped<ISecurityEventService, SecurityEventService>();
 
         services.AddScoped<IIdentityGateway, IdentityGateway>();
 

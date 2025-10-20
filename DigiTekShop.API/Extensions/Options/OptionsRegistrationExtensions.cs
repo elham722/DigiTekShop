@@ -42,6 +42,7 @@ namespace DigiTekShop.API.Extensions.Options
             services.AddOptions<LoginFlowOptions>().Bind(cfg.GetSection("Auth:LoginFlow"));
             services.AddOptions<LoginAttemptOptions>().Bind(cfg.GetSection("Auth:LoginAttempts"));
             services.AddOptions<IdentityLockoutOptions>().Bind(cfg.GetSection("Identity:Lockout"));
+            services.AddOptions<SecurityEventsOptions>().Bind(cfg.GetSection("SecurityEvents"));
 
             return services;
         }
