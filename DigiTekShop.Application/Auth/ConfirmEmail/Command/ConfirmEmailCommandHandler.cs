@@ -1,7 +1,7 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
 
 namespace DigiTekShop.Application.Auth.ConfirmEmail.Command;
-public sealed class ConfirmEmailCommandHandler : IRequestHandler<ConfirmEmailCommand, Result>
+public sealed class ConfirmEmailCommandHandler : ICommandHandler<ConfirmEmailCommand>
 {
     private readonly IEmailConfirmationService _svc;
     public ConfirmEmailCommandHandler(IEmailConfirmationService svc) => _svc = svc;

@@ -10,11 +10,6 @@ public sealed record VerifyMfaRequest
 
     public string Code { get; init; } = default!;
 
-    public string DeviceId { get; init; } = default!;
-
     public bool TrustThisDevice { get; init; }
 
-    public string? UserAgent { get; init; }
-
-    public string? Ip { get; init; }
 }

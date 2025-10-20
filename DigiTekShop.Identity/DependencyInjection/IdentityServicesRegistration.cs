@@ -85,7 +85,7 @@ public static class IdentityServicesRegistration
         services.AddSingleton(resolver =>
             resolver.GetRequiredService<IOptions<JwtSettings>>().Value);
 
-        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<ITokenService, TokenService>();
 
         #endregion
 

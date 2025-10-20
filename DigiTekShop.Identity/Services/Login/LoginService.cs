@@ -15,7 +15,7 @@ public sealed class LoginService : ILoginService
     private readonly ICurrentClient _client;
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
-    private readonly IJwtTokenService _jwtTokenService;
+    private readonly ITokenService _jwtTokenService;
     private readonly ILoginAttemptService _loginAttemptService;
     private readonly ISecurityEventService _securityEventService;
     private readonly SecuritySettings _securitySettings;
@@ -25,7 +25,7 @@ public sealed class LoginService : ILoginService
         ICurrentClient client,
         UserManager<User> userManager,
         SignInManager<User> signInManager,
-        IJwtTokenService jwtTokenService,
+        ITokenService jwtTokenService,
         ILoginAttemptService loginAttemptService,
         ISecurityEventService securityEventService,
         IOptions<SecuritySettings> securitySettings,
@@ -41,7 +41,7 @@ public sealed class LoginService : ILoginService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<Result<RefreshTokenResponse>> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    public async Task<Result<LoginResponse>> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var deviceId = _client.DeviceId;
         var userAgent = _client.UserAgent;
@@ -49,21 +49,21 @@ public sealed class LoginService : ILoginService
 
         var blockReason = await GetBruteForceBlockReasonAsync(ip, deviceId, ct);
         if (blockReason is not null)
-            return Result<RefreshTokenResponse>.Failure("Too many failed attempts. Try later.", blockReason);
+            return Result<LoginResponse>.Failure("Too many failed attempts. Try later.", blockReason);
 
         var user = await _userManager.FindByEmailAsync(request.Login);
         if (user is null)
         {
             await _loginAttemptService.RecordLoginAttemptAsync(null, LoginStatus.Failed, ip, userAgent, request.Login, ct);
-            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.INVALID_CREDENTIALS);
+            return ResultFactories.Fail<LoginResponse>(ErrorCodes.Identity.INVALID_CREDENTIALS);
 
         }
 
         if (user.IsDeleted)
-            return Result<RefreshTokenResponse>.Failure("User not found or inactive.");
+            return Result<LoginResponse>.Failure("User not found or inactive.");
 
         if (await _userManager.IsLockedOutAsync(user))
-            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.ACCOUNT_LOCKED);
+            return ResultFactories.Fail<LoginResponse>(ErrorCodes.Identity.ACCOUNT_LOCKED);
 
 
         var signIn = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
@@ -73,7 +73,7 @@ public sealed class LoginService : ILoginService
             await _loginAttemptService.RecordLoginAttemptAsync(user.Id, LoginStatus.Success, ip, userAgent, request.Login, ct);
 
             if (await _userManager.GetTwoFactorEnabledAsync(user))
-                return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
+                return ResultFactories.Fail<LoginResponse>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
 
 
             // Step-Up بر اساس دستگاه
@@ -81,7 +81,7 @@ public sealed class LoginService : ILoginService
             {
                 var requiresStepUp = await CheckStepUpMfaRequiredAsync(user.Id,deviceId , ct);
                 if (requiresStepUp)
-                    return Result<RefreshTokenResponse>.Failure("Step-Up MFA required for new device", "STEP_UP_MFA_REQUIRED");
+                    return Result<LoginResponse>.Failure("Step-Up MFA required for new device", "STEP_UP_MFA_REQUIRED");
             }
 
             // موفقیت کامل → ثبت آخرین ورود
@@ -89,8 +89,8 @@ public sealed class LoginService : ILoginService
             await _userManager.UpdateAsync(user);
 
             // تولید توکن‌ها (ManageUserDevice در JwtTokenService شما انجام می‌شود)
-            var tokens = await _jwtTokenService.GenerateTokensAsync(user.Id.ToString(),ip,deviceId,userAgent, ct);
-            return tokens;
+            var tokens = await _jwtTokenService.IssueAsync(user.Id, ct);
+            return null;
         }
 
         // شکست
@@ -100,14 +100,14 @@ public sealed class LoginService : ILoginService
         await CheckBruteForceAfterFailureAsync(ip, deviceId, user.Id, ct);
 
         if (signIn.IsLockedOut)
-            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.ACCOUNT_LOCKED);
+            return ResultFactories.Fail<LoginResponse>(ErrorCodes.Identity.ACCOUNT_LOCKED);
 
         if (signIn.RequiresTwoFactor)
-            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
+            return ResultFactories.Fail<LoginResponse>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
         if (signIn.IsNotAllowed)
-            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.SIGNIN_NOT_ALLOWED);
+            return ResultFactories.Fail<LoginResponse>(ErrorCodes.Identity.SIGNIN_NOT_ALLOWED);
 
-        return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.INVALID_CREDENTIALS);
+        return ResultFactories.Fail<LoginResponse>(ErrorCodes.Identity.INVALID_CREDENTIALS);
 
     }
 
@@ -142,7 +142,6 @@ public sealed class LoginService : ILoginService
             return null; // fail-open
         }
     }
-
 
     private async Task CheckBruteForceAfterFailureAsync(string? ipAddress, string? deviceId, Guid userId, CancellationToken ct = default)
     {
@@ -215,8 +214,6 @@ public sealed class LoginService : ILoginService
     #endregion
 
     #region Step-Up MFA
-
-
     private async Task<bool> CheckStepUpMfaRequiredAsync(Guid userId, string deviceId, CancellationToken ct)
     {
         try
@@ -236,72 +233,4 @@ public sealed class LoginService : ILoginService
     }
     #endregion
 
-    public async Task<Result<RefreshTokenResponse>> RefreshAsync(RefreshTokenRequest request, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(request.RefreshToken))
-            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.INVALID_TOKEN);
-
-        var result = await _jwtTokenService.RefreshTokensAsync(
-            refreshToken: request.RefreshToken,
-            deviceId: request.DeviceId,
-            ipAddress: request.Ip,
-            userAgent: request.UserAgent,
-            ct: ct);
-
-        return result;
-    }
-
-    public async Task<Result> LogoutAsync(LogoutRequest request, CancellationToken ct = default)
-    {
-        var errors = new List<string>();
-
-        // Revoke refresh token
-        if (!string.IsNullOrWhiteSpace(request.RefreshToken))
-        {
-            var refreshResult = await _jwtTokenService.RevokeRefreshTokenAsync(request.RefreshToken, reason: "User logout", ct);
-            if (refreshResult.IsFailure)
-                errors.Add($"Refresh token revocation failed: {refreshResult.GetFirstError()}");
-        }
-
-        // Revoke access token (add to blacklist for immediate invalidation)
-        //if (!string.IsNullOrWhiteSpace(request.a))
-        //{
-        //    var accessResult = await _jwtTokenService.RevokeAccessTokenAsync(request.AccessToken, reason: "User logout", ct);
-        //    if (accessResult.IsFailure)
-        //        errors.Add($"Access token revocation failed: {accessResult.GetFirstError()}");
-        //}
-
-        // Even if some failures, logout should succeed (tokens might already be invalid)
-        if (errors.Any())
-            _logger.LogWarning("Logout completed with warnings: {Warnings}", string.Join("; ", errors));
-
-        return Result.Success();
-    }
-
-    public async Task<Result> LogoutAllDevicesAsync(string userId, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(userId))
-            return Result.Failure("User id is required.");
-
-        if (!Guid.TryParse(userId, out var userGuid))
-            return Result.Failure("Invalid user id format.");
-
-        // Revoke all refresh tokens
-        var refreshResult = await _jwtTokenService.RevokeAllUserTokensAsync(userId, reason: "User logout all devices", ct);
-
-        // Revoke all access tokens (user-level revocation)
-        var accessResult = await _jwtTokenService.RevokeAllUserAccessTokensAsync(userGuid, reason: "User logout all devices", ct);
-
-        if (refreshResult.IsFailure || accessResult.IsFailure)
-        {
-            var errors = new List<string>();
-            if (refreshResult.IsFailure) errors.Add($"Refresh: {refreshResult.GetFirstError()}");
-            if (accessResult.IsFailure) errors.Add($"Access: {accessResult.GetFirstError()}");
-
-            _logger.LogError("Failed to logout all devices: {Errors}", string.Join("; ", errors));
-            return Result.Failure(string.Join("; ", errors));
-        }
-
-        return Result.Success();
-    }
 }

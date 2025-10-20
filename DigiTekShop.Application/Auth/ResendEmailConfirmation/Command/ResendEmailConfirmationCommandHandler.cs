@@ -2,7 +2,7 @@
 
 namespace DigiTekShop.Application.Auth.ResendEmailConfirmation.Command;
 
-public sealed class ResendEmailConfirmationCommandHandler : IRequestHandler<ResendEmailConfirmationCommand, Result>
+public sealed class ResendEmailConfirmationCommandHandler : ICommandHandler<ResendEmailConfirmationCommand>
 {
     private readonly IEmailConfirmationService _svc;
     public ResendEmailConfirmationCommandHandler(IEmailConfirmationService svc) => _svc = svc;

@@ -12,7 +12,5 @@ public sealed record MeResponse
     public IReadOnlyList<string> Roles { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> Permissions { get; init; } = Array.Empty<string>();
 
-    public string? DeviceId { get; init; }
-
     public string? PolicyVersion { get; init; }
 }
