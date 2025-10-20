@@ -113,7 +113,7 @@ public static class IdentityServicesRegistration
         // Permission Evaluator Service
         services.AddScoped<IPermissionEvaluatorService, PermissionEvaluatorService>();
 
-        // Login Attempt Service
+        services.Configure<LoginAttemptOptions>(configuration.GetSection("Auth:LoginAttempts"));
         services.AddScoped<ILoginAttemptService, LoginAttemptService>();
 
         // Security Event Service

@@ -40,6 +40,7 @@ namespace DigiTekShop.API.Extensions.Options
             services.AddOptions<ReverseProxyOptions>().Bind(cfg.GetSection("ReverseProxy"));
 
             services.AddOptions<LoginFlowOptions>().Bind(cfg.GetSection("Auth:LoginFlow"));
+            services.AddOptions<LoginAttemptOptions>().Bind(cfg.GetSection("Auth:LoginAttempts"));
 
             return services;
         }

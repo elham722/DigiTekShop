@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace DigiTekShop.SharedKernel.Utilities;
+namespace DigiTekShop.SharedKernel.Utilities.Security;
 public static class Hashing
 {
     public static string Sha256Base64Url(string input)

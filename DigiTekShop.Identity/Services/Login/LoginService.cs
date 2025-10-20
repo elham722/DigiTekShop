@@ -1,7 +1,7 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Identity.Device;
 using DigiTekShop.Contracts.DTOs.Auth.Login;
 using DigiTekShop.Contracts.Options.Auth;
-using DigiTekShop.SharedKernel.Utilities;
+using DigiTekShop.SharedKernel.Utilities.Security;
 
 namespace DigiTekShop.Identity.Services.Login;
 
