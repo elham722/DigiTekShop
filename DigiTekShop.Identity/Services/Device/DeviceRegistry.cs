@@ -112,9 +112,9 @@ public sealed class DeviceRegistry : IDeviceRegistry
         var nowUtc = _time.UtcNow;
 
         var lockKey = $"device-trust:{userId}";
-        var hasLock = false;
+        string? lockToken = null;
         if (_lock is not null)
-            hasLock = await _lock.AcquireAsync(lockKey, TimeSpan.FromSeconds(5), ct);
+            lockToken = await _lock.AcquireAsync(lockKey, TimeSpan.FromSeconds(5), ct);
 
         try
         {
@@ -162,8 +162,8 @@ public sealed class DeviceRegistry : IDeviceRegistry
         }
         finally
         {
-            if (hasLock && _lock is not null)
-                await _lock.ReleaseAsync(lockKey, ct);
+            if (lockToken is not null && _lock is not null)
+                await _lock.ReleaseAsync(lockKey,lockToken ,ct);
         }
     }
 }

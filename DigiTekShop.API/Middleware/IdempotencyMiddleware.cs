@@ -30,21 +30,18 @@ public sealed class IdempotencyMiddleware
         var cache = context.RequestServices.GetRequiredService<ICacheService>();
         var lockSvc = context.RequestServices.GetRequiredService<IDistributedLockService>();
 
-
         if (!IsWriteMethod(context.Request.Method))
         {
             await _next(context);
             return;
         }
 
-        
         if (!TryGetKey(context.Request.Headers, out var idemKey))
         {
             await _next(context);
             return;
         }
 
-        
         var fingerprint = await BuildFingerprintAsync(context.Request, ct);
 
         var cacheKey = $"{CachePrefix}{idemKey}";
@@ -64,8 +61,8 @@ public sealed class IdempotencyMiddleware
 
         
         var lockKey = $"{cacheKey}:lock";
-        var gotLock = await lockSvc.AcquireAsync(lockKey, TimeSpan.FromSeconds(10), ct);
-        if (!gotLock)
+        string? lockToken = await lockSvc.AcquireAsync(lockKey, TimeSpan.FromSeconds(10), ct);
+        if (lockToken is null)
         {
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             context.Response.ContentType = "text/plain";
@@ -79,19 +76,17 @@ public sealed class IdempotencyMiddleware
 
         try
         {
-            await _next(context); 
+            await _next(context);
 
-            
             if (context.Response.StatusCode is >= 200 and < 300)
             {
-                
                 if (mem.Length <= _opts.MaxBodySizeBytes)
                 {
                     mem.Position = 0;
                     using var reader = new StreamReader(mem, leaveOpen: true);
                     var bodyText = await reader.ReadToEndAsync();
 
-                    var headersDict = AllowHeaders(context.Response.Headers, _opts.AllowedHeaderNames);
+                    var headersDict = AllowHeaders(context.Response.Headers, _opts.AllowedHeaderNames ?? Array.Empty<string>());
 
                     var idemResp = new IdempotencyResponse
                     {
@@ -107,7 +102,6 @@ public sealed class IdempotencyMiddleware
                 }
             }
 
-            
             context.Response.Headers["Idempotency-Key"] = idemKey;
 
             mem.Position = 0;
@@ -121,10 +115,11 @@ public sealed class IdempotencyMiddleware
         finally
         {
             context.Response.Body = originalBody;
-            if (gotLock) 
-                await lockSvc.ReleaseAsync(lockKey, ct);
+
+            await lockSvc.ReleaseAsync(lockKey, lockToken, ct);
         }
     }
+
 
     private static bool TryGetKey(IHeaderDictionary headers, out string key)
     {
@@ -143,15 +138,15 @@ public sealed class IdempotencyMiddleware
 
     private static async Task<string> BuildFingerprintAsync(HttpRequest req, CancellationToken ct)
     {
-        req.EnableBuffering();
+        req.EnableBuffering(); 
 
         using var sha = System.Security.Cryptography.SHA256.Create();
 
-        
         await using var ms = new MemoryStream();
         await req.Body.CopyToAsync(ms, ct);
         var bodyBytes = ms.ToArray();
         req.Body.Position = 0;
+
         var bodyHash = Convert.ToBase64String(sha.ComputeHash(bodyBytes));
 
         var userId = req.HttpContext.User?.Identity?.IsAuthenticated == true
@@ -202,14 +197,28 @@ public sealed class IdempotencyMiddleware
     private static Dictionary<string, string> AllowHeaders(IHeaderDictionary headers, string[] allowList)
     {
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (allowList is null || allowList.Length == 0) return dict;
+
         foreach (var h in allowList)
             if (headers.TryGetValue(h, out var v)) dict[h] = v.ToString();
         return dict;
     }
 
-    private static string CanonicalQuery(IQueryCollection q) =>
-        string.Join("&", q.OrderBy(kv => kv.Key, StringComparer.Ordinal)
-            .SelectMany(kv => kv.Value.Order().Select(v => $"{kv.Key}={v}")));
+
+    private static string CanonicalQuery(IQueryCollection q)
+    {
+        var pairs = new List<string>();
+        foreach (var kv in q.OrderBy(k => k.Key, StringComparer.Ordinal))
+        {
+            foreach (var v in kv.Value.Order(StringComparer.Ordinal))
+            {
+                var kEnc = Uri.EscapeDataString(kv.Key);
+                var vEnc = Uri.EscapeDataString(v);
+                pairs.Add($"{kEnc}={vEnc}");
+            }
+        }
+        return string.Join("&", pairs);
+    }
 
 }
 
