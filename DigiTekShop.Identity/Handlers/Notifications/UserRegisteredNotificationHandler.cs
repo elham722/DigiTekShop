@@ -1,21 +1,8 @@
-using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
-using DigiTekShop.Contracts.Abstractions.Identity.Phone;
-using DigiTekShop.Contracts.Integration.Events.Identity;
-using DigiTekShop.Contracts.Options.Features;
-using DigiTekShop.Identity.Context;
-using DigiTekShop.Identity.Options;
-using DigiTekShop.Identity.Options.PhoneVerification;
-using DigiTekShop.SharedKernel.DomainShared.Events;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using DigiTekShop.Contracts.Options.Auth;
 
 namespace DigiTekShop.Identity.Handlers.Notifications;
 
-/// <summary>
-/// Handles UserRegisteredIntegrationEvent to send email confirmation and phone verification asynchronously.
-/// This decouples email/SMS sending from the HTTP registration path for faster 201 responses.
-/// </summary>
+
 public sealed class UserRegisteredNotificationHandler
     : IIntegrationEventHandler<UserRegisteredIntegrationEvent>
 {
@@ -23,8 +10,8 @@ public sealed class UserRegisteredNotificationHandler
     private readonly IEmailConfirmationService _emailConfirmationService;
     private readonly IPhoneVerificationService _phoneVerificationService;
     private readonly ILogger<UserRegisteredNotificationHandler> _logger;
-    private readonly EmailConfirmationSettings _emailSettings;
-    private readonly PhoneVerificationSettings _phoneSettings;
+    private readonly EmailConfirmationOptions _emailSettings;
+    private readonly PhoneVerificationOptions _phoneSettings;
     private readonly NotificationFeatureFlags _featureFlags;
 
     public UserRegisteredNotificationHandler(
@@ -32,8 +19,8 @@ public sealed class UserRegisteredNotificationHandler
         IEmailConfirmationService emailConfirmationService,
         IPhoneVerificationService phoneVerificationService,
         ILogger<UserRegisteredNotificationHandler> logger,
-        IOptions<EmailConfirmationSettings> emailSettings,
-        IOptions<PhoneVerificationSettings> phoneSettings,
+        IOptions<EmailConfirmationOptions> emailSettings,
+        IOptions<PhoneVerificationOptions> phoneSettings,
         IOptions<NotificationFeatureFlags> featureFlags)
     {
         _context = context;

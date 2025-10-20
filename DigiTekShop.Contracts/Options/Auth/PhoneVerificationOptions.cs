@@ -2,12 +2,12 @@
 
 public sealed class PhoneVerificationOptions
 {
-    public int CodeLength { get; init; } = 6;
-    public int CodeValidityMinutes { get; init; } = 5;
-    public int MaxAttempts { get; init; } = 5;
-    public bool RequirePhoneConfirmation { get; init; } = true;
-    public bool AllowResendCode { get; init; } = true;
-    public int ResendCooldownMinutes { get; init; } = 2;
+    public int CodeLength { get; set; } = 6;
+    public TimeSpan CodeValidity { get; set; } = TimeSpan.FromMinutes(5);
+    public int MaxAttempts { get; set; } = 5;
+    public bool RequirePhoneConfirmation { get; set; } = true;
+    public bool AllowResendCode { get; set; } = true;
+    public TimeSpan ResendCooldown { get; set; } = TimeSpan.FromMinutes(2);
 
     public PhoneSecurityOptions Security { get; init; } = new();
     public PhoneTemplateOptions Template { get; init; } = new();
@@ -15,24 +15,40 @@ public sealed class PhoneVerificationOptions
 
 public sealed class PhoneSecurityOptions
 {
-    public string AllowedPhonePattern { get; init; } = @"^\+98[0-9]{10}$";
-    public int MaxRequestsPerHour { get; init; } = 5;
-    public int MaxRequestsPerDay { get; init; } = 20;
-    public int MaxRequestsPerMonth { get; init; } = 100;
-    public bool RequireUniquePhoneNumbers { get; init; } = true;
-    public string CountryCode { get; init; } = "+98";
-    public bool IpRestrictionEnabled { get; init; }
-    public int MaxRequestsPerIpPerHour { get; init; } = 10;
+    public string AllowedPhonePattern { get; set; } = "^\\+[1-9]\\d{1,14}$";
+
+    public int MaxRequestsPerHour { get; set; } = 5;
+
+    public int MaxRequestsPerDay { get; set; } = 20;
+
+    public int MaxRequestsPerMonth { get; set; } = 100;
+
+    public bool RequireUniquePhoneNumbers { get; set; } = true;
+
+    public string? CountryCode { get; set; } = null;
+
+    public bool IpRestrictionEnabled { get; set; } = false;
+
+    public int MaxRequestsPerIpPerHour { get; set; } = 10;
 }
 
 public sealed class PhoneTemplateOptions
 {
-    public string CompanyName { get; init; } = "DigiTekShop";
-    public string SupportPhoneNumber { get; init; } = "";
-    public string WebsiteUrl { get; init; } = "https://digitekshop.com";
-    public string CodeTemplate { get; init; } = "{1} - کد تأیید شما: {0}";
-    public string CodeTemplateEnglish { get; init; } = "{1} - Your verification code: {0}";
-    public bool UseEnglishTemplate { get; init; }
-    public int MaxSmsLength { get; init; } = 160;
-    public string SenderNumber { get; init; } = "";
+    public string CompanyName { get; set; } = "DigiTekShop";
+
+    public string SupportPhoneNumber { get; set; } = string.Empty;
+
+    public string WebsiteUrl { get; set; } = string.Empty;
+
+    public string CodeTemplate { get; set; } = "{1} - کد تأیید شما: {0}";
+
+    public string CodeTemplateEnglish { get; set; } = "{1} - Your verification code: {0}";
+
+    public bool UseEnglishTemplate { get; set; } = false;
+
+    public int MaxSmsLength { get; set; } = 160;
+
+    public string SenderNumber { get; set; } = string.Empty;
+
+    public string? OtpTemplateName { get; set; } = "login-otp";
 }

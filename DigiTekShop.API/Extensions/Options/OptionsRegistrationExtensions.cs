@@ -30,7 +30,6 @@ namespace DigiTekShop.API.Extensions.Options
 
             // Security
             services.AddOptions<DeviceLimitsOptions>().Bind(cfg.GetSection("DeviceLimits"));
-            services.AddOptions<SecurityOptions>().Bind(cfg.GetSection("Security"));
 
             // API
             services.AddOptions<ApiOptions>().Bind(cfg.GetSection("ApiOptions"));

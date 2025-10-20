@@ -1,5 +1,6 @@
 ﻿using DigiTekShop.Contracts.Abstractions.ExternalServices.EmailSender;
 using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
+using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.SharedKernel.Enums.Audit;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -13,7 +14,7 @@ public class EmailConfirmationService : IEmailConfirmationService
     private readonly IEmailSender _emailSender;
     private readonly IEmailTemplateService _template;
     private readonly DigiTekShopIdentityDbContext _context;
-    private readonly EmailConfirmationSettings _settings;
+    private readonly EmailConfirmationOptions _settings;
     private readonly ILogger<EmailConfirmationService> _logger;
 
     public EmailConfirmationService(
@@ -21,7 +22,7 @@ public class EmailConfirmationService : IEmailConfirmationService
         IEmailSender emailSender,
         IEmailTemplateService template,
         DigiTekShopIdentityDbContext context,
-        IOptions<EmailConfirmationSettings> settings,
+        IOptions<EmailConfirmationOptions> settings,
         ILogger<EmailConfirmationService> logger)
     {
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));

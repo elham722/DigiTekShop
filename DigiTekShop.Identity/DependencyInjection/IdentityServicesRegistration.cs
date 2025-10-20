@@ -1,33 +1,7 @@
-﻿using DigiTekShop.Application.Common.Events;
-using DigiTekShop.Contracts.Abstractions.Identity.Auth;
-using DigiTekShop.Contracts.Abstractions.Identity.DeviceManagement;
-using DigiTekShop.Contracts.Abstractions.Identity.Encryption;
-using DigiTekShop.Contracts.Abstractions.Identity.Lockout;
-using DigiTekShop.Contracts.Abstractions.Identity.Password;
-using DigiTekShop.Contracts.Abstractions.Identity.Permission;
-using DigiTekShop.Contracts.Abstractions.Identity.Security;
-using DigiTekShop.Contracts.Abstractions.Identity.Token;
-using DigiTekShop.Contracts.Abstractions.Telemetry;
-using DigiTekShop.Contracts.Integration.Events.Customers;
-using DigiTekShop.Contracts.Integration.Events.Identity;
-using DigiTekShop.Contracts.Options.Features;
-using DigiTekShop.Identity.Events;
-using DigiTekShop.Identity.Handlers.Customers;
-using DigiTekShop.Identity.Handlers.Notifications;
-using DigiTekShop.Identity.Interceptors;
-using DigiTekShop.Identity.Options.Security;
-using DigiTekShop.Identity.Services.DeviceManagement;
-using DigiTekShop.Identity.Services.Lockout;
-using DigiTekShop.Identity.Services.Login;
-using DigiTekShop.Identity.Services.Password;
-using DigiTekShop.Identity.Services.Register;
-using DigiTekShop.Identity.Services.Security;
-using DigiTekShop.Identity.Services.Tokens;
-using DigiTekShop.Identity.Services.TwoFactor;
-using DigiTekShop.SharedKernel.DomainShared.Events;
-using DigiTekShop.SharedKernel.Time;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+﻿
+using DigiTekShop.Contracts.Abstractions.Identity.Device;
+using DigiTekShop.Contracts.Options.Auth;
+using DigiTekShop.Contracts.Options.Security;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 
@@ -90,15 +64,9 @@ public static class IdentityServicesRegistration
         #endregion
 
         #region Device Limits Settings
-        services.Configure<DeviceLimitsSettings>(configuration.GetSection("DeviceLimits"));
+        services.Configure<DeviceLimitsOptions>(configuration.GetSection("DeviceLimits"));
         services.AddSingleton(resolver =>
-            resolver.GetRequiredService<IOptions<DeviceLimitsSettings>>().Value);
-        #endregion
-
-        #region Security Settings
-        services.Configure<SecuritySettings>(configuration.GetSection("Security"));
-        services.AddSingleton(resolver =>
-            resolver.GetRequiredService<IOptions<SecuritySettings>>().Value);
+            resolver.GetRequiredService<IOptions<DeviceLimitsOptions>>().Value);
         #endregion
 
         #region Password Policy
@@ -119,18 +87,17 @@ public static class IdentityServicesRegistration
 
         services.AddScoped<IRegistrationService, RegistrationService>();
 
-        services.Configure<PasswordResetSettings>(configuration.GetSection("PasswordReset"));
+        services.Configure<PasswordResetOptions>(configuration.GetSection("PasswordReset"));
         services.AddScoped<IPasswordService, PasswordResetService>();    
-
-        services.AddScoped<ITwoFactorService, TwoFactorService>();    
+  
         services.AddScoped<ILockoutService, LockoutService>();
 
         // Email Confirmation settings + service
-        services.Configure<EmailConfirmationSettings>(configuration.GetSection("EmailConfirmation"));
+        services.Configure<EmailConfirmationOptions>(configuration.GetSection("EmailConfirmation"));
         services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
 
         // Phone Verification settings + service
-        services.Configure<PhoneVerificationSettings>(configuration.GetSection("PhoneVerification"));
+        services.Configure<PhoneVerificationOptions>(configuration.GetSection("PhoneVerification"));
         services.AddScoped<IPhoneVerificationService, PhoneVerificationService>();
 
         services.AddScoped<IPasswordHistoryService, PasswordHistoryService>();
@@ -138,9 +105,6 @@ public static class IdentityServicesRegistration
 
         // Encryption Service for TOTP secrets
         services.AddScoped<IEncryptionService, EncryptionService>();
-
-        // Device Management Service
-        services.AddScoped<IDeviceManagementService, DeviceManagementService>();
 
         // Permission Evaluator Service
         services.AddScoped<IPermissionEvaluatorService, PermissionEvaluatorService>();
@@ -150,6 +114,8 @@ public static class IdentityServicesRegistration
 
         // Security Event Service
         services.AddScoped<ISecurityEventService, SecurityEventService>();
+
+        services.AddScoped<IIdentityGateway, IdentityGateway>();
 
         #endregion
 

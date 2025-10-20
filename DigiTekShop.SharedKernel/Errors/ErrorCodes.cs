@@ -18,7 +18,7 @@ public static class ErrorCodes
 
     public static class Domain
     {
-        public const string BUSINESS_RULE_VIOLATION = "BUSINESS_RULE_VIOLATION"; // ← یکدست با نام
+        public const string BUSINESS_RULE_VIOLATION = "BUSINESS_RULE_VIOLATION"; 
         public const string INVALID_OPERATION = "INVALID_DOMAIN_OPERATION";
         public const string ENTITY_NOT_FOUND = "ENTITY_NOT_FOUND";
         public const string ENTITY_EXISTS = "ENTITY_ALREADY_EXISTS";

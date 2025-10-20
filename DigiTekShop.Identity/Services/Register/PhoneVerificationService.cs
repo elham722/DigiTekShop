@@ -1,4 +1,5 @@
 using DigiTekShop.Contracts.Abstractions.ExternalServices.PhoneSender;
+using DigiTekShop.Contracts.Options.Auth;
 
 
 namespace DigiTekShop.Identity.Services.Register;
@@ -8,7 +9,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
     private readonly UserManager<User> _userManager;
     private readonly IPhoneSender _phoneSender;
     private readonly DigiTekShopIdentityDbContext _context;
-    private readonly PhoneVerificationSettings _settings;
+    private readonly PhoneVerificationOptions _settings;
     private readonly IRateLimiter _rateLimiter;
     
     private readonly ILogger<PhoneVerificationService> _logger;
@@ -17,7 +18,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         UserManager<User> userManager,
         IPhoneSender phoneSender,
         DigiTekShopIdentityDbContext context,
-        IOptions<PhoneVerificationSettings> settings,
+        IOptions<PhoneVerificationOptions> settings,
         IRateLimiter rateLimiter,
         ILogger<PhoneVerificationService> logger)
     {

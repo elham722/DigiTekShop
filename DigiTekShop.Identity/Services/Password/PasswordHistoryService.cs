@@ -1,5 +1,6 @@
 using DigiTekShop.Contracts.Abstractions.Identity.Password;
 using DigiTekShop.Contracts.DTOs.Auth.PasswordHistory;
+using DigiTekShop.Contracts.Options.Auth;
 
 namespace DigiTekShop.Identity.Services.Password;
 

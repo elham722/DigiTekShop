@@ -9,21 +9,25 @@ namespace DigiTekShop.Contracts.Options.Auth
 {
     public sealed class EmailConfirmationOptions
     {
-        public string BaseUrl { get; init; } = "";
-        public string ConfirmEmailPath { get; init; } = "account/confirm-email";
-        public int TokenValidityMinutes { get; init; } = 1440;
-        public bool RequireEmailConfirmation { get; init; } = true;
-        public bool AllowResendConfirmation { get; init; } = true;
-        public int ResendCooldownMinutes { get; init; } = 5;
+        public string BaseUrl { get; set; } = string.Empty;
+        public string ConfirmEmailPath { get; set; } = "account/confirm-email";
+        public TimeSpan TokenValidity { get; set; } = TimeSpan.FromHours(24);
+        public bool RequireEmailConfirmation { get; set; } = true;
+        public bool AllowResendConfirmation { get; set; } = true;
+        public TimeSpan ResendCooldown { get; set; } = TimeSpan.FromMinutes(5);
         public EmailTemplateOptions Template { get; init; } = new();
     }
 
     public sealed class EmailTemplateOptions
     {
-        public string CompanyName { get; init; } = "DigiTekShop";
-        public string SupportEmail { get; init; } = "";
-        public string LogoUrl { get; init; } = "";
-        public string PrimaryColor { get; init; } = "#007bff";
-        public string ContactUrl { get; init; } = "";
+        public string CompanyName { get; set; } = "DigiTekShop";
+
+        public string SupportEmail { get; set; } = "support@digitekshop.com";
+
+        public string LogoUrl { get; set; } = string.Empty;
+
+        public string PrimaryColor { get; set; } = "#007bff";
+
+        public string ContactUrl { get; set; } = string.Empty;
     }
 }

@@ -1,6 +1,7 @@
 ﻿using DigiTekShop.Contracts.Abstractions.ExternalServices.EmailSender;
 using DigiTekShop.Contracts.Abstractions.Identity.Password;
 using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
+using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.Identity.Helpers.EmailTemplates;
 using DigiTekShop.SharedKernel.Enums.Audit;
 using Microsoft.AspNetCore.WebUtilities;
@@ -14,7 +15,7 @@ public sealed class PasswordResetService : IPasswordService
     private readonly UserManager<User> _userManager;
     private readonly IEmailSender _emailSender;
     private readonly DigiTekShopIdentityDbContext _context;
-    private readonly PasswordResetSettings _settings;
+    private readonly PasswordResetOptions _settings;
     private readonly IPasswordHistoryService _passwordHistory;
     private readonly ILogger<PasswordResetService> _logger;
 
@@ -22,7 +23,7 @@ public sealed class PasswordResetService : IPasswordService
         UserManager<User> userManager,
         IEmailSender emailSender,
         DigiTekShopIdentityDbContext context,
-        IOptions<PasswordResetSettings> settings,
+        IOptions<PasswordResetOptions> settings,
         IPasswordHistoryService passwordHistory,
         ILogger<PasswordResetService> logger)
     {
@@ -292,7 +293,7 @@ public sealed class PasswordResetService : IPasswordService
         var t = _settings.Template;
         var subject = $"Reset Your Password - {t.CompanyName}";
         var htmlContent = PasswordResetEmailTemplateHelper.CreatePasswordResetHtml(
-            userName, resetUrl, t.CompanyName, t.SupportEmail, t.WebUrl);
+            userName, resetUrl, t.CompanyName, t.SupportEmail, t.ContactUrl);
         var plainTextContent = PasswordResetEmailTemplateHelper.CreatePasswordResetText(
             userName, resetUrl, t.CompanyName, t.SupportEmail);
         return new PasswordResetEmailContent(subject, htmlContent, plainTextContent);

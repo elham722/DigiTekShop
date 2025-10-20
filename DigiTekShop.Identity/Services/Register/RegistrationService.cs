@@ -1,4 +1,5 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Telemetry;
+using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.Identity.Events;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Enums.Auth;
@@ -13,9 +14,9 @@ public sealed class RegistrationService : IRegistrationService
     private readonly UserManager<User> _userManager;
     private readonly IRateLimiter _rateLimiter;
     private readonly ILogger<RegistrationService> _logger;
-    private readonly PhoneVerificationSettings _phoneSettings;
+    private readonly PhoneVerificationOptions _phoneSettings;
     private readonly DigiTekShopIdentityDbContext _context;
-    private readonly EmailConfirmationSettings _emailSettings;
+    private readonly EmailConfirmationOptions _emailSettings;
     private readonly IDomainEventSink _domainEvents;
     private readonly ICorrelationContext _correlationContext;
 
@@ -23,8 +24,8 @@ public sealed class RegistrationService : IRegistrationService
         ICurrentClient client,
         UserManager<User> userManager,
         IRateLimiter rateLimiter,
-        IOptions<PhoneVerificationSettings> phoneOptions,
-        IOptions<EmailConfirmationSettings> emailOptions,
+        IOptions<PhoneVerificationOptions> phoneOptions,
+        IOptions<EmailConfirmationOptions> emailOptions,
         DigiTekShopIdentityDbContext context,
         ILogger<RegistrationService> logger,
         IDomainEventSink domainEvents,
@@ -34,7 +35,7 @@ public sealed class RegistrationService : IRegistrationService
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _rateLimiter = rateLimiter ?? throw new ArgumentNullException(nameof(rateLimiter));
         _phoneSettings = phoneOptions?.Value ?? throw new ArgumentNullException(nameof(phoneOptions));
-        _emailSettings = emailOptions?.Value ?? new EmailConfirmationSettings { RequireEmailConfirmation = true };
+        _emailSettings = emailOptions?.Value ?? new EmailConfirmationOptions() { RequireEmailConfirmation = true };
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _domainEvents = domainEvents ?? throw new ArgumentNullException(nameof(domainEvents));
