@@ -1,7 +1,7 @@
 ﻿using DigiTekShop.Contracts.Abstractions.ExternalServices.EmailSender;
 using DigiTekShop.Contracts.Abstractions.Identity.Password;
 using DigiTekShop.Contracts.DTOs.Auth.ResetPassword;
-using DigiTekShop.Contracts.Options.Auth;
+using DigiTekShop.Contracts.Options.Password;
 using DigiTekShop.Identity.Helpers.EmailTemplates;
 using DigiTekShop.SharedKernel.Enums.Audit;
 using Microsoft.AspNetCore.WebUtilities;

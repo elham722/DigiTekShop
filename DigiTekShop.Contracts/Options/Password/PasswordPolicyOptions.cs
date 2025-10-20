@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace DigiTekShop.Contracts.Options.Auth;
+namespace DigiTekShop.Contracts.Options.Password;
 public sealed class PasswordPolicyOptions
 {
     public int MinLength { get; init; } = 12;

@@ -1,5 +1,7 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Identity.Device;
 using DigiTekShop.Contracts.DTOs.Auth.Login;
+using DigiTekShop.Contracts.Options.Auth;
+using DigiTekShop.SharedKernel.Utilities;
 
 namespace DigiTekShop.Identity.Services.Login;
 
@@ -10,19 +12,22 @@ public sealed class LoginService : ILoginService
     private readonly IRateLimiter _rateLimiter;
     private readonly IDeviceRegistry _devices;
     private readonly ITokenService _tokens;
+    private readonly LoginFlowOptions _opts;
 
     public LoginService(
         ICurrentClient client,
         IIdentityGateway id,
         IRateLimiter rateLimiter,
         IDeviceRegistry devices,
-        ITokenService tokens)
+        ITokenService tokens,
+        IOptions<LoginFlowOptions> opts)
     {
         _client = client;
         _id = id;
         _rateLimiter = rateLimiter;
         _devices = devices;
         _tokens = tokens;
+        _opts = opts.Value;
     }
 
     public async Task<Result<LoginResultDto>> LoginAsync(LoginRequest dto, CancellationToken ct)
@@ -31,8 +36,11 @@ public sealed class LoginService : ILoginService
             return Result<LoginResultDto>.Failure(ErrorCodes.Identity.INVALID_CREDENTIALS);
 
         var ip = _client.IpAddress ?? "n/a";
-        var ipKey = Sha256(ip);
-        var allowed = await _rateLimiter.ShouldAllowAsync($"login:{dto.Login}:{ipKey}", 8, TimeSpan.FromMinutes(1), ct);
+        var ipKey = Hashing.Sha256Base64Url(ip);
+        var rlKey = $"login:{dto.Login}:{ipKey}";
+        var win = TimeSpan.FromSeconds(_opts.RateLimit.WindowSeconds);
+
+        var allowed = await _rateLimiter.ShouldAllowAsync(rlKey, _opts.RateLimit.Limit, win, ct);
         if (!allowed)
             return Result<LoginResultDto>.Failure(ErrorCodes.Common.RATE_LIMIT_EXCEEDED);
 
@@ -59,9 +67,10 @@ public sealed class LoginService : ILoginService
         var deviceId = _client.DeviceId ?? "unknown";
         await _devices.UpsertAsync(user.Id, deviceId, _client.UserAgent, _client.IpAddress, ct);
 
-        var mfaEnabled = await _id.IsMfaRequiredAsync(user, ct);
-        var deviceTrust = await _devices.IsTrustedAsync(user.Id, deviceId, ct);
-        var needsMfa = mfaEnabled && !deviceTrust;
+        
+        var mfaRequiredForUser = _opts.EnableMfa && await _id.IsMfaRequiredAsync(user, ct);
+        var deviceTrusted = await _devices.IsTrustedAsync(user.Id, deviceId, ct);
+        var needsMfa = mfaRequiredForUser && !deviceTrusted;
 
         if (needsMfa && string.IsNullOrWhiteSpace(dto.TotpCode))
         {
@@ -71,9 +80,9 @@ public sealed class LoginService : ILoginService
                 RequireMfa = true,
                 Methods = await _id.GetAvailableMfaMethodsAsync(user, ct),
                 DeviceTrusted = false,
-                ChallengeTtlSeconds = 120
+                ChallengeTtlSeconds = _opts.MfaChallengeTtlSeconds
             };
-            return new LoginResultDto { Challenge = challenge }; 
+            return new LoginResultDto { Challenge = challenge };
         }
 
         if (needsMfa)
@@ -83,10 +92,15 @@ public sealed class LoginService : ILoginService
                 return Result<LoginResultDto>.Failure(ErrorCodes.Identity.INVALID_CREDENTIALS);
         }
 
+        
         DateTimeOffset? trustedUntil = null;
-        if (dto.RememberMe && needsMfa)
-            trustedUntil = await _devices.TrustAsync(user.Id, deviceId, TimeSpan.FromDays(30), ct);
+        if (dto.RememberMe && needsMfa && _opts.TrustDeviceDays > 0)
+        {
+            trustedUntil = await _devices.TrustAsync(
+                user.Id, deviceId, TimeSpan.FromDays(_opts.TrustDeviceDays), ct);
+        }
 
+        
         var issued = await _tokens.IssueAsync(user.Id, ct);
         if (issued.IsFailure)
             return Result<LoginResultDto>.Failure(issued.Errors!, issued.ErrorCode!);
@@ -105,18 +119,6 @@ public sealed class LoginService : ILoginService
             ClaimsVersion = null
         };
 
-        return LoginResultDto.FromSuccess(resp); 
+        return LoginResultDto.FromSuccess(resp);
     }
-
-    #region Helpers
-
-    private static string Sha256(string s)
-    {
-        using var sha = System.Security.Cryptography.SHA256.Create();
-        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(s));
-        return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-    }
-
-    #endregion
-
 }

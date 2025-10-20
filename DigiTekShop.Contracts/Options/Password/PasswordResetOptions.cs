@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Contracts.Options.Auth;
+﻿using DigiTekShop.Contracts.Options.Email;
+
+namespace DigiTekShop.Contracts.Options.Password;
 public sealed class PasswordResetOptions
 {
     public string BaseUrl { get; init; } = string.Empty;

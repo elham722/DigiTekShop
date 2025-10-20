@@ -1,4 +1,5 @@
-using DigiTekShop.Contracts.Options.Auth;
+using DigiTekShop.Contracts.Options.Email;
+using DigiTekShop.Contracts.Options.Phone;
 
 namespace DigiTekShop.Identity.Handlers.Notifications;
 

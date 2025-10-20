@@ -1,8 +1,12 @@
 ﻿using DigiTekShop.Contracts.Options.Api;
 using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.Contracts.Options.Caching;
+using DigiTekShop.Contracts.Options.Email;
 using DigiTekShop.Contracts.Options.Messaging;
+using DigiTekShop.Contracts.Options.Password;
+using DigiTekShop.Contracts.Options.Phone;
 using DigiTekShop.Contracts.Options.Security;
+using DigiTekShop.Contracts.Options.Token;
 
 namespace DigiTekShop.API.Extensions.Options
 {
@@ -34,6 +38,8 @@ namespace DigiTekShop.API.Extensions.Options
             // API
             services.AddOptions<ApiOptions>().Bind(cfg.GetSection("ApiOptions"));
             services.AddOptions<ReverseProxyOptions>().Bind(cfg.GetSection("ReverseProxy"));
+
+            services.AddOptions<LoginFlowOptions>().Bind(cfg.GetSection("Auth:LoginFlow"));
 
             return services;
         }

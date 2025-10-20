@@ -1,5 +1,6 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Telemetry;
-using DigiTekShop.Contracts.Options.Auth;
+using DigiTekShop.Contracts.Options.Email;
+using DigiTekShop.Contracts.Options.Phone;
 using DigiTekShop.Identity.Events;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Enums.Auth;

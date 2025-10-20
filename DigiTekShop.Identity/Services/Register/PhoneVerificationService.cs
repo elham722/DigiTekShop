@@ -1,5 +1,5 @@
 using DigiTekShop.Contracts.Abstractions.ExternalServices.PhoneSender;
-using DigiTekShop.Contracts.Options.Auth;
+using DigiTekShop.Contracts.Options.Phone;
 
 
 namespace DigiTekShop.Identity.Services.Register;

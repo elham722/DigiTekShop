@@ -1,7 +1,11 @@
 ﻿
 using DigiTekShop.Contracts.Abstractions.Identity.Device;
 using DigiTekShop.Contracts.Options.Auth;
+using DigiTekShop.Contracts.Options.Email;
+using DigiTekShop.Contracts.Options.Password;
+using DigiTekShop.Contracts.Options.Phone;
 using DigiTekShop.Contracts.Options.Security;
+using DigiTekShop.Contracts.Options.Token;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 
@@ -75,14 +79,14 @@ public static class IdentityServicesRegistration
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-      
+
 
         #endregion
 
 
         #region AddServices
 
-
+        services.Configure<LoginFlowOptions>(configuration.GetSection("Auth:LoginFlow"));
         services.AddScoped<ILoginService, LoginService>();
 
         services.AddScoped<IRegistrationService, RegistrationService>();

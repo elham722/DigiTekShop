@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace DigiTekShop.Contracts.Options.Auth
+namespace DigiTekShop.Contracts.Options.Token
 {
     public sealed class JwtSettings
     {
