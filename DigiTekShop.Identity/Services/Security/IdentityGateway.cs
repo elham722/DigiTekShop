@@ -1,6 +1,7 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Identity.Security;
 using DigiTekShop.Contracts.DTOs.User;
 using DigiTekShop.SharedKernel.Enums.Auth;
+using DigiTekShop.SharedKernel.Utilities.Text;
 
 namespace DigiTekShop.Identity.Services.Security;
 
@@ -17,11 +18,18 @@ public sealed class IdentityGateway : IIdentityGateway
 
     public async Task<AppUser?> FindByLoginAsync(string login, CancellationToken ct)
     {
-        User? u = login.Contains('@')
-            ? await _users.FindByEmailAsync(login)
-            : await _users.FindByNameAsync(login);
-
-        return u is null ? null : Map(u);
+        if (string.IsNullOrWhiteSpace(login)) return null;
+        if (login.Contains('@'))
+        {
+            var email = Normalization.Normalize(login);
+            var u = await _users.FindByEmailAsync(email);
+            return u is null ? null : Map(u);
+        }
+        else
+        {
+            var u = await _users.FindByNameAsync(login.Trim());
+            return u is null ? null : Map(u);
+        }
     }
 
     public async Task<AppUser?> FindByIdAsync(Guid userId, CancellationToken ct)

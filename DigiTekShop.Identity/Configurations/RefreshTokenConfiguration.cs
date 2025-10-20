@@ -3,19 +3,16 @@ namespace DigiTekShop.Identity.Configurations;
     {
         public void Configure(EntityTypeBuilder<RefreshToken> builder)
         {
-            // Configure primary key
             builder.HasKey(rt => rt.Id);
-
-            // Configure properties
+           
             builder.Property(rt => rt.TokenHash)
                 .IsRequired()
-                .HasMaxLength(128).IsUnicode(false); // HMACSHA256 Base64Url (no padding) ≈ 43 chars, with safety margin
+                .HasMaxLength(128).IsUnicode(false); 
 
-            builder.Property(rt => rt.ExpiresAt)
+            builder.Property(rt => rt.ExpiresAtUtc)
                 .HasColumnType("datetime2(3)")
                 .IsRequired();
 
-            // ✅ Optimistic Concurrency Control: RowVersion (timestamp in SQL Server)
             builder.Property(rt => rt.RowVersion)
                 .IsRowVersion()
                 .IsRequired();
@@ -23,11 +20,11 @@ namespace DigiTekShop.Identity.Configurations;
             builder.Property(rt => rt.IsRevoked)
                 .HasDefaultValue(false);
 
-            builder.Property(rt => rt.CreatedAt)
+            builder.Property(rt => rt.CreatedAtUtc)
                 .HasColumnType("datetime2(3)")
                 .IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
-            builder.Property(rt => rt.RevokedAt)
+            builder.Property(rt => rt.RevokedAtUtc)
                 .HasColumnType("datetime2(3)")
                 .IsRequired(false);
 
@@ -44,7 +41,7 @@ namespace DigiTekShop.Identity.Configurations;
                 .IsRequired(false);
 
             builder.Property(rt => rt.CreatedByIp)
-                .HasMaxLength(45) // IPv6 max length
+                .HasMaxLength(45) 
                 .IsRequired(false).IsUnicode(false);
 
             builder.Property(rt => rt.ParentTokenHash)
@@ -58,45 +55,31 @@ namespace DigiTekShop.Identity.Configurations;
             builder.Property(rt => rt.UserId)
                 .IsRequired();
 
-            // Configure relationships
             builder.HasOne(rt => rt.User)
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(rt => rt.UserId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .IsRequired(false);
 
-        // Configure indexes
-
-        // ✅ Unique index on TokenHash (critical for security)
         builder.HasIndex(rt => rt.TokenHash)
                 .IsUnique()
                 .HasDatabaseName("IX_RefreshTokens_Token");
 
-        // ✅ Most important composite index for active device tokens query
-        // Covers: WHERE UserId = X AND DeviceId = Y AND IsRevoked = 0 AND ExpiresAt > NOW
-        // This is the most frequent query pattern in RefreshTokensAsync and RevokeActiveTokensForDeviceAsync
-        builder.HasIndex(rt => new { rt.UserId, rt.DeviceId, rt.IsRevoked, rt.ExpiresAt })
+        builder.HasIndex(rt => new { rt.UserId, rt.DeviceId, rt.IsRevoked, rt.ExpiresAtUtc })
             .HasDatabaseName("IX_RefreshTokens_User_Device_Active")
-            .IncludeProperties(rt => new { rt.Id, rt.TokenHash, rt.CreatedAt });
+            .IncludeProperties(rt => new { rt.Id, rt.TokenHash, rt.CreatedAtUtc });
 
-        // ✅ Composite index for user-level active tokens (without device filtering)
-        // Covers: WHERE UserId = X AND IsRevoked = 0 AND ExpiresAt > NOW
-        builder.HasIndex(rt => new { rt.UserId, rt.IsRevoked, rt.ExpiresAt })
+        builder.HasIndex(rt => new { rt.UserId, rt.IsRevoked, rt.ExpiresAtUtc })
             .HasDatabaseName("IX_RefreshTokens_User_Active")
-            .IncludeProperties(rt => new { rt.Id, rt.TokenHash, rt.DeviceId, rt.CreatedAt });
+            .IncludeProperties(rt => new { rt.Id, rt.TokenHash, rt.DeviceId, rt.CreatedAtUtc });
 
-        // Note: Removed redundant indexes that are covered by the above composite indexes:
-        // - (UserId) alone → covered by (UserId, DeviceId, IsRevoked, ExpiresAt)
-        // - (UserId, ExpiresAt) → covered by (UserId, IsRevoked, ExpiresAt)
-        // - (UserId, DeviceId) → covered by (UserId, DeviceId, IsRevoked, ExpiresAt)
-
-        builder.HasIndex(rt => rt.ExpiresAt)
+        builder.HasIndex(rt => rt.ExpiresAtUtc)
                 .HasDatabaseName("IX_RefreshTokens_ExpiresAt");
 
             builder.HasIndex(rt => rt.IsRevoked)
                 .HasDatabaseName("IX_RefreshTokens_IsRevoked");
 
-            builder.HasIndex(rt => rt.CreatedAt)
+            builder.HasIndex(rt => rt.CreatedAtUtc)
                 .HasDatabaseName("IX_RefreshTokens_CreatedAt");
 
             builder.HasIndex(rt => rt.ParentTokenHash)

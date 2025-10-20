@@ -2,7 +2,7 @@
 
 public static class Normalization
 {
-    public static string? LoginKey(string? s)
+    public static string? Normalize(string? s)
         => string.IsNullOrWhiteSpace(s) ? null : s.Trim().ToLowerInvariant();
 
     public static string? UserAgent(string? s, int maxLen = 512)

@@ -77,7 +77,7 @@ public sealed class LoginAttemptService : ILoginAttemptService
             var ip = string.IsNullOrWhiteSpace(ipAddress) ? _client.IpAddress : ipAddress;
             var ua = string.IsNullOrWhiteSpace(userAgent) ? _client.UserAgent : userAgent;
 
-            var norm = Normalization.LoginKey(loginNameOrEmail);
+            var norm = Normalization.Normalize(loginNameOrEmail);
             var nowUtc = _time.UtcNow;
 
             var attempt = LoginAttempt.Create(
@@ -144,7 +144,7 @@ public sealed class LoginAttemptService : ILoginAttemptService
 
         try
         {
-            var norm = Normalization.LoginKey(loginNameOrEmail)!;
+            var norm = Normalization.Normalize(loginNameOrEmail)!;
             var take = SafeLimit(limit, _opts.MaxListLimit);
 
             var list = new List<LoginAttemptDto>(take);
