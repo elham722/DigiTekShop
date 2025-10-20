@@ -3,8 +3,8 @@
 public interface IJwtTokenService
 {
     // Token Generation & Refresh
-    Task<Result<TokenResponseDto>> GenerateTokensAsync(string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default);
-    Task<Result<TokenResponseDto>> RefreshTokensAsync(string refreshToken, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default);
+    Task<Result<RefreshTokenResponse>> GenerateTokensAsync(string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default);
+    Task<Result<RefreshTokenResponse>> RefreshTokensAsync(string refreshToken, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default);
     
     // Refresh Token Revocation
     Task<Result> RevokeRefreshTokenAsync(string refreshToken, string? reason = null, CancellationToken ct = default);

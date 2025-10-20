@@ -41,7 +41,7 @@ public sealed class LoginService : ILoginService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<Result<TokenResponseDto>> LoginAsync(LoginRequestDto request, CancellationToken ct = default)
+    public async Task<Result<RefreshTokenResponse>> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var deviceId = _client.DeviceId;
         var userAgent = _client.UserAgent;
@@ -49,31 +49,31 @@ public sealed class LoginService : ILoginService
 
         var blockReason = await GetBruteForceBlockReasonAsync(ip, deviceId, ct);
         if (blockReason is not null)
-            return Result<TokenResponseDto>.Failure("Too many failed attempts. Try later.", blockReason);
+            return Result<RefreshTokenResponse>.Failure("Too many failed attempts. Try later.", blockReason);
 
-        var user = await _userManager.FindByEmailAsync(request.Email);
+        var user = await _userManager.FindByEmailAsync(request.Login);
         if (user is null)
         {
-            await _loginAttemptService.RecordLoginAttemptAsync(null, LoginStatus.Failed, ip, userAgent, request.Email, ct);
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.INVALID_CREDENTIALS);
+            await _loginAttemptService.RecordLoginAttemptAsync(null, LoginStatus.Failed, ip, userAgent, request.Login, ct);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.INVALID_CREDENTIALS);
 
         }
 
         if (user.IsDeleted)
-            return Result<TokenResponseDto>.Failure("User not found or inactive.");
+            return Result<RefreshTokenResponse>.Failure("User not found or inactive.");
 
         if (await _userManager.IsLockedOutAsync(user))
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.ACCOUNT_LOCKED);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.ACCOUNT_LOCKED);
 
 
         var signIn = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
 
         if (signIn.Succeeded)
         {
-            await _loginAttemptService.RecordLoginAttemptAsync(user.Id, LoginStatus.Success, ip, userAgent, request.Email, ct);
+            await _loginAttemptService.RecordLoginAttemptAsync(user.Id, LoginStatus.Success, ip, userAgent, request.Login, ct);
 
             if (await _userManager.GetTwoFactorEnabledAsync(user))
-                return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
+                return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
 
 
             // Step-Up بر اساس دستگاه
@@ -81,7 +81,7 @@ public sealed class LoginService : ILoginService
             {
                 var requiresStepUp = await CheckStepUpMfaRequiredAsync(user.Id,deviceId , ct);
                 if (requiresStepUp)
-                    return Result<TokenResponseDto>.Failure("Step-Up MFA required for new device", "STEP_UP_MFA_REQUIRED");
+                    return Result<RefreshTokenResponse>.Failure("Step-Up MFA required for new device", "STEP_UP_MFA_REQUIRED");
             }
 
             // موفقیت کامل → ثبت آخرین ورود
@@ -94,20 +94,20 @@ public sealed class LoginService : ILoginService
         }
 
         // شکست
-        await _loginAttemptService.RecordLoginAttemptAsync(user.Id, LoginStatus.Failed, ip, userAgent, request.Email, ct);
+        await _loginAttemptService.RecordLoginAttemptAsync(user.Id, LoginStatus.Failed, ip, userAgent, request.Login, ct);
 
         // چک Brute-force پس از شکست
         await CheckBruteForceAfterFailureAsync(ip, deviceId, user.Id, ct);
 
         if (signIn.IsLockedOut)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.ACCOUNT_LOCKED);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.ACCOUNT_LOCKED);
 
         if (signIn.RequiresTwoFactor)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.REQUIRES_TWO_FACTOR);
         if (signIn.IsNotAllowed)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.SIGNIN_NOT_ALLOWED);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.SIGNIN_NOT_ALLOWED);
 
-        return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.INVALID_CREDENTIALS);
+        return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.INVALID_CREDENTIALS);
 
     }
 
@@ -236,10 +236,10 @@ public sealed class LoginService : ILoginService
     }
     #endregion
 
-    public async Task<Result<TokenResponseDto>> RefreshAsync(RefreshRequestDto request, CancellationToken ct = default)
+    public async Task<Result<RefreshTokenResponse>> RefreshAsync(RefreshTokenRequest request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.INVALID_TOKEN);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.INVALID_TOKEN);
 
         var result = await _jwtTokenService.RefreshTokensAsync(
             refreshToken: request.RefreshToken,
@@ -251,7 +251,7 @@ public sealed class LoginService : ILoginService
         return result;
     }
 
-    public async Task<Result> LogoutAsync(LogoutRequestDto request, CancellationToken ct = default)
+    public async Task<Result> LogoutAsync(LogoutRequest request, CancellationToken ct = default)
     {
         var errors = new List<string>();
 
@@ -264,12 +264,12 @@ public sealed class LoginService : ILoginService
         }
 
         // Revoke access token (add to blacklist for immediate invalidation)
-        if (!string.IsNullOrWhiteSpace(request.AccessToken))
-        {
-            var accessResult = await _jwtTokenService.RevokeAccessTokenAsync(request.AccessToken, reason: "User logout", ct);
-            if (accessResult.IsFailure)
-                errors.Add($"Access token revocation failed: {accessResult.GetFirstError()}");
-        }
+        //if (!string.IsNullOrWhiteSpace(request.a))
+        //{
+        //    var accessResult = await _jwtTokenService.RevokeAccessTokenAsync(request.AccessToken, reason: "User logout", ct);
+        //    if (accessResult.IsFailure)
+        //        errors.Add($"Access token revocation failed: {accessResult.GetFirstError()}");
+        //}
 
         // Even if some failures, logout should succeed (tokens might already be invalid)
         if (errors.Any())

@@ -22,10 +22,10 @@ public sealed class AuthController : ControllerBase
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting("AuthPolicy")]
-    [ProducesResponseType(typeof(ApiResponse<TokenResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RefreshTokenResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         var result = await _loginService.LoginAsync(request, cancellationToken);
         return this.ToActionResult(result);
@@ -39,9 +39,9 @@ public sealed class AuthController : ControllerBase
     [HttpPost("refresh")]
     [AllowAnonymous]
     [EnableRateLimiting("AuthPolicy")]
-    [ProducesResponseType(typeof(ApiResponse<TokenResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RefreshTokenResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Refresh([FromBody] RefreshRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken cancellationToken = default)
     {
         var result = await _loginService.RefreshAsync(request, cancellationToken);
         return this.ToActionResult(result);
@@ -56,7 +56,7 @@ public sealed class AuthController : ControllerBase
     [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Logout([FromBody] LogoutRequestDto request, CancellationToken ct)
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct)
     {
        
         var result = await _loginService.LogoutAsync(request, ct);

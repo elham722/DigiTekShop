@@ -46,16 +46,16 @@ public class JwtTokenService : IJwtTokenService
 
     #region Generate / Create tokens
 
-    public async Task<Result<TokenResponseDto>> GenerateTokensAsync(
+    public async Task<Result<RefreshTokenResponse>> GenerateTokensAsync(
         string userId, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default)
     {
         if (!Guid.TryParse(userId, out var userGuid))
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.USER_NOT_FOUND);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.USER_NOT_FOUND);
 
 
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.USER_NOT_FOUND);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.USER_NOT_FOUND);
 
         await ManageUserDeviceAsync(user, deviceId, ipAddress, userAgent, ct);
 
@@ -85,15 +85,15 @@ public class JwtTokenService : IJwtTokenService
         _context.RefreshTokens.Add(refreshEntity);
         await _context.SaveChangesAsync(ct);
 
-        var dto = new TokenResponseDto(
-            TokenType: "Bearer",
-            AccessToken: accessToken,
-            ExpiresIn: (int)(accessExpiresAt - now).TotalSeconds,
-            RefreshToken: refreshTokenRaw,
-            RefreshTokenExpiresAt: refreshExpiresAt
-        );
+        //var dto = new RefreshTokenResponse(
+        //    tok: "Bearer",
+        //    AccessToken: accessToken,
+        //    ExpiresIn: (int)(accessExpiresAt - now).TotalSeconds,
+        //    RefreshToken: refreshTokenRaw,
+        //    RefreshTokenExpiresAt: refreshExpiresAt
+        //);
 
-        return Result<TokenResponseDto>.Success(dto);
+        return Result<RefreshTokenResponse>.Success(null);
     }
 
 
@@ -258,11 +258,11 @@ public class JwtTokenService : IJwtTokenService
 
     #region Refresh / Rotation
 
-    public async Task<Result<TokenResponseDto>> RefreshTokensAsync(
+    public async Task<Result<RefreshTokenResponse>> RefreshTokensAsync(
       string refreshToken, string? deviceId = null, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.INVALID_TOKEN);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.INVALID_TOKEN);
 
         var refreshHash = HashToken(refreshToken);
 
@@ -270,10 +270,10 @@ public class JwtTokenService : IJwtTokenService
             .FirstOrDefaultAsync(rt => rt.TokenHash == refreshHash,ct);
 
         if (existing == null)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.TOKEN_NOT_FOUND);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.TOKEN_NOT_FOUND);
 
         if (existing.IsRevoked)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.TOKEN_REVOKED);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.TOKEN_REVOKED);
 
         if (existing.IsRotated)
         {
@@ -299,17 +299,17 @@ public class JwtTokenService : IJwtTokenService
            
             await RevokeTokenChainAsync(existing, "Token replay attack - rotated token reused", ct);
 
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.INVALID_TOKEN);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.INVALID_TOKEN);
 
 
         }
         if (existing.ExpiresAt <= DateTime.UtcNow)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.TOKEN_EXPIRED);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.TOKEN_EXPIRED);
 
 
         var user = await _userManager.FindByIdAsync(existing.UserId.ToString());
         if (user == null)
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.USER_NOT_FOUND);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.USER_NOT_FOUND);
 
 
         // ✅ Device Integrity Check: Prevent device hijacking via token refresh
@@ -334,7 +334,7 @@ public class JwtTokenService : IJwtTokenService
                 deviceId: deviceId,
                 ct: ct);
 
-            return Result<TokenResponseDto>.Failure("Device mismatch. Please re-authenticate.", ErrorCodes.Identity.INVALID_TOKEN);
+            return Result<RefreshTokenResponse>.Failure("Device mismatch. Please re-authenticate.", ErrorCodes.Identity.INVALID_TOKEN);
         }
 
         // ✅ IP/UserAgent Anomaly Detection (optional but recommended)
@@ -411,15 +411,15 @@ public class JwtTokenService : IJwtTokenService
             await _context.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
 
-            var dto = new TokenResponseDto(
-                TokenType: "Bearer",
-                AccessToken: accessToken,
-                ExpiresIn: (int)(accessExpiresAt - now).TotalSeconds,
-                RefreshToken: newRefreshRaw,          
-                RefreshTokenExpiresAt: newRefreshExpiresAt
-            );
+            //var dto = new RefreshTokenResponse(
+            //    TokenType: "Bearer",
+            //    AccessToken: accessToken,
+            //    ExpiresIn: (int)(accessExpiresAt - now).TotalSeconds,
+            //    RefreshToken: newRefreshRaw,          
+            //    RefreshTokenExpiresAt: newRefreshExpiresAt
+            //);
 
-            return Result<TokenResponseDto>.Success(dto);
+            return Result<RefreshTokenResponse>.Success(null);
         }
         catch (DbUpdateConcurrencyException ex)
         {
@@ -448,7 +448,7 @@ public class JwtTokenService : IJwtTokenService
                 ct: ct);
 
             // Treat concurrency conflict as token already used (similar to replay attack)
-            return Result<TokenResponseDto>.Failure(
+            return Result<RefreshTokenResponse>.Failure(
                 "This token has already been used. Please use the latest token or re-authenticate.",
                 ErrorCodes.Identity.INVALID_TOKEN);
         }
@@ -456,7 +456,7 @@ public class JwtTokenService : IJwtTokenService
         {
             await tx.RollbackAsync(ct);
             _logger.LogError(ex, "Error rotating refresh token for user {UserId}", existing.UserId);
-            return ResultFactories.Fail<TokenResponseDto>(ErrorCodes.Identity.INVALID_TOKEN);
+            return ResultFactories.Fail<RefreshTokenResponse>(ErrorCodes.Identity.INVALID_TOKEN);
 
         }
     }
