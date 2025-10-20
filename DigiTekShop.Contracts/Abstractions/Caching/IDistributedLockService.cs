@@ -1,8 +1,6 @@
-﻿namespace DigiTekShop.Contracts.Abstractions.Caching
+﻿namespace DigiTekShop.Contracts.Abstractions.Caching;
+public interface IDistributedLockService
 {
-    public interface IDistributedLockService
-    {
-        Task<bool> AcquireAsync(string key, TimeSpan ttl, CancellationToken ct = default);
-        Task ReleaseAsync(string key, CancellationToken ct = default);
-    }
+    Task<string?> AcquireAsync(string key, TimeSpan ttl, CancellationToken ct = default);
+    Task ReleaseAsync(string key, string lockToken, CancellationToken ct = default);
 }

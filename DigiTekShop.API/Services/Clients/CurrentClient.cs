@@ -1,14 +1,40 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Clients;
 
-namespace DigiTekShop.API.Services.Clients
+namespace DigiTekShop.API.Services.Clients;
+public sealed class CurrentClient : ICurrentClient
 {
-    public sealed class CurrentClient(IHttpContextAccessor accessor) : ICurrentClient
-    {
-        public string? DeviceId => TryGet("DeviceId");
-        public string? UserAgent => TryGet("UserAgent");
-        public string? IpAddress => TryGet("IpAddress");
+    private readonly IHttpContextAccessor _http;
 
-        private string? TryGet(string key)
-            => accessor.HttpContext?.Items.TryGetValue(key, out var v) == true ? v as string : null;
+    public CurrentClient(IHttpContextAccessor http) => _http = http;
+
+    public string? IpAddress
+    {
+        get
+        {
+            var ctx = _http.HttpContext;
+            if (ctx is null) return null;
+            return ctx.Connection.RemoteIpAddress?.ToString();
+        }
+    }
+
+    public string? UserAgent
+        => _http.HttpContext?.Request.Headers.UserAgent.ToString();
+
+    public string? DeviceId
+    {
+        get
+        {
+            var ctx = _http.HttpContext;
+            if (ctx is null) return null;
+
+            var h = ctx.Request.Headers["X-Device-Id"].ToString();
+            if (!string.IsNullOrWhiteSpace(h)) return h;
+
+            if (ctx.Request.Cookies.TryGetValue("did", out var c) && !string.IsNullOrWhiteSpace(c))
+                return c;
+
+            var q = ctx.Request.Query["did"].ToString();
+            return string.IsNullOrWhiteSpace(q) ? null : q;
+        }
     }
 }

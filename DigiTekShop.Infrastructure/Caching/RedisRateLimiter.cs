@@ -1,45 +1,63 @@
-﻿using DigiTekShop.Contracts.Abstractions.Caching;
-using StackExchange.Redis;
+﻿using StackExchange.Redis;
+using DigiTekShop.Contracts.Abstractions.Caching;
+using Microsoft.Extensions.Logging;
 
-namespace DigiTekShop.Infrastructure.Caching
+namespace DigiTekShop.Infrastructure.Caching;
+
+public sealed class RedisRateLimiter : IRateLimiter
 {
-    public class RedisRateLimiter : IRateLimiter
+    private readonly IConnectionMultiplexer _mux;
+    private readonly ILogger<RedisRateLimiter> _log;
+
+    private const string Script = @"
+        local c = redis.call('INCR', KEYS[1])
+        if c == 1 then
+            redis.call('PEXPIRE', KEYS[1], ARGV[1])
+        end
+        return c
+    ";
+
+    private const string Prefix = "dts:rl:";
+
+    public RedisRateLimiter(IConnectionMultiplexer mux, ILogger<RedisRateLimiter> log)
     {
-        private readonly IConnectionMultiplexer _mux;
+        _mux = mux;
+        _log = log;
+    }
 
-        private static readonly LuaScript _script = LuaScript.Prepare(@"
-                 local c = redis.call('INCR', @key)
-                 if c == 1 then
-                 redis.call('PEXPIRE', @key, @ttl)
-                 end return c");
+    public async Task<bool> ShouldAllowAsync(string key, int limit, TimeSpan window, CancellationToken ct = default)
+    {
+        if (limit <= 0) return false;
+        if (window <= TimeSpan.Zero) return true;
 
-        public RedisRateLimiter(IConnectionMultiplexer mux) => _mux = mux;
-
-        public async Task<bool> ShouldAllowAsync(string key, int limit, TimeSpan window, CancellationToken ct = default)
+        try
         {
-            if (limit <= 0) return false;
-            if (window <= TimeSpan.Zero) return true;
+            var db = _mux.GetDatabase();
+            var bucket = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / (long)window.TotalSeconds;
 
-            try
+            var redisKey = (RedisKey)$"{Prefix}{{{key}}}:{bucket}";
+            var ttlMs = (long)window.TotalMilliseconds;
+
+            var result = await db.ScriptEvaluateAsync(
+                Script,
+                keys: new RedisKey[] { redisKey },
+                values: new RedisValue[] { ttlMs }
+            );
+
+            var count = (long)result;
+            var allowed = count <= limit;
+
+            if (!allowed)
             {
-                var db = _mux.GetDatabase();
-                var bucket = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / (long)window.TotalSeconds;
-
-                var redisKey = (RedisKey)$"rl:{{{key}}}:{bucket}";
-                var ttlMs = (long)window.TotalMilliseconds;
-
-                var result = await db.ScriptEvaluateAsync(
-                    _script,
-                    new { key = redisKey, ttl = ttlMs }
-                );
-
-                var count = (long)result;
-                return count <= limit;
+                _log.LogDebug("Rate limit exceeded: key={Key}, count={Count}, limit={Limit}", key, count, limit);
             }
-            catch
-            {
-                return true; 
-            }
+
+            return allowed;
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "RateLimiter fail-open for key {Key}", key);
+            return true; 
         }
     }
 }

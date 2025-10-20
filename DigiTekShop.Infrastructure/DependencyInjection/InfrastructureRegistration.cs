@@ -22,10 +22,7 @@ namespace DigiTekShop.Infrastructure.DependencyInjection;
 
 public static class InfrastructureRegistration
 {
-    public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        IConfiguration config,
-        IHostEnvironment env) 
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config, IHostEnvironment env) 
     {
         var redisCs = config.GetConnectionString("Redis")
                       ?? throw new InvalidOperationException("Missing ConnectionStrings:Redis");
@@ -55,21 +52,15 @@ public static class InfrastructureRegistration
         {
             dp.PersistKeysToStackExchangeRedis(mux, "DataProtection-Keys");
         }
-
-        // 4) خدمات کش و ریت‌لیمیت
-        services.AddSingleton<ICacheService, DistributedCacheService>();
-        services.AddSingleton<IRateLimiter, RedisRateLimiter>();
-        services.AddSingleton<ITokenBlacklistService, RedisTokenBlacklistService>();
-
          
 
         // 5) HealthCheck
         services.AddHealthChecks().AddRedis(redisCs, name: "redis");
 
 
-        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+        
 
-        services.AddSingleton<IDistributedLockService, RedisLockService>();
+       
 
 
         // Bus (فعلاً لاگ؛ بعداً Rabbit/Kafka/Redis جایگزین کن)
@@ -93,6 +84,20 @@ public static class InfrastructureRegistration
         // Dispatcher + Handler + Consumer
         services.AddSingleton<IntegrationEventDispatcher>();
         services.AddHostedService<RabbitIntegrationEventConsumer>();
+
+        #region Services
+
+        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+
+        services.AddSingleton<IDistributedLockService, RedisLockService>();
+
+        services.AddSingleton<ITokenBlacklistService, RedisTokenBlacklistService>();
+
+        services.AddSingleton<ICacheService, DistributedCacheService>();
+
+        services.AddSingleton<IRateLimiter, RedisRateLimiter>();
+
+        #endregion
 
 
         return services;
