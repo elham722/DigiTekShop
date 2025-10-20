@@ -75,44 +75,37 @@ public static class IdentityServicesRegistration
         services.Configure<LoginFlowOptions>(configuration.GetSection("Auth:LoginFlow"));
         services.AddScoped<ILoginService, LoginService>();
 
-        services.AddScoped<IRegistrationService, RegistrationService>();
-
         services.Configure<PasswordResetOptions>(configuration.GetSection("PasswordReset"));
         services.AddScoped<IPasswordService, PasswordResetService>();
 
         services.Configure<IdentityLockoutOptions>(configuration.GetSection("Identity:Lockout"));
         services.AddScoped<ILockoutService, LockoutService>();
 
-        // Email Confirmation settings + service
         services.Configure<EmailConfirmationOptions>(configuration.GetSection("EmailConfirmation"));
         services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
 
-        // Phone Verification settings + service
         services.Configure<PhoneVerificationOptions>(configuration.GetSection("PhoneVerification"));
         services.AddScoped<IPhoneVerificationService, PhoneVerificationService>();
 
-        services.AddScoped<IPasswordHistoryService, PasswordHistoryService>();
-       
-
-        // Encryption Service for TOTP secrets
-        services.AddScoped<IEncryptionService, EncryptionService>();
-
-        // Permission Evaluator Service
-        services.AddScoped<IPermissionEvaluatorService, PermissionEvaluatorService>();
-
         services.Configure<LoginAttemptOptions>(configuration.GetSection("Auth:LoginAttempts"));
         services.AddScoped<ILoginAttemptService, LoginAttemptService>();
-
-        // Security Event Service
-        services.AddScoped<ISecurityEventService, SecurityEventService>();
-
-        services.AddScoped<IIdentityGateway, IdentityGateway>();
 
         services.Configure<DeviceLimitsOptions>(configuration.GetSection("DeviceLimits"));
         services.AddSingleton(resolver => resolver.GetRequiredService<IOptions<DeviceLimitsOptions>>().Value);
         services.AddScoped<IDeviceRegistry, DeviceRegistry>();
 
 
+        services.AddScoped<IPasswordHistoryService, PasswordHistoryService>();
+
+        services.AddScoped<IRegistrationService, RegistrationService>();
+
+        services.AddScoped<IEncryptionService, EncryptionService>();
+
+        services.AddScoped<IPermissionEvaluatorService, PermissionEvaluatorService>();
+
+        services.AddScoped<ISecurityEventService, SecurityEventService>();
+
+        services.AddScoped<IIdentityGateway, IdentityGateway>();
 
         #endregion
 
