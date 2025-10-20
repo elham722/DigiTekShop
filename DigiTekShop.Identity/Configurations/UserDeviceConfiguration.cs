@@ -1,83 +1,66 @@
 namespace DigiTekShop.Identity.Configurations;
-    internal class UserDeviceConfiguration : IEntityTypeConfiguration<UserDevice>
+internal class UserDeviceConfiguration : IEntityTypeConfiguration<UserDevice>
+{
+    public void Configure(EntityTypeBuilder<UserDevice> b)
     {
-        public void Configure(EntityTypeBuilder<UserDevice> builder)
-        {
-            // Configure primary key
-            builder.HasKey(ud => ud.Id);
+        b.ToTable("UserDevices");
+        b.HasKey(x => x.Id);
 
-            // Configure properties
-            builder.Property(ud => ud.DeviceName)
-                .IsRequired()
-                .HasMaxLength(64); 
+        b.Property(x => x.UserId).IsRequired();
 
-            builder.Property(ud => ud.IpAddress)
-                .IsRequired()
-                .HasMaxLength(45); // IPv6 max length
+        b.Property(x => x.DeviceId)
+            .IsRequired()
+            .HasMaxLength(64)        
+            .IsUnicode(false);
 
-            builder.Property(ud => ud.DeviceFingerprint)
-                .HasMaxLength(256)
-                .IsUnicode(false)
-                .IsRequired(false);
+        b.Property(x => x.DeviceName)
+            .IsRequired()
+            .HasMaxLength(100);
 
-            builder.Property(ud => ud.BrowserInfo)
-                .HasMaxLength(128)
-                .IsUnicode(false)
-                .IsRequired(false);
+        b.Property(x => x.DeviceFingerprint)
+            .HasMaxLength(256)
+            .IsUnicode(false);
 
-            builder.Property(ud => ud.OperatingSystem)
-                .HasMaxLength(64)
-                .IsRequired(false);
+        b.Property(x => x.BrowserInfo)
+            .HasMaxLength(512)       
+            .IsUnicode(false);
 
-            builder.Property(ud => ud.LastLoginAt)
-                .HasColumnType("datetime2(3)")
-                .IsRequired();
+        b.Property(x => x.OperatingSystem)
+            .HasMaxLength(64);
 
-            builder.Property(ud => ud.IsActive)
-                .HasDefaultValue(true);
+        b.Property(x => x.LastIp)
+            .HasMaxLength(45)        
+            .IsUnicode(false);
 
-            builder.Property(ud => ud.IsTrusted)
-                .HasDefaultValue(false);
+        b.Property(x => x.FirstSeenUtc).HasColumnType("datetime2(3)").IsRequired();
+        b.Property(x => x.LastSeenUtc).HasColumnType("datetime2(3)").IsRequired();
 
-            builder.Property(ud => ud.TrustedAt)
-                .IsRequired(false);
+        b.Property(x => x.IsActive).HasDefaultValue(true);
 
-            builder.Property(ud => ud.TrustExpiresAt)
-                .IsRequired(false);
+        b.Property(x => x.TrustedAtUtc);
+        b.Property(x => x.TrustedUntilUtc);
+        b.Property(x => x.TrustCount).HasDefaultValue(0);
 
-            builder.Property(ud => ud.UserId)
-                .IsRequired();
+        b.HasOne(x => x.User)
+            .WithMany(u => u.Devices)
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired();
 
-            // Configure relationships
-            builder.HasOne(ud => ud.User)
-                .WithMany(u => u.Devices)
-                .HasForeignKey(ud => ud.UserId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .IsRequired(false);
+        
+        b.HasIndex(x => new { x.UserId, x.DeviceId })
+            .IsUnique()
+            .HasDatabaseName("UX_UserDevices_User_DeviceId");
 
-        // Configure indexes
-        builder.HasIndex(ud => ud.UserId)
-                .HasDatabaseName("IX_UserDevices_UserId");
+        b.HasIndex(x => x.UserId).HasDatabaseName("IX_UserDevices_UserId");
+        b.HasIndex(x => x.LastSeenUtc).HasDatabaseName("IX_UserDevices_LastSeenUtc");
+        b.HasIndex(x => new { x.UserId, x.TrustedUntilUtc }).HasDatabaseName("IX_UserDevices_User_TrustedUntil");
 
-            builder.HasIndex(ud => ud.IpAddress)
-                .HasDatabaseName("IX_UserDevices_IpAddress");
+        b.HasIndex(x => new { x.UserId, x.DeviceFingerprint })
+            .IsUnique()
+            .HasFilter("[DeviceFingerprint] IS NOT NULL")
+            .HasDatabaseName("UX_UserDevices_User_Fingerprint");
 
-            builder.HasIndex(ud => ud.IsActive)
-                .HasDatabaseName("IX_UserDevices_IsActive");
-
-            builder.HasIndex(ud => ud.LastLoginAt)
-                .HasDatabaseName("IX_UserDevices_LastLoginAt");
-
-            builder.HasIndex(ud => new { ud.UserId, ud.DeviceFingerprint })
-                .IsUnique()
-                .HasDatabaseName("UX_UserDevices_User_DeviceFingerprint")
-                .HasFilter("[DeviceFingerprint] IS NOT NULL");
-
-            builder.HasIndex(ud => new { ud.UserId, ud.IsActive })
-                .HasDatabaseName("IX_UserDevices_User_IsActive");
-
-            builder.HasIndex(ud => new { ud.UserId, ud.IsTrusted })
-                .HasDatabaseName("IX_UserDevices_User_IsTrusted");
-
+        b.HasIndex(x => new { x.UserId, x.IsActive }).HasDatabaseName("IX_UserDevices_User_IsActive");
     }
 }

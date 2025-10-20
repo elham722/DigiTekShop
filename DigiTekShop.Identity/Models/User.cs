@@ -1,9 +1,10 @@
-﻿
-using DigiTekShop.SharedKernel.Errors;
+﻿using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Exceptions.NotFound;
 using DigiTekShop.SharedKernel.Exceptions.Validation;
+using Microsoft.AspNetCore.Identity;
 
 namespace DigiTekShop.Identity.Models;
+
 public class User : IdentityUser<Guid>
 {
     public Guid? CustomerId { get; private set; }
@@ -13,21 +14,21 @@ public class User : IdentityUser<Guid>
     public bool TermsAccepted { get; private set; } = true;
 
     public bool IsDeleted { get; private set; }
-    public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; private set; }
-    public DateTime? DeletedAt { get; private set; }
-    public DateTime? LastPasswordChangeAt { get; private set; }
-    public DateTime? LastLoginAt { get; private set; }
+
+
+    public DateTime CreatedAtUtc { get; private set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAtUtc { get; private set; }
+    public DateTime? DeletedAtUtc { get; private set; }
+    public DateTime? LastPasswordChangeAtUtc { get; private set; }
+    public DateTime? LastLoginAtUtc { get; private set; }
 
     public ICollection<UserDevice> Devices { get; private set; } = new List<UserDevice>();
     public ICollection<RefreshToken> RefreshTokens { get; private set; } = new List<RefreshToken>();
     public ICollection<UserPermission> UserPermissions { get; private set; } = new List<UserPermission>();
     public ICollection<PasswordResetToken> PasswordResetTokens { get; private set; } = new List<PasswordResetToken>();
     public ICollection<PasswordHistory> PasswordHistories { get; private set; } = new List<PasswordHistory>();
-    
-    // MFA relationship
-    public UserMfa? Mfa { get; private set; }
 
+    public UserMfa? Mfa { get; private set; }
 
     private User() : base() { }
 
@@ -52,24 +53,23 @@ public class User : IdentityUser<Guid>
         Touch();
     }
 
-
     public void Deactivate()
     {
         if (IsDeleted) return;
         IsDeleted = true;
-        DeletedAt = DateTime.UtcNow;
+        DeletedAtUtc = DateTime.UtcNow;
         Touch();
     }
 
-    public void UpdatePasswordChange(DateTime date)
+    public void UpdatePasswordChange(DateTime whenUtc)
     {
-        LastPasswordChangeAt = date;
+        LastPasswordChangeAtUtc = EnsureUtc(whenUtc);
         Touch();
     }
 
-    public void RecordLogin(DateTime date)
+    public void RecordLogin(DateTime whenUtc)
     {
-        LastLoginAt = date;
+        LastLoginAtUtc = EnsureUtc(whenUtc);
         Touch();
     }
 
@@ -85,163 +85,188 @@ public class User : IdentityUser<Guid>
         Touch();
     }
 
-    // Devices
-    public void AddDevice(UserDevice device, int maxActiveDevices = 5, int maxTrustedDevices = 3)
+   
+    public void AddDevice(
+        UserDevice device,
+        DateTime nowUtc,
+        int maxActiveDevices = 5,
+        int maxTrustedDevices = 3)
     {
         Guard.AgainstNull(device, nameof(device));
-        
-        if (Devices.Any(d => d.Id == device.Id)) 
+        nowUtc = EnsureUtc(nowUtc);
+
+        if (Devices.Any(d => d.Id == device.Id))
             return; 
-        
-      
-        var activeDevices = Devices.Count(d => d.IsActive);
-        if (activeDevices >= maxActiveDevices)
+
+        var activeCount = Devices.Count(d => d.IsActive);
+        if (activeCount >= maxActiveDevices)
         {
             throw new InvalidDomainOperationException(
                 $"Maximum active devices limit ({maxActiveDevices}) exceeded",
                 ErrorCodes.Identity.MAX_ACTIVE_DEVICES_EXCEEDED);
         }
-        
+
        
-        if (device.IsTrusted)
+        if (device.IsCurrentlyTrusted(nowUtc))
         {
-            var trustedDevices = Devices.Count(d => d.IsTrusted);
-            if (trustedDevices >= maxTrustedDevices)
+            var trustedCount = Devices.Count(d => d.IsCurrentlyTrusted(nowUtc));
+            if (trustedCount >= maxTrustedDevices)
             {
                 throw new InvalidDomainOperationException(
                     $"Maximum trusted devices limit ({maxTrustedDevices}) exceeded",
                     ErrorCodes.Identity.MAX_TRUSTED_DEVICES_EXCEEDED);
             }
         }
-        
+
         Devices.Add(device);
         Touch();
     }
 
-    public void RemoveDevice(Guid deviceId)
+    public void RemoveDevice(Guid entityDeviceId)
     {
-        var device = Devices.FirstOrDefault(d => d.Id == deviceId);
-        if (device != null)
-        {
-            Devices.Remove(device);
-            Touch();
-        }
+        var device = Devices.FirstOrDefault(d => d.Id == entityDeviceId);
+        if (device is null) return;
+
+        Devices.Remove(device);
+        Touch();
     }
 
-   
-    public void DeactivateInactiveDevices(TimeSpan inactivityThreshold)
+    public void RemoveDeviceByDeviceId(string deviceId)
     {
-        var cutoffDate = DateTime.UtcNow - inactivityThreshold;
-        var inactiveDevices = Devices.Where(d => d.IsActive && d.LastLoginAt < cutoffDate).ToList();
-        
-        foreach (var device in inactiveDevices)
-        {
-            device.Deactivate();
-        }
-        
-        if (inactiveDevices.Any())
-            Touch();
+        var device = Devices.FirstOrDefault(d => d.DeviceId == deviceId);
+        if (device is null) return;
+
+        Devices.Remove(device);
+        Touch();
     }
 
-   
-    public void RemoveOldInactiveDevices(TimeSpan removalThreshold)
+    public void DeactivateInactiveDevices(TimeSpan inactivityThreshold, DateTime nowUtc)
     {
-        var cutoffDate = DateTime.UtcNow - removalThreshold;
-        var oldDevices = Devices.Where(d => !d.IsActive && d.LastLoginAt < cutoffDate).ToList();
-        
-        foreach (var device in oldDevices)
-        {
-            Devices.Remove(device);
-        }
-        
-        if (oldDevices.Any())
+        nowUtc = EnsureUtc(nowUtc);
+        var cutoff = nowUtc - inactivityThreshold;
+        var toDeactivate = Devices.Where(d => d.IsActive && d.LastSeenUtc < cutoff).ToList();
+
+        foreach (var d in toDeactivate)
+            d.Deactivate();
+
+        if (toDeactivate.Any())
             Touch();
     }
 
- 
-    public void TrustDevice(Guid deviceId, int maxTrustedDevices = 3)
+    public void RemoveOldInactiveDevices(TimeSpan removalThreshold, DateTime nowUtc)
     {
-        var device = Devices.FirstOrDefault(d => d.Id == deviceId);
-        if (device == null)
-            throw new NotFoundException("Device not found", ErrorCodes.Identity.DEVICE_NOT_FOUND);
+        nowUtc = EnsureUtc(nowUtc);
+        var cutoff = nowUtc - removalThreshold;
+        var olds = Devices.Where(d => !d.IsActive && d.LastSeenUtc < cutoff).ToList();
+
+        foreach (var d in olds)
+            Devices.Remove(d);
+
+        if (olds.Any())
+            Touch();
+    }
+
+  
+    public void TrustDevice(Guid entityDeviceId, TimeSpan window, DateTime nowUtc, int maxTrustedDevices = 3)
+    {
+        nowUtc = EnsureUtc(nowUtc);
+        var device = Devices.FirstOrDefault(d => d.Id == entityDeviceId)
+            ?? throw new NotFoundException("Device not found", ErrorCodes.Identity.DEVICE_NOT_FOUND);
 
         if (!device.IsActive)
             throw new InvalidDomainOperationException("Cannot trust inactive device", ErrorCodes.Identity.DEVICE_INACTIVE);
 
-       
-        var trustedDevices = Devices.Count(d => d.IsTrusted);
-        if (trustedDevices >= maxTrustedDevices)
+        var trustedCount = Devices.Count(d => d.IsCurrentlyTrusted(nowUtc));
+        if (!device.IsCurrentlyTrusted(nowUtc) && trustedCount >= maxTrustedDevices)
         {
             throw new InvalidDomainOperationException(
                 $"Maximum trusted devices limit ({maxTrustedDevices}) exceeded",
                 ErrorCodes.Identity.MAX_TRUSTED_DEVICES_EXCEEDED);
         }
 
-        device.MarkAsTrusted();
-        Touch();
-    }
-
-  
-    public void UntrustDevice(Guid deviceId)
-    {
-        var device = Devices.FirstOrDefault(d => d.Id == deviceId);
-        if (device == null)
-            throw new NotFoundException("Device not found", ErrorCodes.Identity.DEVICE_NOT_FOUND);
-
-        device.MarkAsUntrusted();
+        device.TrustFor(window, nowUtc);
         Touch();
     }
 
    
+    public void TrustDeviceByDeviceId(string deviceId, TimeSpan window, DateTime nowUtc, int maxTrustedDevices = 3)
+        => TrustDevice(FindDeviceEntityIdByDeviceId(deviceId), window, nowUtc, maxTrustedDevices);
+
+    public void UntrustDevice(Guid entityDeviceId)
+    {
+        var device = Devices.FirstOrDefault(d => d.Id == entityDeviceId)
+            ?? throw new NotFoundException("Device not found", ErrorCodes.Identity.DEVICE_NOT_FOUND);
+
+        device.Untrust();
+        Touch();
+    }
+
+    public void UntrustDeviceByDeviceId(string deviceId)
+    {
+        var device = Devices.FirstOrDefault(d => d.DeviceId == deviceId)
+            ?? throw new NotFoundException("Device not found", ErrorCodes.Identity.DEVICE_NOT_FOUND);
+
+        device.Untrust();
+        Touch();
+    }
+
     public int GetActiveDeviceCount() => Devices.Count(d => d.IsActive);
 
-  
-    public int GetTrustedDeviceCount() => Devices.Count(d => d.IsTrusted);
-
-   
-    public UserDevice? GetDeviceByFingerprint(string fingerprint)
+    public int GetTrustedDeviceCount(DateTime nowUtc)
     {
-        return Devices.FirstOrDefault(d => d.DeviceFingerprint == fingerprint);
+        nowUtc = EnsureUtc(nowUtc);
+        return Devices.Count(d => d.IsCurrentlyTrusted(nowUtc));
     }
 
+    public UserDevice? GetDeviceByFingerprint(string fingerprint)
+        => Devices.FirstOrDefault(d => d.DeviceFingerprint == fingerprint);
 
     public bool HasDeviceWithFingerprint(string fingerprint)
-    {
-        return Devices.Any(d => d.DeviceFingerprint == fingerprint);
-    }
+        => Devices.Any(d => d.DeviceFingerprint == fingerprint);
 
-    // RefreshTokens
+
     public void AddRefreshToken(RefreshToken token)
     {
         Guard.AgainstNull(token, nameof(token));
 
-        if (RefreshTokens.Any(t => t.TokenHash == token.TokenHash)) return; 
+        if (RefreshTokens.Any(t => t.TokenHash == token.TokenHash)) return;
         RefreshTokens.Add(token);
         Touch();
     }
 
     public void RevokeRefreshToken(string tokenHash)
     {
-        var refreshToken = RefreshTokens.FirstOrDefault(t => t.TokenHash == tokenHash);
-        if (refreshToken != null && refreshToken.IsActive)
+        var t = RefreshTokens.FirstOrDefault(x => x.TokenHash == tokenHash);
+        if (t is not null && t.IsActive)
         {
-            refreshToken.Revoke();
+            t.Revoke();
             Touch();
         }
     }
 
     public void RevokeAllRefreshTokens()
     {
-        foreach (var token in RefreshTokens.Where(t => t.IsActive))
-        {
-            token.Revoke();
-        }
+        foreach (var t in RefreshTokens.Where(t => t.IsActive))
+            t.Revoke();
         Touch();
     }
 
-    public bool IsLocked => LockoutEnd.HasValue && LockoutEnd.Value > DateTime.UtcNow;
-    public bool IsActive => !IsLocked && EmailConfirmed && !IsDeleted;
-    public bool CanLogin() => IsActive && !IsLocked;
 
-    private void Touch() => UpdatedAt = DateTime.UtcNow;
+    public bool IsLocked => LockoutEnd.HasValue && LockoutEnd.Value > DateTimeOffset.UtcNow;
+    public bool IsActiveUser => !IsLocked && EmailConfirmed && !IsDeleted;
+    public bool CanLogin() => IsActiveUser && !IsLocked;
+
+   
+
+    private void Touch() => UpdatedAtUtc = DateTime.UtcNow;
+
+    private static DateTime EnsureUtc(DateTime dt)
+        => dt.Kind == DateTimeKind.Utc ? dt : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+
+    private Guid FindDeviceEntityIdByDeviceId(string deviceId)
+    {
+        var dev = Devices.FirstOrDefault(d => d.DeviceId == deviceId)
+            ?? throw new NotFoundException("Device not found", ErrorCodes.Identity.DEVICE_NOT_FOUND);
+        return dev.Id;
+    }
 }

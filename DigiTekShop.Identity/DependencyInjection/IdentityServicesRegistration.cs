@@ -6,6 +6,7 @@ using DigiTekShop.Contracts.Options.Password;
 using DigiTekShop.Contracts.Options.Phone;
 using DigiTekShop.Contracts.Options.Security;
 using DigiTekShop.Contracts.Options.Token;
+using DigiTekShop.Identity.Services.Device;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 
@@ -120,6 +121,10 @@ public static class IdentityServicesRegistration
         services.AddScoped<ISecurityEventService, SecurityEventService>();
 
         services.AddScoped<IIdentityGateway, IdentityGateway>();
+
+        services.Configure<DeviceLimitsOptions>(configuration.GetSection("DeviceLimits"));
+        services.AddScoped<IDeviceRegistry, DeviceRegistry>();
+       
 
         #endregion
 

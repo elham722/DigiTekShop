@@ -17,13 +17,13 @@
 
             builder.Property(u => u.IsDeleted)
                 .HasDefaultValue(false);
-            builder.Property(u => u.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
-            builder.Property(u => u.UpdatedAt).IsRequired(false);
+            builder.Property(u => u.CreatedAtUtc).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+            builder.Property(u => u.UpdatedAtUtc).IsRequired(false);
 
-            builder.Property(u => u.DeletedAt)
+            builder.Property(u => u.DeletedAtUtc)
                 .IsRequired(false);
 
-            builder.Property(u => u.LastPasswordChangeAt)
+            builder.Property(u => u.LastPasswordChangeAtUtc)
                 .IsRequired(false);
 
             builder.Property(u => u.TermsAccepted)
@@ -31,7 +31,7 @@
                 .HasDefaultValue(true)   
                 .IsRequired();
 
-        builder.Property(u => u.LastLoginAt)
+        builder.Property(u => u.LastLoginAtUtc)
                 .HasColumnType("datetime2(3)")
                 .IsRequired(false);
 
