@@ -4,7 +4,6 @@ namespace DigiTekShop.Application.Auth.ConfirmEmail.Command
 {
     public sealed class ConfirmEmailCommandValidator : AbstractValidator<ConfirmEmailCommand>
     {
-        // Base64Url: حروف/عدد + '-' و '_'
         private static readonly Regex Base64UrlPattern = new(@"^[A-Za-z0-9\-_]+$", RegexOptions.Compiled);
 
         public ConfirmEmailCommandValidator()

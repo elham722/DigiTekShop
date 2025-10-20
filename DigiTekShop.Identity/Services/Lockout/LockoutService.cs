@@ -1,37 +1,20 @@
-﻿using DigiTekShop.Identity.Models;
-using DigiTekShop.SharedKernel.Results;
-using Microsoft.AspNetCore.Identity;
-using FluentValidation;
+﻿using DigiTekShop.Contracts.Abstractions.Identity.Lockout;
 using DigiTekShop.Contracts.DTOs.Auth.Lockout;
-using DigiTekShop.Contracts.Abstractions.Identity.Lockout;
 
-namespace DigiTekShop.Identity.Services;
+namespace DigiTekShop.Identity.Services.Lockout;
 
 public sealed class LockoutService : ILockoutService
 {
     private readonly UserManager<User> _userManager;
-    private readonly IValidator<LockUserRequestDto> _lockUserValidator;
-    private readonly IValidator<UnlockUserRequestDto> _unlockUserValidator;
 
     public LockoutService(
-        UserManager<User> userManager,
-        IValidator<LockUserRequestDto> lockUserValidator,
-        IValidator<UnlockUserRequestDto> unlockUserValidator)
+        UserManager<User> userManager)
     {
         _userManager = userManager;
-        _lockUserValidator = lockUserValidator;
-        _unlockUserValidator = unlockUserValidator;
     }
 
     public async Task<Result<LockUserResponseDto>> LockUserAsync(LockUserRequestDto req, CancellationToken ct = default)
     {
-        // ✅ Validate با FluentValidation
-        var validationResult = await _lockUserValidator.ValidateAsync(req, ct);
-        if (!validationResult.IsValid)
-        {
-            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return Result<LockUserResponseDto>.Failure(errors);
-        }
 
         if (!Guid.TryParse(req.UserId.ToString(), out var uid))
             return Result<LockUserResponseDto>.Failure("Invalid user id");
@@ -56,13 +39,6 @@ public sealed class LockoutService : ILockoutService
 
     public async Task<Result<UnlockUserResponseDto>> UnlockUserAsync(UnlockUserRequestDto req, CancellationToken ct = default)
     {
-        // ✅ Validate با FluentValidation
-        var validationResult = await _unlockUserValidator.ValidateAsync(req, ct);
-        if (!validationResult.IsValid)
-        {
-            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return Result<UnlockUserResponseDto>.Failure(errors);
-        }
 
         if (!Guid.TryParse(req.UserId.ToString(), out var uid))
             return Result<UnlockUserResponseDto>.Failure("Invalid user id");

@@ -2,13 +2,10 @@
 using DigiTekShop.Contracts.Abstractions.Identity.Encryption;
 using DigiTekShop.Contracts.DTOs.Auth.Mfa;
 using DigiTekShop.Contracts.DTOs.Auth.TwoFactor;
-using DigiTekShop.SharedKernel.Results;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using OtpNet;
 using QRCoder;
 
-namespace DigiTekShop.Identity.Services
+namespace DigiTekShop.Identity.Services.TwoFactor
 {
     public class TwoFactorService : ITwoFactorService
     {

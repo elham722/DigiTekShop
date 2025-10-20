@@ -16,9 +16,14 @@ using DigiTekShop.Identity.Handlers.Customers;
 using DigiTekShop.Identity.Handlers.Notifications;
 using DigiTekShop.Identity.Interceptors;
 using DigiTekShop.Identity.Options.Security;
-using DigiTekShop.Identity.Services;
+using DigiTekShop.Identity.Services.DeviceManagement;
+using DigiTekShop.Identity.Services.Lockout;
+using DigiTekShop.Identity.Services.Login;
+using DigiTekShop.Identity.Services.Password;
 using DigiTekShop.Identity.Services.Register;
+using DigiTekShop.Identity.Services.Security;
 using DigiTekShop.Identity.Services.Tokens;
+using DigiTekShop.Identity.Services.TwoFactor;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Time;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -102,9 +107,7 @@ public static class IdentityServicesRegistration
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        // Strong Password Validator
-        services.AddTransient<IPasswordValidator<User>, StrongPasswordValidator>();
-
+      
 
         #endregion
 

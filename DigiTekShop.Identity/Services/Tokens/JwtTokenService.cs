@@ -1,20 +1,14 @@
-﻿using DigiTekShop.Identity.Options;
+﻿using DigiTekShop.Contracts.Abstractions.Identity.Security;
+using DigiTekShop.Contracts.Abstractions.Identity.Token;
+using DigiTekShop.Contracts.DTOs.Auth.Token;
 using DigiTekShop.Identity.Options.Security;
+using DigiTekShop.SharedKernel.Enums.Security;
 using DigiTekShop.SharedKernel.Exceptions.Validation;
-using DigiTekShop.SharedKernel.Results;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using DigiTekShop.SharedKernel.Errors;
-using DigiTekShop.Contracts.DTOs.Auth.Token;
-using DigiTekShop.Contracts.Abstractions.Caching;
-using DigiTekShop.Contracts.Abstractions.Identity.Token;
-using DigiTekShop.Contracts.Abstractions.Identity.Security;
-using DigiTekShop.SharedKernel.Enums.Security;
 
 namespace DigiTekShop.Identity.Services.Tokens;
 

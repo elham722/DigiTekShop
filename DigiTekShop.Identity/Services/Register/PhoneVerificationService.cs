@@ -1,8 +1,7 @@
 using DigiTekShop.Contracts.Abstractions.ExternalServices.PhoneSender;
-using DigiTekShop.Contracts.DTOs.Auth.PhoneVerification;
 
 
-namespace DigiTekShop.Identity.Services;
+namespace DigiTekShop.Identity.Services.Register;
 
 public sealed class PhoneVerificationService : IPhoneVerificationService
 {
@@ -142,7 +141,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
         Span<char> chars = stackalloc char[length];
         for (int i = 0; i < length; i++)
-            chars[i] = (char)('0' + (bytes[i] % 10));
+            chars[i] = (char)('0' + bytes[i] % 10);
         return new string(chars);
     }
 

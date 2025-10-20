@@ -1,14 +1,9 @@
 using DigiTekShop.Contracts.Abstractions.Identity.Security;
 using DigiTekShop.Contracts.DTOs.Auth.SecurityEvent;
-using DigiTekShop.Identity.Context;
-using DigiTekShop.Identity.Models;
 using DigiTekShop.SharedKernel.Enums.Security;
-using DigiTekShop.SharedKernel.Results;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace DigiTekShop.Identity.Services;
+namespace DigiTekShop.Identity.Services.Security;
 
 public class SecurityEventService : ISecurityEventService
 {

@@ -1,14 +1,7 @@
 using DigiTekShop.Contracts.Abstractions.Identity.Password;
 using DigiTekShop.Contracts.DTOs.Auth.PasswordHistory;
-using DigiTekShop.Identity.Models;
-using DigiTekShop.Identity.Options;
-using DigiTekShop.SharedKernel.Guards;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
-namespace DigiTekShop.Identity.Services;
+namespace DigiTekShop.Identity.Services.Password;
 
 public sealed class PasswordHistoryService : IPasswordHistoryService
 {
