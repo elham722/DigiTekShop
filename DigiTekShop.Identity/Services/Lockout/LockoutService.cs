@@ -1,83 +1,144 @@
-﻿using DigiTekShop.Contracts.Abstractions.Identity.Lockout;
-using DigiTekShop.Contracts.DTOs.Auth.Lockout;
+﻿using DigiTekShop.Contracts.DTOs.Auth.Lockout;
+using DigiTekShop.Contracts.Options.Auth;
 
 namespace DigiTekShop.Identity.Services.Lockout;
 
 public sealed class LockoutService : ILockoutService
 {
-    private readonly UserManager<User> _userManager;
+    private static class Events
+    {
+        public static readonly EventId Lock = new(41001, nameof(LockUserAsync));
+        public static readonly EventId Unlock = new(41002, nameof(UnlockUserAsync));
+        public static readonly EventId Status = new(41003, nameof(GetLockoutStatusAsync));
+        public static readonly EventId End = new(41004, nameof(GetLockoutEndTimeAsync));
+    }
+
+    private readonly UserManager<User> _users;
+    private readonly IDateTimeProvider _time;
+    private readonly IdentityLockoutOptions _opts;
+    private readonly ILogger<LockoutService> _log;
 
     public LockoutService(
-        UserManager<User> userManager)
+        UserManager<User> users,
+        IDateTimeProvider time,
+        IOptions<IdentityLockoutOptions> opts,
+        ILogger<LockoutService> log)
     {
-        _userManager = userManager;
+        _users = users ?? throw new ArgumentNullException(nameof(users));
+        _time = time ?? throw new ArgumentNullException(nameof(time));
+        _opts = opts?.Value ?? new IdentityLockoutOptions();
+        _log = log ?? throw new ArgumentNullException(nameof(log));
     }
 
     public async Task<Result<LockUserResponseDto>> LockUserAsync(LockUserRequestDto req, CancellationToken ct = default)
     {
+        if (req.UserId == Guid.Empty)
+            return Result<LockUserResponseDto>.Failure(ErrorCodes.Common.VALIDATION_FAILED);
 
-        if (!Guid.TryParse(req.UserId.ToString(), out var uid))
-            return Result<LockUserResponseDto>.Failure("Invalid user id");
+        var user = await _users.FindByIdAsync(req.UserId.ToString());
+        if (user is null)
+            return Result<LockUserResponseDto>.Failure(ErrorCodes.Identity.USER_NOT_FOUND);
 
-        var user = await _userManager.FindByIdAsync(req.UserId.ToString());
-        if (user is null) return Result<LockUserResponseDto>.Failure("User not found");
+       
+        if (!await _users.GetLockoutEnabledAsync(user))
+        {
+            var enable = await _users.SetLockoutEnabledAsync(user, true);
+            if (!enable.Succeeded)
+                return Result<LockUserResponseDto>.Failure(enable.Errors.Select(e => e.Description), ErrorCodes.Common.INTERNAL_ERROR);
+        }
 
-        var prevEnd = await _userManager.GetLockoutEndDateAsync(user);
+        var now = _time.UtcNow;
+        var prevEnd = await _users.GetLockoutEndDateAsync(user);
 
-        if (!await _userManager.GetLockoutEnabledAsync(user))
-            await _userManager.SetLockoutEnabledAsync(user, true);
+       
+        var requestedEnd = req.LockoutEnd ?? now.Add(_opts.DefaultDuration);
+        var end = ClampLockoutEnd(requestedEnd, now);
 
-
-        var end = req.LockoutEnd ?? DateTimeOffset.UtcNow.AddMinutes(15); 
-        var setRes = await _userManager.SetLockoutEndDateAsync(user, null);
+        var setRes = await _users.SetLockoutEndDateAsync(user, end);
         if (!setRes.Succeeded)
-            return Result<LockUserResponseDto>.Failure(setRes.Errors.Select(e => e.Description));
+            return Result<LockUserResponseDto>.Failure(setRes.Errors.Select(e => e.Description), ErrorCodes.Common.INTERNAL_ERROR);
 
-        var dto = new LockUserResponseDto(uid, true, end, prevEnd, "User locked");
-        return Result<LockUserResponseDto>.Success(dto);
+        _log.LogWarning(Events.Lock, "User locked. userId={UserId}, until={Until:o}, prevEnd={PrevEnd:o}",
+            user.Id, end, prevEnd);
+
+        var dto = new LockUserResponseDto(user.Id, true, end, prevEnd, "User locked");
+        return dto;
     }
 
     public async Task<Result<UnlockUserResponseDto>> UnlockUserAsync(UnlockUserRequestDto req, CancellationToken ct = default)
     {
+        if (req.UserId == Guid.Empty)
+            return Result<UnlockUserResponseDto>.Failure(ErrorCodes.Common.VALIDATION_FAILED);
 
-        if (!Guid.TryParse(req.UserId.ToString(), out var uid))
-            return Result<UnlockUserResponseDto>.Failure("Invalid user id");
+        if (!_opts.AllowManualUnlock)
+            return Result<UnlockUserResponseDto>.Failure(ErrorCodes.Common.FORBIDDEN);
 
-        var user = await _userManager.FindByIdAsync(req.UserId.ToString());
-        if (user is null) return Result<UnlockUserResponseDto>.Failure("User not found");
+        var user = await _users.FindByIdAsync(req.UserId.ToString());
+        if (user is null)
+            return Result<UnlockUserResponseDto>.Failure(ErrorCodes.Identity.USER_NOT_FOUND);
 
-       
-        var setRes = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow);
+        var now = _time.UtcNow;
+
+        // unlock = set lockout end to now
+        var setRes = await _users.SetLockoutEndDateAsync(user, now);
         if (!setRes.Succeeded)
-            return Result<UnlockUserResponseDto>.Failure(setRes.Errors.Select(e => e.Description));
+            return Result<UnlockUserResponseDto>.Failure(setRes.Errors.Select(e => e.Description), "identity_error");
 
-      
-        await _userManager.ResetAccessFailedCountAsync(user);
+        // reset failed count
+        await _users.ResetAccessFailedCountAsync(user);
 
-        var end = await _userManager.GetLockoutEndDateAsync(user);
-        var dto = new UnlockUserResponseDto(uid, false, end, "User unlocked");
-        return Result<UnlockUserResponseDto>.Success(dto);
+        var end = await _users.GetLockoutEndDateAsync(user);
+
+        _log.LogInformation(Events.Unlock, "User unlocked. userId={UserId}, at={Now:o}", user.Id, now);
+
+        var dto = new UnlockUserResponseDto(user.Id, false, end, "User unlocked");
+        return dto;
     }
 
     public async Task<Result<LockoutStatusResponseDto>> GetLockoutStatusAsync(string userId, CancellationToken ct = default)
     {
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user is null) return Result<LockoutStatusResponseDto>.Failure("User not found");
+        if (!Guid.TryParse(userId, out var uid))
+            return Result<LockoutStatusResponseDto>.Failure(ErrorCodes.Common.VALIDATION_FAILED);
 
-        var end = await _userManager.GetLockoutEndDateAsync(user);
-        var isLocked = end.HasValue && end.Value > DateTimeOffset.UtcNow;
-        return Result<LockoutStatusResponseDto>.Success(new LockoutStatusResponseDto(isLocked, end));
+        var user = await _users.FindByIdAsync(uid.ToString());
+        if (user is null)
+            return Result<LockoutStatusResponseDto>.Failure(ErrorCodes.Identity.USER_NOT_FOUND);
+
+        var end = await _users.GetLockoutEndDateAsync(user);
+        var isLocked = end.HasValue && end.Value > _time.UtcNow;
+
+        _log.LogDebug(Events.Status, "Lockout status. userId={UserId}, locked={Locked}, end={End:o}", uid, isLocked, end);
+        return new LockoutStatusResponseDto(isLocked, end);
     }
 
     public async Task<Result<TimeSpan?>> GetLockoutEndTimeAsync(string userId, CancellationToken ct = default)
     {
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user is null) return Result<TimeSpan?>.Failure("User not found");
+        if (!Guid.TryParse(userId, out var uid))
+            return Result<TimeSpan?>.Failure(ErrorCodes.Common.VALIDATION_FAILED);
 
-        var end = await _userManager.GetLockoutEndDateAsync(user);
-        if (!end.HasValue || end.Value <= DateTimeOffset.UtcNow)
-            return Result<TimeSpan?>.Success(null);
+        var user = await _users.FindByIdAsync(uid.ToString());
+        if (user is null)
+            return Result<TimeSpan?>.Failure(ErrorCodes.Identity.USER_NOT_FOUND);
 
-        return Result<TimeSpan?>.Success(end.Value - DateTimeOffset.UtcNow);
+        var end = await _users.GetLockoutEndDateAsync(user);
+        var now = _time.UtcNow;
+
+        if (!end.HasValue || end.Value <= now)
+            return (TimeSpan?)null;
+
+        var remaining = end.Value - now;
+        _log.LogDebug(Events.End, "Lockout remaining. userId={UserId}, remaining={Remaining}", uid, remaining);
+        return remaining;
+    }
+
+    private DateTimeOffset ClampLockoutEnd(DateTimeOffset requested, DateTimeOffset now)
+    {
+        var minEnd = now.Add(TimeSpan.FromSeconds(5));
+        var maxEnd = now.Add(_opts.MaxDuration);
+
+        if (requested < minEnd) requested = minEnd;
+        if (requested > maxEnd) requested = maxEnd;
+
+        return requested;
     }
 }

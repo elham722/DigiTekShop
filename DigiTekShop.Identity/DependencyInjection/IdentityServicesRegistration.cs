@@ -78,8 +78,9 @@ public static class IdentityServicesRegistration
         services.AddScoped<IRegistrationService, RegistrationService>();
 
         services.Configure<PasswordResetOptions>(configuration.GetSection("PasswordReset"));
-        services.AddScoped<IPasswordService, PasswordResetService>();    
-  
+        services.AddScoped<IPasswordService, PasswordResetService>();
+
+        services.Configure<IdentityLockoutOptions>(configuration.GetSection("Identity:Lockout"));
         services.AddScoped<ILockoutService, LockoutService>();
 
         // Email Confirmation settings + service
