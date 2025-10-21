@@ -1,8 +1,9 @@
-﻿using DigiTekShop.API.HealthChecks;
+﻿using System.Text.Json;
+using DigiTekShop.API.Common.Http;
+using DigiTekShop.API.HealthChecks;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using System.Text.Json;
-using DigiTekShop.API.Common.Http;
+
 namespace DigiTekShop.API.Extensions.HealthCheck;
 
 public static class HealthCheckExtensions
@@ -13,7 +14,18 @@ public static class HealthCheckExtensions
             .AddCheck<DatabaseHealthCheck>(
                 name: "database",
                 failureStatus: HealthStatus.Unhealthy,
-                tags: new[] { "database", "infrastructure" })
+                tags: new[] { "database", "infrastructure" },
+                timeout: TimeSpan.FromSeconds(3))
+            .AddCheck<RedisHealthCheck>(
+                name: "redis",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: new[] { "redis", "infrastructure" },
+                timeout: TimeSpan.FromSeconds(2))
+            .AddCheck<RabbitMQHealthCheck>(
+                name: "rabbitmq",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: new[] { "rabbitmq", "infrastructure" },
+                timeout: TimeSpan.FromSeconds(3))
             .AddCheck("self", () => HealthCheckResult.Healthy("API is running"), tags: new[] { "api" });
 
         return services;
@@ -26,12 +38,16 @@ public static class HealthCheckExtensions
             ResponseWriter = async (context, report) =>
             {
                 context.Response.ContentType = "application/json";
+                context.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+                context.Response.Headers.Pragma = "no-cache";
+                context.Response.Headers.Expires = "0";
 
                 var env = context.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                var cid = context.Items.TryGetValue(HeaderNames.CorrelationId, out var v)
+                          ? v?.ToString()
+                          : context.TraceIdentifier;
 
-                var cid = context.Items.TryGetValue(HeaderNames.CorrelationId, out var v) ? v?.ToString() : context.TraceIdentifier;
-
-                var result = JsonSerializer.Serialize(new
+                var payload = new
                 {
                     status = report.Status.ToString(),
                     timestamp = DateTime.UtcNow,
@@ -46,9 +62,14 @@ public static class HealthCheckExtensions
                         exception = env.IsDevelopment() ? e.Value.Exception?.Message : null,
                         data = e.Value.Data?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString())
                     })
-                }, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                };
 
-                await context.Response.WriteAsync(result);
+                await context.Response.WriteAsync(
+                    JsonSerializer.Serialize(payload, new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    }));
             }
         });
 
