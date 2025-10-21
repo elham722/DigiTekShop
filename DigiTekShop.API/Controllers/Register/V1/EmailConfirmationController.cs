@@ -17,6 +17,7 @@ public sealed class EmailConfirmationController : ControllerBase
    
     [HttpGet("confirm-email")]
     [AllowAnonymous]
+    [EnableRateLimiting("EmailConfirmPolicy")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ConfirmEmail([FromQuery] Guid userId, [FromQuery] string token, CancellationToken ct)

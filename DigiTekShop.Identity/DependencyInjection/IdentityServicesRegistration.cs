@@ -175,33 +175,77 @@ public static class IdentityServicesRegistration
 
                 o.Events = new JwtBearerEvents
                 {
+                    OnMessageReceived = ctx =>
+                    {
+                        var loggerFactory = ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+                        var logger = loggerFactory.CreateLogger("JwtAuthentication");
+                        
+                        var authHeader = ctx.Request.Headers.Authorization.ToString();
+                        var hasAuth = ctx.Request.Headers.ContainsKey("Authorization");
+                        
+                        if (ctx.Request.Path.StartsWithSegments("/api/v1/Auth"))
+                        {
+                            logger.LogInformation("[JWT] Auth request. Path={Path}, HasAuthHeader={HasAuth}, HeaderPreview={Preview}", 
+                                ctx.Request.Path, 
+                                hasAuth,
+                                hasAuth ? authHeader.Substring(0, Math.Min(30, authHeader.Length)) + "..." : "(none)");
+                        }
+                        
+                        return Task.CompletedTask;
+                    },
                     OnTokenValidated = async ctx =>
                     {
+                        var loggerFactory = ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+                        var logger = loggerFactory.CreateLogger("JwtAuthentication");
                         var blacklist = ctx.HttpContext.RequestServices.GetRequiredService<ITokenBlacklistService>();
                         var jti = ctx.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);
                         var sub = ctx.Principal?.FindFirstValue(JwtRegisteredClaimNames.Sub);
 
+                        logger.LogDebug("[JWT] Token validated. JTI={Jti}, SUB={Sub}", jti, sub);
+
                         if (string.IsNullOrWhiteSpace(jti) || string.IsNullOrWhiteSpace(sub))
                         {
+                            logger.LogWarning("[JWT] Invalid token payload - missing JTI or SUB");
                             ctx.Fail("invalid token payload");
                             return;
                         }
 
-                        if (await blacklist.IsTokenRevokedAsync(jti!, ctx.HttpContext.RequestAborted))
+                        var isRevoked = await blacklist.IsTokenRevokedAsync(jti!, ctx.HttpContext.RequestAborted);
+                        logger.LogDebug("[JWT] Blacklist check for JTI={Jti}: Revoked={IsRevoked}", jti, isRevoked);
+
+                        if (isRevoked)
                         {
+                            logger.LogWarning("[JWT] Access token revoked. JTI={Jti}", jti);
                             ctx.Fail("access token revoked");
                             return;
                         }
 
                         var userMgr = ctx.HttpContext.RequestServices.GetRequiredService<UserManager<User>>();
                         var user = await userMgr.FindByIdAsync(sub);
-                        if (user is null || user.IsDeleted || !user.EmailConfirmed)
+                        
+                        if (user is null)
                         {
+                            logger.LogWarning("[JWT] User not found. SUB={Sub}", sub);
+                            ctx.Fail("user inactive");
+                            return;
+                        }
+
+                        logger.LogDebug("[JWT] User found. Id={UserId}, IsDeleted={IsDeleted}, EmailConfirmed={EmailConfirmed}", 
+                            user.Id, user.IsDeleted, user.EmailConfirmed);
+
+                        if (user.IsDeleted || !user.EmailConfirmed)
+                        {
+                            logger.LogWarning("[JWT] User inactive. Id={UserId}, IsDeleted={IsDeleted}, EmailConfirmed={EmailConfirmed}", 
+                                user.Id, user.IsDeleted, user.EmailConfirmed);
                             ctx.Fail("user inactive");
                         }
                     },
                     OnAuthenticationFailed = ctx =>
                     {
+                        var loggerFactory = ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+                        var logger = loggerFactory.CreateLogger("JwtAuthentication");
+                        logger.LogWarning("[JWT] Authentication failed. Exception={Exception}, Failure={Failure}", 
+                            ctx.Exception?.Message, ctx.Result?.Failure?.ToString());
                         ctx.NoResult();
                         return Task.CompletedTask;
                     }

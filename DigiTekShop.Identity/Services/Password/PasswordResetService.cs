@@ -311,8 +311,9 @@ public sealed class PasswordResetService : IPasswordService
     {
         try
         {
+            var now = DateTimeOffset.UtcNow;
             var active = await _db.RefreshTokens
-                .Where(t => t.UserId == userId && t.IsActive)
+                .Where(t => t.UserId == userId && t.RevokedAtUtc == null && t.ExpiresAtUtc > now)
                 .ToListAsync(ct);
 
             foreach (var t in active) t.Revoke("password reset/change: terminate all sessions");
@@ -329,8 +330,9 @@ public sealed class PasswordResetService : IPasswordService
     {
         try
         {
+            var now = DateTime.UtcNow;
             var active = await _db.PasswordResetTokens
-                .Where(p => p.UserId == userId && !p.IsUsed && !p.IsExpired)
+                .Where(p => p.UserId == userId && !p.IsUsed && p.ExpiresAt > now)
                 .ToListAsync(ct);
 
             foreach (var t in active) t.MarkAsUsed("invalidated by new request");
@@ -387,8 +389,9 @@ public sealed class PasswordResetService : IPasswordService
 
     public async Task<PasswordResetThrottleStatus> GetThrottleStatusAsync(Guid userId, CancellationToken ct = default)
     {
+        var now = DateTime.UtcNow;
         var active = await _db.PasswordResetTokens
-            .Where(p => p.UserId == userId && !p.IsUsed && !p.IsExpired)
+            .Where(p => p.UserId == userId && !p.IsUsed && p.ExpiresAt > now)
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync(ct);
 

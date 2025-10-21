@@ -37,6 +37,11 @@ namespace DigiTekShop.Identity.Configurations
             builder.Property(x => x.ThrottleUntil)
                 .IsRequired(false);
 
+            // Ignore computed properties
+            builder.Ignore(x => x.IsExpired);
+            builder.Ignore(x => x.IsThrottled);
+            builder.Ignore(x => x.IsValid);
+
             builder.HasIndex(x => new { x.UserId, x.ExpiresAt });
             builder.HasIndex(x => x.TokenHash).IsUnique();
             

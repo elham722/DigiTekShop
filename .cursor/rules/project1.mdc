@@ -1,0 +1,185 @@
+---
+alwaysApply: true
+---
+# DigiTekShop — Cursor Rules (Persian)
+# هدف: هم‌راستایی خروجی Cursor با معماری Clean، SOLID/DRY/KISS/YAGNI، CQRS/MediatR و لایه‌های پروژه
+
+################################################################################
+## 0) نمای کلی پروژه و مرزبندی لایه‌ها
+################################################################################
+- لایه‌ها و نقش‌ها:
+  - API: Endpoints/Controllers, JWT, Filters/Middlewares, DI Composition Root, adapters (e.g., CurrentClient).
+  - Application: CQRS (Commands/Queries/Handlers/Validators), Behaviors (Validation/Logging/Tx), بدون EF/HTTP/Infra.
+  - Contracts: Abstractions/DTOs/Options/Results/ErrorCodes، صفر وابستگی به وب/EF/زیرساخت.
+  - Domain: Entities/Aggregates/ValueObjects/Domain Events/Policies—منطقی دامنه، بدون وابستگی بیرونی.
+  - SharedKernel: Result, Guard, Errors, Enums, Utilities کوچک و پایدار.
+  - Identity: سرویس‌های هویت (Login/Logout/Token/Me/MFA/Permission)، بدون وابستگی به وب؛ استفاده از Abstractions.
+  - Infrastructure: Redis (Caching/TokenBlacklist), RabbitMQ (Messaging), Email/SMS, Outbox Dispatcher, Observability.
+  - Persistence: EF Core (DbContext/Configurations/Migrations/Repositories)، فقط دسترسی به DB.
+  - ExternalService: کلاینت‌های بیرونی (HTTP/gRPC/…)، آداپتر و Anti-corruption layer.
+  - UI (MVC/Client): وب‌اپ یا کلاینت مصرف‌کننده API (اکنون ساده).
+  - Tests: Unit/Integration/Contract/Mock/Smoke (باید تکمیل شوند).
+- اصل Dependency Rule: درون به بیرون؛ هیچ وابستگی از Domain/Application/Identity به وب یا EF یا زیرساخت.
+
+################################################################################
+## 1) اصول طراحی: SOLID / DRY / KISS / YAGNI / Design Patterns
+################################################################################
+- SRP: هر کلاس یک مسئولیت. سرویس‌ها «انجام کار» کنند، نه «دانش همه‌چیز».
+- OCP: برای توسعه باز، برای تغییر بسته. رفتارهای جدید با استراتژی/پالیسی/فلگ‌ها اضافه شوند.
+- LSP: جایگزینی مشتق‌ها بدون شکستن منطق (Interfaces شفاف و حداقلی).
+- ISP: اینترفیس‌های باریک (e.g., ITokenBlacklistService فقط عملیات مورد نیاز).
+- DIP: همه‌جا بر Abstractions تکیه کن؛ پیاده‌سازی‌ها در DI رجیستر.
+- DRY: تکرار قوانین/Validation/Mapping نکن؛ از Behaviors/Helpers مشترک استفاده کن.
+- KISS: ساده نگه دار؛ اگر الگو/ابزار اضافه ارزش ندارد، حذف.
+- YAGNI: تا زمانی که نیاز قطعی نیست، فیچر/انعطاف اضافه نکن.
+- Patterns: Strategy/Policy برای Rules، Factory/Builder برای ساخت پیچیده، Adapter برای ExternalService، Mediator (MediatR) برای CQRS، Decorator برای Cross-cutting.
+
+################################################################################
+## 2) CQRS/MediatR (Application)
+################################################################################
+- Command/Query:
+  - Commands: `record XxxCommand(Dto dto) : ICommand<T>, INonTransactionalCommand?`
+  - Queries: `record XxxQuery(...) : IQuery<T>`
+- Handlers:
+  - `ICommandHandler<TCommand,T>` و `IQueryHandler<TQuery,T>`؛ بدون EF/HTTP/IO مستقیم.
+  - خروجی همواره `Result`/`Result<T>`.
+- Validators (FluentValidation):
+  - `RuleLevelCascadeMode = Stop`؛ پیام‌های خطا شفاف و کوتاه.
+  - Validation فقط در Application (Behaviors یا در کنار Handler).
+- Behaviors:
+  - ValidationBehavior → اول.
+  - TransactionBehavior (فقط برای Commands transactional).
+  - LoggingBehavior (EventId ثابت + CorrelationId).
+  - Performance/Retry (در صورت نیاز).
+
+################################################################################
+## 3) امنیت و احراز هویت (Identity + API)
+################################################################################
+- ساخت AccessToken در TokenService:
+  - claims: `sub` (Guid), `jti`, `iat` (unix), `email`, و `did` اگر موجود.
+  - HS256 با `JwtSettings.Key`.
+- JwtBearer در API:
+  - ValidateIssuer/Audience/Lifetime/Signature = true؛ ClockSkew کم.
+  - OnTokenValidated:
+    1) `IsTokenRevokedAsync(jti)` (Redis؛ try/catch—قابل تنظیم FailClosedOnError).
+    2) `IsUserTokensRevokedAsync(sub, iat)` برای LogoutAll.
+  - کاربران غیر فعال/تایید نشده fail شوند.
+- ICurrentClient (API فقط): Snapshot از DeviceId/UserAgent/Ip و (token raw/jti/sub/iat/exp) با JwtSecurityTokenHandler.ReadJwtToken (بدون validate).
+- LogoutService:
+  - Revoke refresh (تکی/همه)، صفر RTT: اگر jti/exp فعلی موجود → RevokeAccessTokenAsync.
+  - نوشتن Redis best-effort؛ خطا باعث Fail نشود؛ Audit با ILoginAttemptService.
+- MFA/Me طبق Abstractions؛ صفر وابستگی به HTTP.
+
+################################################################################
+## 4) Redis (Infrastructure.Caching)
+################################################################################
+- TokenBlacklist:
+  - Keys: `dts:tokenbl:jti:{jti}` (TTL = exp-now) و `dts:tokenbl:user:{userId}` (RevokedAt).
+  - خواندن: در JWT، اگر Redis down شد: رفتار بر اساس `BlacklistOptions.FailClosedOnError`.
+  - نوشتن: best-effort؛ شکست لاگ شود.
+- ConnectionMultiplexer: Singleton؛ AbortOnConnectFail=false؛ timeouts منطقی؛ لاگ ConnectionFailed/Restored.
+- (اختیاری) LocalBlacklistCache برای حافظه‌ی محلی پروسس (JTI/User RevokedAt) تا در قطع موقت Redis enforce شود.
+
+################################################################################
+## 5) RabbitMQ (Infrastructure.Background/Messaging) — v7 Async API
+################################################################################
+- BackgroundService مقاوم با loop + backoff (۲→۳۰s).
+- ConnectionFactory: AutomaticRecoveryEnabled/TopologyRecoveryEnabled=true؛ Heartbeat=30s؛ NetworkRecoveryInterval=5s؛ بدون DispatchConsumersAsync.
+- CreateChannelAsync(null, ct)، Exchange/Queue/DLX declare، Bind.
+- Ack/Nack دقیق؛ خطاها Nack → DLQ؛ لاگ واضح.
+- خاموش بودن Docker نباید برنامه را بریزد؛ سرویس صبورانه تلاش کند.
+
+################################################################################
+## 6) Persistence (EF Core)
+################################################################################
+- DbContext فقط در Persistence. Domain/Application به EF وابسته نشوند.
+- RefreshToken:
+  - Ignore: `IsRevoked`, `IsExpired`, `IsActive` (محاسباتی).
+  - Concurrency: RowVersion.
+  - Constraints: `ExpiresAtUtc > CreatedAtUtc`؛ Rotation/Revocation consistency.
+  - Indexes: Unique(TokenHash)، Active با Filter `[RevokedAtUtc] IS NULL`.
+- مایگریشن‌ها: نام‌گذاری واضح و کوچک نگه‌داشتن diffs.
+- Queryها async؛ CancellationToken اجباری.
+
+################################################################################
+## 7) API و امنیت
+################################################################################
+- Controllers/Endpoints باریک؛ بدون منطق دامنه.
+- Model Binding/Validation → FluentValidation، خروجی `ProblemDetails` با map خطاها.
+- Middlewares: CorrelationId, ExceptionHandling (به Result/ProblemDetails).
+- Health Checks: SQL/Redis/Rabbit/ExternalService؛ ready/live endpoints.
+
+################################################################################
+## 8) ExternalService (Adapters)
+################################################################################
+- هر سرویس بیرونی یک Adapter با Abstraction در Contracts.
+- Timeout/Retry/Polly مناسب؛ Circuit Breaker برای سرویس‌های flaky.
+- Mapping DTOهای بیرونی به مدل داخلی (Anti-corruption Layer).
+
+################################################################################
+## 9) Logging/Observability
+################################################################################
+- EventIdهای ثابت: Tokens(Issue=30001, Refresh=30002, Revoke=30003, RevokeAll=30004, RevokeJti=30005) و برای Login/Logout.
+- ساختار لاگ: userId/deviceId/ip/correlationId.
+- هیچ‌وقت AccessTokenRaw را لاگ نکن.
+- متریک‌ها: درخواست‌های موفق/ناموفق، latency، retry counts.
+
+################################################################################
+## 10) تست‌ها (Unit / Integration / Mock / Contract)
+################################################################################
+- Unit:
+  - TokenService: rotation/reuse/concurrency.
+  - LogoutService: revoke jti / logout_all / best-effort Redis down.
+  - Validators: سناریوهای مثبت/منفی.
+- Integration:
+  - JwtBearer + blacklist checks.
+  - Rabbit consumer + DLQ.
+  - EF migrations و Queryهای کلیدی.
+- Mock/Fakes:
+  - Fake ICurrentClient برای snapshot token/device/ip.
+  - InMemory DbContext برای تست‌های سبک (یا SQLite).
+- Contract Tests برای ExternalService (ضد شکستن API بیرونی).
+
+################################################################################
+## 11) سبک کدنویسی و کیفیت
+################################################################################
+- C# 12, file-scoped namespaces, sealed classes برای سرویس‌ها.
+- async/await همه‌جا؛ CancellationToken پارامتر اجباری سرویس‌ها/هندلرها.
+- Guardها برای ورودی‌های critical؛ Result به‌جای throw در مسیر دامنه.
+- Mapperها ساده و صریح؛ از Auto-magic پرهیز مگر ارزش افزوده روشن.
+- نام‌گذاری: PascalCase برای Types/Methods؛ camelCase برای locals/params؛ suffixهای واضح (Service, Options, Request/Response/Dto).
+
+################################################################################
+## 12) Promptهای پیشنهادی برای Cursor (Inline/Agent)
+################################################################################
+# Inline (Cmd/Ctrl+K) — موضعی/کم‌هزینه
+- "Refactor this handler to use Result<T> and inject only abstractions; remove any EF/web deps."
+- "Add FluentValidation for this DTO with cascade stop and localized messages."
+- "Introduce best-effort Redis write (no throw), log warning on failure."
+- "Convert this class to sealed, add cancellation support, and guard inputs."
+
+# Agent — چندفایلی/پیچیده
+- "@Contracts @Application enforce CQRS: create LoginCommand/LoginValidator/LoginHandler returning Result<LoginResultDto>."
+- "Migrate Rabbit consumer to v7 async API with backoff (2→30s), DLX/DLQ topology, and robust Ack/Nack."
+- "Add JwtBearer OnTokenValidated checks: IsTokenRevokedAsync(jti) and IsUserTokensRevokedAsync(sub, iat) with FailClosedOnError option."
+- "EF config: ignore computed properties, add check constraints and filtered indexes for RefreshToken as per rules."
+- "Introduce LocalBlacklistCache and wire it into LogoutService + Jwt validation path."
+
+################################################################################
+## 13) ضدالگوها (DON’Ts)
+################################################################################
+- تزریق IHttpContextAccessor خارج از API.
+- دسترسی EF/DbContext در Application/Identity.
+- لاگ‌کردن توکن خام یا اطلاعات حساس.
+- مپ‌کردن پراپرتی‌های محاسباتی در EF.
+- عملیات بدون CancellationToken یا بدون هندل خطا (Redis/Rabbit).
+
+################################################################################
+## 14) چک‌لیست PR
+################################################################################
+- [ ] Dependency Rule رعایت شده؛ هیچ نشت وابستگی.
+- [ ] هندلرها فقط با Abstractions و Result کار می‌کنند.
+- [ ] مسیرهای امنیتی با best-effort و FailOpen/FailClosed محافظت شده.
+- [ ] HealthChecks برای SQL/Redis/Rabbit/External اضافه یا به‌روز است.
+- [ ] تست‌های مرتبط اضافه/به‌روز و سبزند.
+- [ ] لاگ‌ها EventId و زمینه‌ی مناسب دارند؛ هیچ داده‌ی حساس لو نرفته.

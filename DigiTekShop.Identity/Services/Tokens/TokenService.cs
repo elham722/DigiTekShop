@@ -97,7 +97,7 @@ public sealed class TokenService : ITokenService
         if (!string.IsNullOrEmpty(token.ReplacedByTokenHash))
         {
             var actives = await _db.RefreshTokens
-                .Where(t => t.UserId == token.UserId && !t.IsRevoked && t.ExpiresAtUtc > now)
+                .Where(t => t.UserId == token.UserId && t.RevokedAtUtc == null && t.ExpiresAtUtc > now)
                 .ToListAsync(ct);
             foreach (var t in actives) t.Revoke("reuse_detected", now);
             await _db.SaveChangesAsync(ct);
@@ -179,7 +179,7 @@ public sealed class TokenService : ITokenService
     {
         var now = _time.UtcNow;
         var active = await _db.RefreshTokens
-            .Where(t => t.UserId == userId && !t.IsRevoked && t.ExpiresAtUtc > now)
+            .Where(t => t.UserId == userId && t.RevokedAtUtc == null && t.ExpiresAtUtc > now)
             .ToListAsync(ct);
 
         foreach (var t in active) t.Revoke("global_logout", now);

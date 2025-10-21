@@ -3,7 +3,7 @@
     public sealed class EmailConfirmationOptions
     {
         public string BaseUrl { get; set; } = string.Empty;
-        public string ConfirmEmailPath { get; set; } = "account/confirm-email";
+        public string ConfirmEmailPath { get; set; } = "api/v1/account/confirm-email";
         public TimeSpan TokenValidity { get; set; } = TimeSpan.FromHours(24);
         public bool RequireEmailConfirmation { get; set; } = true;
         public bool AllowResendConfirmation { get; set; } = true;

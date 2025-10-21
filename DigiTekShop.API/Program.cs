@@ -107,6 +107,14 @@ builder.Services.AddRateLimiter(options =>
         o.QueueLimit = 0;
     });
 
+    options.AddFixedWindowLimiter("EmailConfirmPolicy", o =>
+    {
+        o.PermitLimit = 3;
+        o.Window = TimeSpan.FromMinutes(5);
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        o.QueueLimit = 1;
+    });
+
     static ValueTask OnRateLimitRejected(OnRejectedContext context, CancellationToken token)
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;

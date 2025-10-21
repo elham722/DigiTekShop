@@ -162,7 +162,7 @@ public sealed class EmailConfirmationService : IEmailConfirmationService
             ?? throw new InvalidOperationException("EmailConfirmation.BaseUrl is required.");
 
         var path = string.IsNullOrWhiteSpace(_opts.ConfirmEmailPath)
-            ? "account/confirm-email"
+            ? "api/v1/account/confirm-email"
             : _opts.ConfirmEmailPath!.TrimStart('/');
 
         return QueryHelpers.AddQueryString($"{baseUrl}/{path}", new Dictionary<string, string?>
