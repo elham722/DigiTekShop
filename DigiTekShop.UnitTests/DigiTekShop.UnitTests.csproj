@@ -24,6 +24,7 @@
     <ProjectReference Include="..\DigiTekShop.Application\DigiTekShop.Application.csproj" />
     <ProjectReference Include="..\DigiTekShop.Contracts\DigiTekShop.Contracts.csproj" />
     <ProjectReference Include="..\DigiTekShop.Domain\DigiTekShop.Domain.csproj" />
+    <ProjectReference Include="..\DigiTekShop.Identity\DigiTekShop.Identity.csproj" />
     <ProjectReference Include="..\DigiTekShop.SharedKernel\DigiTekShop.SharedKernel.csproj" />
   </ItemGroup>
 
