@@ -32,8 +32,8 @@ internal class UserDeviceConfiguration : IEntityTypeConfiguration<UserDevice>
             .HasMaxLength(45)        
             .IsUnicode(false);
 
-        b.Property(x => x.FirstSeenUtc).HasColumnType("datetime2(3)").IsRequired();
-        b.Property(x => x.LastSeenUtc).HasColumnType("datetime2(3)").IsRequired();
+        b.Property(x => x.FirstSeenUtc).IsRequired();
+        b.Property(x => x.LastSeenUtc).IsRequired();
 
         b.Property(x => x.IsActive).HasDefaultValue(true);
 

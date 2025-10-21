@@ -32,7 +32,6 @@
                 .IsRequired();
 
         builder.Property(u => u.LastLoginAtUtc)
-                .HasColumnType("datetime2(3)")
                 .IsRequired(false);
 
             // Configure relationships

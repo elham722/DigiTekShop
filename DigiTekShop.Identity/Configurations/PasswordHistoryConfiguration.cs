@@ -12,7 +12,6 @@ internal sealed class PasswordHistoryConfiguration : IEntityTypeConfiguration<Pa
             .IsUnicode(false);
 
         builder.Property(ph => ph.ChangedAtUtc)
-            .HasColumnType("datetime2(3)")
             .IsRequired();
 
         builder.HasIndex(ph => ph.UserId).HasDatabaseName("IX_PasswordHistory_User");

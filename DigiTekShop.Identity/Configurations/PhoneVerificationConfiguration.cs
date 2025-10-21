@@ -15,13 +15,13 @@ namespace DigiTekShop.Identity.Configurations;
                 .HasMaxLength(256);
 
             builder.Property(pv => pv.ExpiresAtUtc)
-                .HasColumnType("datetime2(3)").IsRequired();
+                .IsRequired();
 
             builder.Property(pv => pv.Attempts)
                 .HasDefaultValue(0);
 
             builder.Property(pv => pv.CreatedAtUtc)
-                .IsRequired().HasColumnType("datetime2(3)").HasDefaultValueSql("GETUTCDATE()");
+                .IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
             builder.Property(pv => pv.PhoneNumber)
                 .HasMaxLength(20)
@@ -31,7 +31,7 @@ namespace DigiTekShop.Identity.Configurations;
                 .HasDefaultValue(false);
 
             builder.Property(pv => pv.VerifiedAtUtc)
-                .HasColumnType("datetime2(3)").IsRequired(false);
+                .IsRequired(false);
 
             builder.Property(pv => pv.IpAddress)
                 .HasMaxLength(45) 

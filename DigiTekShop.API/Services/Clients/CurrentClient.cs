@@ -1,17 +1,13 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Clients;
 using DigiTekShop.Contracts.Abstractions.Identity.Token;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace DigiTekShop.API.Services.Clients;
 public sealed class CurrentClient : ICurrentClient
 {
     private readonly IHttpContextAccessor _http;
-    private readonly ITokenService _tokens;
-
-    public CurrentClient(IHttpContextAccessor http, ITokenService tokens)
-    {
-        _http = http;
-        _tokens = tokens;
-    }
+    public CurrentClient(IHttpContextAccessor http) => _http = http;
 
     public string? IpAddress
         => _http.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -37,7 +33,6 @@ public sealed class CurrentClient : ICurrentClient
         }
     }
 
-
     private bool _parsed;
     private string? _raw;
     private string? _jti;
@@ -61,14 +56,31 @@ public sealed class CurrentClient : ICurrentClient
         var raw = auth[prefix.Length..].Trim();
         if (string.IsNullOrWhiteSpace(raw)) return;
 
-        var p = _tokens.TryReadAccessToken(raw);
-        if (!p.ok) return;
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(raw); 
 
-        _raw = raw;
-        _jti = p.jti;
-        _sub = p.sub;
-        _iatUtc = p.iatUtc;
-        _expUtc = p.expUtc;
+            _raw = raw;
+            _jti = jwt.Id;
+
+            var subStr = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub
+                                                     || c.Type == ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(subStr, out var g)) _sub = g;
+
+            var iatStr = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Iat)?.Value;
+            if (long.TryParse(iatStr, out var iatUnix))
+                _iatUtc = DateTimeOffset.FromUnixTimeSeconds(iatUnix).UtcDateTime;
+
+            var expStr = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Exp)?.Value;
+            if (long.TryParse(expStr, out var expUnix))
+                _expUtc = DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
+            else if (jwt.ValidTo != default)
+                _expUtc = jwt.ValidTo.ToUniversalTime();
+        }
+        catch
+        {
+        }
     }
 
     public string? AccessTokenRaw { get { EnsureParsedOnce(); return _raw; } }

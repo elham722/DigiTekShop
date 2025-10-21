@@ -29,7 +29,6 @@ public class LoginAttemptConfiguration : IEntityTypeConfiguration<LoginAttempt>
 
         builder.Property(la => la.AttemptedAt)
             .IsRequired()
-            .HasColumnType("datetime2(3)")
             .HasDefaultValueSql("GETUTCDATE()");
 
         builder.Property(la => la.Status)

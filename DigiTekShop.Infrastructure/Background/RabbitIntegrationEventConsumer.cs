@@ -18,7 +18,11 @@ public sealed class RabbitIntegrationEventConsumer : BackgroundService
 
     private IConnection? _conn;
     private IChannel? _ch;
-    private string _queue = "digitekshop.integration.q";
+    private readonly string _queue = "digitekshop.integration.q";
+
+    
+    private static readonly TimeSpan _minDelay = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan _maxDelay = TimeSpan.FromSeconds(30);
 
     public RabbitIntegrationEventConsumer(
         IOptions<RabbitMqOptions> options,
@@ -32,6 +36,36 @@ public sealed class RabbitIntegrationEventConsumer : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var delay = _minDelay;
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await ConnectAndStartConsumingAsync(stoppingToken);
+
+              
+                await WaitUntilDisconnectedAsync(stoppingToken);
+
+              
+                delay = _minDelay;
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break; 
+            }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "[RMQ] connect/consume failed. Retrying...");
+                await Task.Delay(delay, stoppingToken);
+                
+                delay = TimeSpan.FromSeconds(Math.Min(_maxDelay.TotalSeconds, delay.TotalSeconds * 2));
+            }
+        }
+    }
+
+    private ConnectionFactory CreateFactory()
+    {
         var factory = new ConnectionFactory
         {
             HostName = _opt.HostName,
@@ -39,37 +73,62 @@ public sealed class RabbitIntegrationEventConsumer : BackgroundService
             VirtualHost = _opt.VirtualHost,
             UserName = _opt.UserName,
             Password = _opt.Password,
+
             AutomaticRecoveryEnabled = true,
-            TopologyRecoveryEnabled = true
+            TopologyRecoveryEnabled = true,
+
+            RequestedHeartbeat = TimeSpan.FromSeconds(30),
+            NetworkRecoveryInterval = TimeSpan.FromSeconds(5),
+
         };
+
         if (_opt.UseSsl)
         {
             factory.Ssl = new SslOption
             {
                 Enabled = true,
-                ServerName = _opt.HostName, // یا CN گواهی
-                AcceptablePolicyErrors = System.Net.Security.SslPolicyErrors.None // فقط برای dev
+                ServerName = _opt.HostName,
+                AcceptablePolicyErrors = System.Net.Security.SslPolicyErrors.None
             };
         }
-        _conn = await factory.CreateConnectionAsync();
-        _ch = await _conn.CreateChannelAsync();
 
-        // declare exchange/queues (v7: Async API)
-        await _ch.ExchangeDeclareAsync(_opt.Exchange, _opt.ExchangeType, durable: _opt.Durable);
+        return factory;
+    }
 
-        // DLX/DLQ (اختیاری)
-        await _ch.ExchangeDeclareAsync("digitekshop.dlx", "fanout", durable: true);
-        await _ch.QueueDeclareAsync("digitekshop.dlq", durable: true, exclusive: false, autoDelete: false);
-        await _ch.QueueBindAsync("digitekshop.dlq", "digitekshop.dlx", routingKey: "");
+    private async Task ConnectAndStartConsumingAsync(CancellationToken ct)
+    {
+      
+        await SafeCloseAsync();
 
-        var args = new Dictionary<string, object> { ["x-dead-letter-exchange"] = "digitekshop.dlx" };
-        await _ch.QueueDeclareAsync(_queue, durable: true, exclusive: false, autoDelete: false, arguments: args);
-        await _ch.QueueBindAsync(_queue, _opt.Exchange, routingKey: "#");
+        var factory = CreateFactory();
 
-        // QoS
-        await _ch.BasicQosAsync(0, prefetchCount: 10, global: false);
+        _log.LogInformation("[RMQ] Connecting to {Host}:{Port} vhost={VHost} ...", _opt.HostName, _opt.Port, _opt.VirtualHost);
 
-        // مصرف‌کننده async
+        _conn = await factory.CreateConnectionAsync(ct);
+        _conn.ConnectionShutdownAsync += OnConnectionShutdownAsync;
+
+        
+        _ch = await _conn.CreateChannelAsync(null, ct);
+
+        
+        await _ch.ExchangeDeclareAsync(_opt.Exchange, _opt.ExchangeType, durable: _opt.Durable, cancellationToken: ct);
+
+        
+        const string dlx = "digitekshop.dlx";
+        const string dlq = "digitekshop.dlq";
+
+        await _ch.ExchangeDeclareAsync(dlx, "fanout", durable: true, cancellationToken: ct);
+        await _ch.QueueDeclareAsync(dlq, durable: true, exclusive: false, autoDelete: false, cancellationToken: ct);
+        await _ch.QueueBindAsync(dlq, dlx, routingKey: "", cancellationToken: ct);
+
+        var args = new Dictionary<string, object> { ["x-dead-letter-exchange"] = dlx };
+        await _ch.QueueDeclareAsync(_queue, durable: true, exclusive: false, autoDelete: false, arguments: args, cancellationToken: ct);
+        await _ch.QueueBindAsync(_queue, _opt.Exchange, routingKey: "#", cancellationToken: ct);
+
+        
+        await _ch.BasicQosAsync(0, prefetchCount: 10, global: false, cancellationToken: ct);
+
+        
         var consumer = new AsyncEventingBasicConsumer(_ch);
         consumer.ReceivedAsync += async (_, ea) =>
         {
@@ -80,17 +139,23 @@ public sealed class RabbitIntegrationEventConsumer : BackgroundService
                 var type = doc.RootElement.GetProperty("type").GetString()!;
                 var payload = doc.RootElement.GetProperty("payload").GetRawText();
 
-                await _dispatcher.DispatchAsync(type, payload, stoppingToken);
-                await _ch!.BasicAckAsync(ea.DeliveryTag, multiple: false);
+                await _dispatcher.DispatchAsync(type, payload, ct);
+
+                if (_ch is not null)
+                    await _ch.BasicAckAsync(ea.DeliveryTag, multiple: false, cancellationToken: ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // ignore on shutdown
             }
             catch (Exception ex)
             {
-                _log.LogError(ex, "[RMQ v7] Consume error. Nack -> DLQ");
-                await _ch!.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
+                _log.LogError(ex, "[RMQ] Consume error. Nack -> DLQ");
+                if (_ch is not null)
+                    await _ch.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false, cancellationToken: ct);
             }
         };
 
-        // در v7 متدِ مصرف هم Async است
         await _ch.BasicConsumeAsync(
             queue: _queue,
             autoAck: false,
@@ -99,19 +164,56 @@ public sealed class RabbitIntegrationEventConsumer : BackgroundService
             exclusive: false,
             arguments: null,
             consumer: consumer,
-            cancellationToken: stoppingToken);
+            cancellationToken: ct);
 
-        _log.LogInformation("[RMQ v7] Consumer started on queue {Queue}", _queue);
+        _log.LogInformation("[RMQ] Consumer started on queue {Queue}", _queue);
+    }
 
-        // زنده نگه داشتن سرویس
-        while (!stoppingToken.IsCancellationRequested)
-            await Task.Delay(1000, stoppingToken);
+    private Task OnConnectionShutdownAsync(object sender, ShutdownEventArgs args)
+    {
+        _log.LogWarning("[RMQ] Connection shutdown: {ReplyText} ({ReplyCode})", args.ReplyText, args.ReplyCode);
+        return Task.CompletedTask;
+    }
+
+    private async Task WaitUntilDisconnectedAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            if (_conn is null || !_conn.IsOpen || _ch is null || !_ch.IsOpen)
+                break;
+
+            await Task.Delay(TimeSpan.FromSeconds(2), ct);
+        }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        try { if (_ch is not null) await _ch.CloseAsync(); } catch { }
-        try { if (_conn is not null) await _conn.CloseAsync(); } catch { }
+        await SafeCloseAsync();
         await base.StopAsync(cancellationToken);
+    }
+
+    private async Task SafeCloseAsync()
+    {
+        try
+        {
+            if (_ch is not null)
+            {
+                try { await _ch.CloseAsync(); } catch { }
+                try { await _ch.DisposeAsync(); } catch { }
+            }
+        }
+        catch { }
+        finally { _ch = null; }
+
+        try
+        {
+            if (_conn is not null)
+            {
+                try { await _conn.CloseAsync(); } catch { }
+                _conn.Dispose();
+            }
+        }
+        catch { }
+        finally { _conn = null; }
     }
 }

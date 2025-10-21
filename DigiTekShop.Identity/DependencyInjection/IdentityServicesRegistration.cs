@@ -11,6 +11,7 @@ using DigiTekShop.Contracts.Options.Security;
 using DigiTekShop.Contracts.Options.Token;
 using DigiTekShop.Identity.Services.Device;
 using DigiTekShop.Identity.Services.Logout;
+using DigiTekShop.Identity.Services.Me;
 using DigiTekShop.Identity.Services.Mfa;
 using DigiTekShop.Identity.Services.Permission;
 
@@ -114,6 +115,9 @@ public static class IdentityServicesRegistration
         services.AddScoped<IMfaService, MfaService>();
 
         services.AddScoped<ILogoutService, LogoutService>();
+
+        services.AddScoped<IMeService,MeService>();
+
 
         #endregion
 
