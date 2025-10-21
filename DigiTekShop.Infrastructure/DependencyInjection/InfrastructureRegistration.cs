@@ -58,12 +58,6 @@ public static class InfrastructureRegistration
         services.AddHealthChecks().AddRedis(redisCs, name: "redis");
 
 
-        
-
-       
-
-
-        // Bus (فعلاً لاگ؛ بعداً Rabbit/Kafka/Redis جایگزین کن)
         services.Configure<RabbitMqOptions>(config.GetSection("RabbitMq"));
         services.AddSingleton<IMessageBus, RabbitMqMessageBus>();
 

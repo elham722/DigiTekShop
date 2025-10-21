@@ -29,7 +29,7 @@ public sealed class RegistrationController : ControllerBase
         var result = await _sender.Send(new RegisterUserCommand(request), ct);
 
         return this.ToActionResult(result, createdLocationFactory: data =>
-            Url.ActionLink(action: "GetUserById", controller: "UsersQuery", values: new { version = "1.0", id = data.UserId })
+            Url.ActionLink(action: "", controller: "UsersQuery", values: new { version = "1.0", id = data.UserId })
         );
     }
 
