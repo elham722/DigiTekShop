@@ -5,7 +5,7 @@ public sealed class LogoutAllCommandValidator : AbstractValidator<LogoutAllComma
     {
         RuleLevelCascadeMode = CascadeMode.Stop;
 
-        RuleFor(x => x.Dto).NotNull();
+        RuleFor(x => x.Dto.UserId).NotEmpty().WithMessage("userId الزامی است.");
         RuleFor(x => x.Dto.Reason).MaximumLength(512);
     }
 }

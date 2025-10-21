@@ -5,8 +5,8 @@ public sealed class LogoutCommandValidator : AbstractValidator<LogoutCommand>
     {
         RuleLevelCascadeMode = CascadeMode.Stop;
 
-        RuleFor(x => x.Dto).NotNull();
+        RuleFor(x => x.Dto.UserId).NotEmpty();
 
-        RuleFor(x => x.Dto.RefreshToken).MaximumLength(4096);
+        RuleFor(x => x.Dto.RefreshToken).NotEmpty().WithMessage("refresh_token الزامی است.").MaximumLength(4096);
     }
 }

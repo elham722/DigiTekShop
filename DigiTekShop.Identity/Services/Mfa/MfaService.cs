@@ -1,5 +1,7 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Identity.Device;
+using DigiTekShop.Contracts.Abstractions.Identity.Mfa;
 using DigiTekShop.Contracts.DTOs.Auth.Login;
+using DigiTekShop.Contracts.DTOs.Auth.Mfa;
 using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.SharedKernel.Enums.Auth;
 

@@ -7,6 +7,8 @@ public interface ITokenService
     Task<Result> RevokeAsync(string? refreshToken, Guid userId, CancellationToken ct); 
     Task<Result> RevokeAllAsync(Guid userId, CancellationToken ct);
     Task<Result> RevokeAccessJtiAsync(string jti, CancellationToken ct);
+
+    (bool ok, string? jti, Guid? sub, DateTime? iatUtc, DateTime? expUtc) TryReadAccessToken(string token);
 }
 
 

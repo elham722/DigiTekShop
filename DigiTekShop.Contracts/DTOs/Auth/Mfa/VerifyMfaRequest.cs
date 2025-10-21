@@ -1,6 +1,6 @@
 ﻿using DigiTekShop.SharedKernel.Enums.Auth;
 
-namespace DigiTekShop.Contracts.DTOs.Auth.Login;
+namespace DigiTekShop.Contracts.DTOs.Auth.Mfa;
 
 public sealed record VerifyMfaRequest
 {

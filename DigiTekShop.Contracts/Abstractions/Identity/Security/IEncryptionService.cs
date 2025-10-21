@@ -1,6 +1,6 @@
 ﻿using DigiTekShop.SharedKernel.Enums.Security;
 
-namespace DigiTekShop.Contracts.Abstractions.Identity.Encryption;
+namespace DigiTekShop.Contracts.Abstractions.Identity.Security;
 public interface IEncryptionService
 {
     string Encrypt(string plainText, CryptoPurpose purpose = CryptoPurpose.TotpSecret);

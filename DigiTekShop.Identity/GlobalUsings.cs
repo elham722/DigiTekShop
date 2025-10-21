@@ -3,7 +3,6 @@ global using DigiTekShop.Contracts.Abstractions.Caching;
 global using DigiTekShop.Contracts.Abstractions.Clients;
 global using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 global using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
-global using DigiTekShop.Contracts.Abstractions.Identity.Encryption;
 global using DigiTekShop.Contracts.Abstractions.Identity.Lockout;
 global using DigiTekShop.Contracts.Abstractions.Identity.Password;
 global using DigiTekShop.Contracts.Abstractions.Identity.Permission;

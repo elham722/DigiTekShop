@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
+﻿using DigiTekShop.Contracts.Abstractions.Identity.Mfa;
 using DigiTekShop.Contracts.DTOs.Auth.Login;
 
 namespace DigiTekShop.Application.Auth.Mfa.Command;

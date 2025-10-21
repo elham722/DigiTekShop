@@ -62,7 +62,7 @@ public sealed class TokenService : ITokenService
             parentTokenHash: null,
             createdAtUtc: _time.UtcNow);
 
-        
+
         _db.RefreshTokens.Add(rt);
         await _db.SaveChangesAsync(ct);
 
@@ -90,7 +90,10 @@ public sealed class TokenService : ITokenService
         var token = await _db.RefreshTokens
             .Include(t => t.User)
             .FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
-      
+
+        if (token is null || token.User is null)
+            return Result<RefreshTokenResponse>.Failure(ErrorCodes.Identity.INVALID_TOKEN);
+
         if (!string.IsNullOrEmpty(token.ReplacedByTokenHash))
         {
             var actives = await _db.RefreshTokens
@@ -104,13 +107,10 @@ public sealed class TokenService : ITokenService
         }
 
 
-        if (token is null || token.User is null)
-            return Result<RefreshTokenResponse>.Failure(ErrorCodes.Identity.INVALID_TOKEN);
-
         if (!token.IsActive)
             return Result<RefreshTokenResponse>.Failure(ErrorCodes.Identity.TOKEN_REVOKED);
 
-        
+
         token.MarkAsUsed(now);
         token.Revoke("rotated", now);
 
@@ -163,7 +163,7 @@ public sealed class TokenService : ITokenService
         var token = await _db.RefreshTokens
             .FirstOrDefaultAsync(t => t.TokenHash == hash && t.UserId == userId, ct);
 
-        if (token is null) return Result.Success(); 
+        if (token is null) return Result.Success();
 
         if (!token.IsRevoked)
         {
@@ -197,10 +197,52 @@ public sealed class TokenService : ITokenService
         return Result.Success();
     }
 
+
+    public (bool ok, string? jti, Guid? sub, DateTime? iatUtc, DateTime? expUtc) TryReadAccessToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return (false, null, null, null, null);
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+
+            var jwt = handler.ReadJwtToken(token);
+            if (jwt is null) return (false, null, null, null, null);
+
+            string? jti = jwt.Id;
+            Guid? sub = null;
+            DateTime? iatUtc = null;
+            DateTime? expUtc = null;
+
+
+            var subStr = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub
+                                                        || c.Type == ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(subStr, out var g)) sub = g;
+
+
+            var iatStr = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Iat)?.Value;
+            if (long.TryParse(iatStr, out var iatUnix))
+                iatUtc = DateTimeOffset.FromUnixTimeSeconds(iatUnix).UtcDateTime;
+
+            var expStr = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Exp)?.Value;
+            if (long.TryParse(expStr, out var expUnix))
+                expUtc = DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
+            else if (jwt.ValidTo != default)
+                expUtc = jwt.ValidTo.ToUniversalTime();
+
+            return (true, jti, sub, iatUtc, expUtc);
+        }
+        catch
+        {
+            return (false, null, null, null, null);
+        }
+    }
+
     #region Helpers
 
     private (string token, DateTimeOffset expiresAt, DateTimeOffset issuedAt, string jti)
-       CreateAccessToken(User user)
+        CreateAccessToken(User user)
     {
         var now = _time.UtcNow;
         var expires = now.AddMinutes(_jwt.AccessTokenExpirationMinutes);
@@ -225,7 +267,7 @@ public sealed class TokenService : ITokenService
             issuer: _jwt.Issuer,
             audience: _jwt.Audience,
             claims: claims,
-            notBefore: now,    
+            notBefore: now,
             expires: expires,
             signingCredentials: creds);
 
@@ -262,6 +304,5 @@ public sealed class TokenService : ITokenService
     private static long ToUnix(DateTimeOffset dt) => (long)(dt - DateTimeOffset.UnixEpoch).TotalSeconds;
 
     #endregion
-
 
 }

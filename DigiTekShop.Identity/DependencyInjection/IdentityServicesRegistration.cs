@@ -2,6 +2,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using DigiTekShop.Contracts.Abstractions.Identity.Device;
+using DigiTekShop.Contracts.Abstractions.Identity.Mfa;
 using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.Contracts.Options.Email;
 using DigiTekShop.Contracts.Options.Password;
@@ -9,6 +10,8 @@ using DigiTekShop.Contracts.Options.Phone;
 using DigiTekShop.Contracts.Options.Security;
 using DigiTekShop.Contracts.Options.Token;
 using DigiTekShop.Identity.Services.Device;
+using DigiTekShop.Identity.Services.Logout;
+using DigiTekShop.Identity.Services.Mfa;
 using DigiTekShop.Identity.Services.Permission;
 
 namespace DigiTekShop.Identity.DependencyInjection;
@@ -107,6 +110,10 @@ public static class IdentityServicesRegistration
         services.AddScoped<IPermissionEvaluatorService, PermissionEvaluatorService>();
 
         services.AddScoped<IIdentityGateway, IdentityGateway>();
+
+        services.AddScoped<IMfaService, MfaService>();
+
+        services.AddScoped<ILogoutService, LogoutService>();
 
         #endregion
 

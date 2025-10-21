@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Contracts.DTOs.Auth.Login;
+﻿using DigiTekShop.Contracts.DTOs.Auth.Mfa;
+
+namespace DigiTekShop.Contracts.DTOs.Auth.Login;
 
 public sealed record LoginResultDto
 {
