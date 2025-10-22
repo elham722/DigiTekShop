@@ -7,6 +7,7 @@ using DigiTekShop.Contracts.Options.Password;
 using DigiTekShop.Contracts.Options.Phone;
 using DigiTekShop.Contracts.Options.Security;
 using DigiTekShop.Contracts.Options.Token;
+using ApiBehaviorOptions = Microsoft.AspNetCore.Mvc.ApiBehaviorOptions;
 
 namespace DigiTekShop.API.Extensions.Options
 {
@@ -36,7 +37,9 @@ namespace DigiTekShop.API.Extensions.Options
             services.AddOptions<DeviceLimitsOptions>().Bind(cfg.GetSection("DeviceLimits"));
 
             // API
-            services.AddOptions<ApiOptions>().Bind(cfg.GetSection("ApiOptions"));
+            services.AddOptions<ApiMetadataOptions>().Bind(cfg.GetSection("Api:Metadata"));
+            services.AddOptions<ApiBehaviorOptions>().Bind(cfg.GetSection("Api:Behavior"));
+
             services.AddOptions<ReverseProxyOptions>().Bind(cfg.GetSection("ReverseProxy"));
 
             services.AddOptions<LoginFlowOptions>().Bind(cfg.GetSection("Auth:LoginFlow"));
