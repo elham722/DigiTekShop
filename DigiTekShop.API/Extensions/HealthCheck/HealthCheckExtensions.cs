@@ -16,11 +16,6 @@ public static class HealthCheckExtensions
                 failureStatus: HealthStatus.Unhealthy,
                 tags: new[] { "database", "infrastructure" },
                 timeout: TimeSpan.FromSeconds(3))
-            .AddCheck<RedisHealthCheck>(
-                name: "redis",
-                failureStatus: HealthStatus.Unhealthy,
-                tags: new[] { "redis", "infrastructure" },
-                timeout: TimeSpan.FromSeconds(2))
             .AddCheck<RabbitMQHealthCheck>(
                 name: "rabbitmq",
                 failureStatus: HealthStatus.Unhealthy,
