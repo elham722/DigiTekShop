@@ -465,5 +465,3 @@ document.addEventListener('DOMContentLoaded', () => {
     new LoginForm();
 });
 
-// Export for potential external use
-window.LoginForm = LoginForm;
