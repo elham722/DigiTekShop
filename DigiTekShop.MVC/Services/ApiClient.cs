@@ -136,7 +136,7 @@ internal sealed class ApiClient : IApiClient
         catch (Exception ex) { return FailFromUnknown<Unit>(path, ex); }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    #region Helpers
 
     private static StringContent CreateJson<T>(T data)
         => new(JsonSerializer.Serialize(data, Json), Encoding.UTF8, "application/json");
@@ -157,21 +157,29 @@ internal sealed class ApiClient : IApiClient
         // 204/205
         if (code is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
         {
-            return status is >= 200 and < 300
-                ? ApiResult<T>.Ok(typeof(T) == typeof(Unit) ? (T)(object)Unit.Value : default!, code)
-                : ApiResult<T>.Fail(new ProblemDetails { Title = "Empty response", Status = status, Detail = path }, code);
+            return ApiResult<T>.Ok(typeof(T) == typeof(Unit) ? (T)(object)Unit.Value : default!, code);
         }
 
+
         var media = resp.Content?.Headers.ContentType?.MediaType ?? "";
-        var isJson = media.Contains("json", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(media);
+        var isJson = media.Contains("json", StringComparison.OrdinalIgnoreCase)
+                     || string.IsNullOrWhiteSpace(media);
 
-        if (status is >= 200 and < 300)
+        if (resp.IsSuccessStatusCode)
         {
-            if (typeof(T) == typeof(Unit))
-                return ApiResult<T>.Ok((T)(object)Unit.Value, code);
-
             if (!isJson)
                 return ApiResult<T>.Fail(new ProblemDetails { Title = "Unexpected content-type", Status = status, Detail = media }, code);
+
+            try
+            {
+                var env = await resp.Content!.ReadFromJsonAsync<ApiEnvelope<T>>(Json);
+                if (env is not null)
+                    return ApiResult<T>.Ok(env.Data!, code);
+            }
+            catch
+            {
+                // ignore
+            }
 
             try
             {
@@ -180,12 +188,11 @@ internal sealed class ApiClient : IApiClient
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to deserialize success response from {Path}", path);
+                _logger.LogWarning(ex, "Failed to deserialize success response from {Path} into ApiEnvelope<{Type}> or {Type}", path, typeof(T).Name);
                 return ApiResult<T>.Fail(new ProblemDetails { Title = "Invalid JSON", Status = status, Detail = "Deserialization failed" }, code);
             }
         }
 
-        // Non-success
         if (isJson)
         {
             try
@@ -202,14 +209,14 @@ internal sealed class ApiClient : IApiClient
         return ApiResult<T>.Fail(problem, code);
     }
 
+
     private ApiResult<T> FailFromCancel<T>(string path, TaskCanceledException tce)
     {
-        // HttpClient.Timeout or RequestAborted
         var pd = new ProblemDetails
         {
             Title = "Request cancelled or timed out",
             Detail = tce.InnerException?.Message ?? tce.Message,
-            Status = StatusCodes.Status499ClientClosedRequest // نزدیک‌ترین معنا؛ یا 408 اگر ترجیح می‌دی
+            Status = StatusCodes.Status499ClientClosedRequest
         };
         _logger.LogWarning(tce, "HTTP cancelled at {Path}", path);
         return ApiResult<T>.Fail(pd, (HttpStatusCode)pd.Status!.Value);
@@ -242,4 +249,6 @@ internal sealed class ApiClient : IApiClient
 
     private static string Truncate(string? s, int max)
         => string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= max ? s : s[..max]);
+
+    #endregion
 }

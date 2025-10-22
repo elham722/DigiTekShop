@@ -22,3 +22,5 @@ public readonly record struct Unit
 }
 
 public sealed record FormFilePart(string Name, string FileName, Stream Content, string? ContentType = null);
+
+internal sealed record ApiEnvelope<T>(T? Data, string? TraceId, DateTimeOffset? Timestamp);
