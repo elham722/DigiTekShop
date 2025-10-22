@@ -5,99 +5,106 @@
     var returnUrl = (string?)ViewData["ReturnUrl"] ?? string.Empty;
 }
 
-<h1 class="mb-4">Sign in</h1>
+<link rel="stylesheet" href="~/css/login-enhanced.css" />
+<script src="~/js/login-enhanced.js" defer></script>
 
-<form asp-action="Login" method="post" novalidate class="max-w-md" id="login-form">
-    @Html.AntiForgeryToken()
-    <input type="hidden" name="returnUrl" value="@returnUrl" />
+<div class="page-root">
+    <div class="center-wrap">
+        <div class="auth-card">
 
-    <div class="validation-summary text-danger mb-3">
-        @Html.ValidationSummary(excludePropertyErrors: true, message: null)
-    </div>
+            <!-- LEFT: form -->
+            <div class="auth-left">
+                <div class="logo">فروشگاه من</div>
+                <div class="subtitle">خوش آمدید!</div>
+                <h1 class="title">ورود</h1>
 
-    <div class="mb-3">
-        <label asp-for="Login" class="form-label">Email or Username</label>
-        <input asp-for="Login" class="form-control" autocomplete="username" />
-        <span asp-validation-for="Login" class="text-danger"></span>
-    </div>
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-bottom: 20px;">
+                        <i class="fas fa-check-circle me-2"></i>
+                        @TempData["SuccessMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
 
-    <div class="mb-3">
-        <label asp-for="Password" class="form-label">Password</label>
-        <div class="input-group">
-            <input asp-for="Password" class="form-control" autocomplete="current-password" type="password" id="password-input" />
-            <button type="button" class="btn btn-outline-secondary" id="toggle-password" aria-label="Show password">Show</button>
+                <form asp-action="Login" method="post" novalidate class="max-w-md" id="login-form">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="validation-summary text-danger mb-3">
+                        @Html.ValidationSummary(excludePropertyErrors: true, message: null)
+                    </div>
+
+                    <label class="field-label" for="EmailOrUsername">ایمیل یا نام کاربری</label>
+                    <input id="EmailOrUsername"
+                           name="EmailOrUsername"
+                           type="text"
+                           placeholder="ایمیل یا نام کاربری خود را وارد کنید"
+                           required
+                           class="input"
+                           autocomplete="username"
+                           aria-describedby="email-error" />
+
+                    <div class="password-row">
+                        <label class="field-label" for="passwordInput">رمز عبور</label>
+                        <a class="forgot-link" href="#" role="button" tabindex="0">فراموشی رمز عبور؟</a>
+                    </div>
+
+                    <div class="password-wrapper">
+                        <input id="passwordInput"
+                               name="Password"
+                               type="password"
+                               placeholder="رمز عبور خود را وارد کنید"
+                               required
+                               class="input"
+                               autocomplete="current-password"
+                               aria-describedby="password-error" />
+                        <button type="button"
+                                id="togglePassword"
+                                class="eye-btn closed"
+                                aria-label="نمایش رمز عبور"
+                                tabindex="0"></button>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        <span>ورود</span>
+                    </button>
+
+                    <div class="divider">یا ادامه با</div>
+
+                    <div class="socials">
+                        <button type="button" class="social-btn google" aria-label="ورود با گوگل" role="button" tabindex="0">
+                            <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+                                <path fill="#EA4335" d="M24 9.5v8.5h12.5C36 20 30 14 24 9.5z" />
+                                <path fill="#34A853" d="M9.5 24c0-2 0.4-3.9 1.1-5.6L5.3 13A22.2 22.2 0 002.5 24c0 3.6 0.9 7 2.7 9.9l5.3-5.4A14.2 14.2 0 019.5 24z" />
+                            </svg>
+                            <span>گوگل</span>
+                        </button>
+
+                        <button type="button" class="social-btn github" aria-label="ورود با گیت‌هاب" role="button" tabindex="0">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 .5a12 12 0 00-3.8 23.4c.6.1.8-.2.8-.6v-2.2c-3 .7-3.6-1.4-3.6-1.4-.5-1.3-1.2-1.6-1.2-1.6-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 .1 1.6.7 2 1.1.4.7 1.2.8 1.9.6a3.9 3.9 0 01.9-2.6c-2.4-.3-4.9-1.2-4.9-5.3 0-1.1.4-2 1.1-2.8-.2-.3-.5-1.4.1-2.9 0 0 .9-.3 3 .9a10.3 10.3 0 015.5 0c2-.1 3-.9 3-.9.6 1.5.3 2.6.1 2.9.7.8 1.1 1.7 1.1 2.8 0 4.1-2.5 5-4.9 5.3.7.6 1.3 1.8 1.3 3.6v5.3c0 .4.2.7.9.6A12 12 0 0012 .5z" />
+                            </svg>
+                            <span>گیت‌هاب</span>
+                        </button>
+
+                        <button type="button" class="social-btn facebook" aria-label="ورود با فیسبوک" role="button" tabindex="0">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2">
+                                <path d="M22 12.07C22 6.48 17.52 2 12 2S2 6.48 2 12.07c0 4.99 3.66 9.12 8.44 9.93v-7.03H8.07v-2.9h2.37V9.8c0-2.34 1.39-3.62 3.52-3.62 1.02 0 2.09.18 2.09.18v2.3h-1.18c-1.17 0-1.53.73-1.53 1.48v1.78h2.6l-.42 2.9h-2.18v7.03C18.34 21.19 22 17.06 22 12.07z" />
+                            </svg>
+                            <span>فیسبوک</span>
+                        </button>
+                    </div>
+
+                    <div class="signup-msg">حساب کاربری ندارید؟ <a href="/Auth/Register">رایگان ثبت‌نام کنید</a></div>
+                </form>
+            </div>
+
+            <div class="auth-right">
+                <div class="image-frame">
+                    <img alt="Right illustration" id="rightImage" src="~/images/caractermanforlogin.png" />
+                </div>
+            </div>
+
         </div>
-        <span asp-validation-for="Password" class="text-danger"></span>
     </div>
-
-    <div class="form-check mb-3">
-        <input asp-for="RememberMe" class="form-check-input" />
-        <label asp-for="RememberMe" class="form-check-label">Remember this device</label>
-    </div>
-
-    @* اگر کپچا داری، مقدار توکن رو اینجا بگذار *@
-    @* <input asp-for="CaptchaToken" type="hidden" id="captcha-token" /> *@
-
-    <div class="d-grid gap-2">
-        <button type="submit" class="btn btn-primary" id="submit-btn">
-            Sign in
-        </button>
-    </div>
-
-    <div class="mt-3">
-        @* لینک‌های انتخابی *@
-        @* <a asp-controller="Auth" asp-action="ForgotPassword">Forgot your password?</a> *@
-    </div>
-</form>
-
-@section Scripts {
-    <!-- unobtrusive validation -->
-    <partial name="_ValidationScriptsPartial" />
-
-    <script>
-        (function () {
-            const form = document.getElementById('login-form');
-            const submitBtn = document.getElementById('submit-btn');
-            const pwd = document.getElementById('password-input');
-            const toggle = document.getElementById('toggle-password');
-
-            // Disable submit on submit to prevent double-post
-            form.addEventListener('submit', function () {
-                submitBtn.disabled = true;
-                submitBtn.innerText = 'Signing in...';
-            });
-
-            // Show/Hide password
-            toggle.addEventListener('click', function () {
-                const showing = pwd.getAttribute('type') === 'text';
-                pwd.setAttribute('type', showing ? 'password' : 'text');
-                toggle.textContent = showing ? 'Show' : 'Hide';
-                toggle.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-            });
-
-            // اگر کپچا داری، قبل از submit مقدار CaptchaToken را پر کن
-            // example:
-            // grecaptcha.ready(function() {
-            //   grecaptcha.execute('site-key', {action: 'login'}).then(function(token) {
-            //     document.getElementById('captcha-token').value = token;
-            //   });
-            // });
-        })();
-    </script>
-}
-
-<style>
-    /* استایل‌های ساده؛ اگر Bootstrap داری می‌تونی حذف کنی */
-    .max-w-md {
-        max-width: 420px;
-    }
-
-    .form-label {
-        font-weight: 600;
-    }
-
-    .validation-summary ul {
-        margin: 0;
-        padding-left: 1rem;
-    }
-</style>
+</div>
