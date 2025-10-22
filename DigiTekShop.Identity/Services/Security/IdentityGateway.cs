@@ -108,6 +108,13 @@ public sealed class IdentityGateway : IIdentityGateway
         return Task.Delay(Random.Shared.Next(120, 200), ct);
     }
 
+    
+    public async Task ResetAccessFailedAsync(AppUser user, CancellationToken ct)
+    {
+        var u = await _users.FindByIdAsync(user.Id.ToString());
+        if (u is not null) await _users.ResetAccessFailedCountAsync(u);
+    }
+
     #region Helpers
 
     private static AppUser Map(User u) =>

@@ -1,9 +1,4 @@
-using DigiTekShop.MVC.Models;
-using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
-
-namespace DigiTekShop.MVC.Controllers
-{
+namespace DigiTekShop.MVC.Controllers.Home;
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
@@ -29,4 +24,3 @@ namespace DigiTekShop.MVC.Controllers
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
     }
-}

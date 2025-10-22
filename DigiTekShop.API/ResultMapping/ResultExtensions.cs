@@ -19,29 +19,22 @@ public static class ResultToActionResultExtensions
             var traceId = GetTraceId(c.HttpContext);
             var payload = result.Value;
 
-            
             if (createdLocationFactory is not null && payload is not null)
             {
                 var location = createdLocationFactory(payload);
                 if (!string.IsNullOrWhiteSpace(location))
-                {
-                    return c.Created(location!, new ApiResponse<T?>(payload, TraceId: traceId, Timestamp: DateTimeOffset.UtcNow));
-                }
-                
-                return c.StatusCode(StatusCodes.Status201Created,
-                    new ApiResponse<T?>(payload, TraceId: traceId, Timestamp: DateTimeOffset.UtcNow));
+                    return c.Created(location, new ApiResponse<T?>(payload, TraceId: traceId, Timestamp: DateTimeOffset.UtcNow));
             }
 
             return c.StatusCode(okStatus, new ApiResponse<T?>(payload, TraceId: traceId, Timestamp: DateTimeOffset.UtcNow));
         }
 
-        
         var info = ErrorCatalog.Resolve(result.ErrorCode);
         var pd = BuildProblemDetails(c.HttpContext!, info.HttpStatus, info.Code, info.DefaultMessage, result.Errors);
         return c.StatusCode(info.HttpStatus, pd).WithProblemContentType();
     }
 
-    
+
     public static IActionResult ToActionResult(this ControllerBase c, Result result, int okStatus = StatusCodes.Status204NoContent)
     {
         if (result.IsSuccess) return c.StatusCode(okStatus);

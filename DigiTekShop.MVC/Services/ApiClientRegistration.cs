@@ -56,34 +56,33 @@ public static class ApiClientRegistration
                     durationOfBreak: TimeSpan.FromSeconds(optSnap.CircuitDurationSeconds));
 
         services.AddHttpClient<IApiClient, ApiClient>((sp, http) =>
-        {
-            var opt = sp.GetRequiredService<IOptions<ApiClientOptions>>().Value;
-            http.BaseAddress = new Uri(opt.BaseAddress.TrimEnd('/') + "/");
-            http.Timeout = TimeSpan.FromSeconds(opt.TimeoutSeconds);
-            http.DefaultRequestVersion = HttpVersion.Version20;
-            http.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher;
-            http.DefaultRequestHeaders.Accept.Clear();
-            http.DefaultRequestHeaders.Add("Accept", "application/json");
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("DigiTekShop.MVC/1.0");
-        })
-        .AddPolicyHandler(retryPolicy)
-        .AddPolicyHandler(circuitBreakerPolicy)
-        .AddHttpMessageHandler<CorrelationHandler>()
-        .AddHttpMessageHandler<BearerTokenHandler>()
-        .AddHttpMessageHandler<DiagnosticsHandler>()
-        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            PooledConnectionLifetime = TimeSpan.FromMinutes(10),
-            MaxConnectionsPerServer = 50,
-            EnableMultipleHttp2Connections = true,
-            SslOptions = new System.Net.Security.SslClientAuthenticationOptions
             {
-                RemoteCertificateValidationCallback = (sender, cert, chain, errors)
-                    => env.IsDevelopment() ? true : errors == System.Net.Security.SslPolicyErrors.None
-            }
-        });
+                var opt = sp.GetRequiredService<IOptions<ApiClientOptions>>().Value;
+                http.BaseAddress = new Uri(opt.BaseAddress.TrimEnd('/') + "/");
+                http.Timeout = TimeSpan.FromSeconds(opt.TimeoutSeconds);
+
+                http.DefaultRequestVersion = HttpVersion.Version20;
+                http.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+
+                http.DefaultRequestHeaders.Accept.Clear();
+                http.DefaultRequestHeaders.Add("Accept", "application/json");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("DigiTekShop.MVC/1.0");
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+                PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+                MaxConnectionsPerServer = 50,
+                EnableMultipleHttp2Connections = false,
+                ConnectTimeout = TimeSpan.FromSeconds(10),
+                SslOptions = new System.Net.Security.SslClientAuthenticationOptions
+                {
+                    RemoteCertificateValidationCallback = (sender, cert, chain, errors)
+                        => env.IsDevelopment() ? true : errors == System.Net.Security.SslPolicyErrors.None
+                }
+            });
+
 
         return services;
     }

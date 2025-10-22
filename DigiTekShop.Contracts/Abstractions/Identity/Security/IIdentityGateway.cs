@@ -17,5 +17,6 @@ public interface IIdentityGateway
     Task<bool> VerifyTotpAsync(AppUser user, string code, CancellationToken ct);
     Task<bool> VerifySecondFactorAsync(AppUser user, MfaMethod method, string code, CancellationToken ct);
 
-    Task UniformDelayAsync(CancellationToken ct); 
+    Task UniformDelayAsync(CancellationToken ct);
+    Task ResetAccessFailedAsync(AppUser user, CancellationToken ct);
 }

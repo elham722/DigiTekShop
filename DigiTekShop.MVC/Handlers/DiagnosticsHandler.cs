@@ -16,6 +16,18 @@ internal sealed class DiagnosticsHandler : DelegatingHandler
             resp = await base.SendAsync(request, ct);
             return resp;
         }
+        catch (TaskCanceledException tce)
+        {
+            _logger.LogWarning(tce, "API {Method} {Path} cancelled/timed-out after {Elapsed}ms",
+                request.Method.Method, request.RequestUri?.PathAndQuery, sw.GetElapsedTime().TotalMilliseconds.ToString("F0"));
+            throw;
+        }
+        catch (HttpRequestException hre)
+        {
+            _logger.LogWarning(hre, "API {Method} {Path} http error after {Elapsed}ms",
+                request.Method.Method, request.RequestUri?.PathAndQuery, sw.GetElapsedTime().TotalMilliseconds.ToString("F0"));
+            throw;
+        }
         finally
         {
             _logger.LogInformation("API {Method} {Path} -> {Status} in {Elapsed}ms",
@@ -25,6 +37,7 @@ internal sealed class DiagnosticsHandler : DelegatingHandler
                 sw.GetElapsedTime().TotalMilliseconds.ToString("F0"));
         }
     }
+
 }
 
 internal struct ValueStopwatch

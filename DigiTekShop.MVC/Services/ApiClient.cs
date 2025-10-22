@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json; 
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
@@ -30,8 +30,23 @@ internal sealed class ApiClient : IApiClient
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, path);
         Prepare(req);
-        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-        return await Read<TResponse>(path, resp);
+        try
+        {
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            return await Read<TResponse>(path, resp);
+        }
+        catch (TaskCanceledException tce)
+        {
+            return FailFromCancel<TResponse>(path, tce);
+        }
+        catch (HttpRequestException hre)
+        {
+            return FailFromHttp<TResponse>(path, hre);
+        }
+        catch (Exception ex)
+        {
+            return FailFromUnknown<TResponse>(path, ex);
+        }
     }
 
     public async Task<ApiResult<TResponse>> PostAsync<TRequest, TResponse>(string path, TRequest body, CancellationToken ct = default)
@@ -39,8 +54,14 @@ internal sealed class ApiClient : IApiClient
         using var req = new HttpRequestMessage(HttpMethod.Post, path);
         Prepare(req);
         req.Content = CreateJson(body);
-        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-        return await Read<TResponse>(path, resp);
+        try
+        {
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            return await Read<TResponse>(path, resp);
+        }
+        catch (TaskCanceledException tce) { return FailFromCancel<TResponse>(path, tce); }
+        catch (HttpRequestException hre) { return FailFromHttp<TResponse>(path, hre); }
+        catch (Exception ex) { return FailFromUnknown<TResponse>(path, ex); }
     }
 
     public async Task<ApiResult<Unit>> PostAsync<TRequest>(string path, TRequest body, CancellationToken ct = default)
@@ -48,8 +69,14 @@ internal sealed class ApiClient : IApiClient
         using var req = new HttpRequestMessage(HttpMethod.Post, path);
         Prepare(req);
         req.Content = CreateJson(body);
-        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-        return await Read<Unit>(path, resp);
+        try
+        {
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            return await Read<Unit>(path, resp);
+        }
+        catch (TaskCanceledException tce) { return FailFromCancel<Unit>(path, tce); }
+        catch (HttpRequestException hre) { return FailFromHttp<Unit>(path, hre); }
+        catch (Exception ex) { return FailFromUnknown<Unit>(path, ex); }
     }
 
     public async Task<ApiResult<TResponse>> PutAsync<TRequest, TResponse>(string path, TRequest body, CancellationToken ct = default)
@@ -57,16 +84,28 @@ internal sealed class ApiClient : IApiClient
         using var req = new HttpRequestMessage(HttpMethod.Put, path);
         Prepare(req);
         req.Content = CreateJson(body);
-        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-        return await Read<TResponse>(path, resp);
+        try
+        {
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            return await Read<TResponse>(path, resp);
+        }
+        catch (TaskCanceledException tce) { return FailFromCancel<TResponse>(path, tce); }
+        catch (HttpRequestException hre) { return FailFromHttp<TResponse>(path, hre); }
+        catch (Exception ex) { return FailFromUnknown<TResponse>(path, ex); }
     }
 
     public async Task<ApiResult<Unit>> DeleteAsync(string path, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Delete, path);
         Prepare(req);
-        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-        return await Read<Unit>(path, resp);
+        try
+        {
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            return await Read<Unit>(path, resp);
+        }
+        catch (TaskCanceledException tce) { return FailFromCancel<Unit>(path, tce); }
+        catch (HttpRequestException hre) { return FailFromHttp<Unit>(path, hre); }
+        catch (Exception ex) { return FailFromUnknown<Unit>(path, ex); }
     }
 
     public async Task<ApiResult<Unit>> PostMultipartAsync(string path, IDictionary<string, string>? fields, IEnumerable<FormFilePart> files, CancellationToken ct = default)
@@ -76,25 +115,28 @@ internal sealed class ApiClient : IApiClient
 
         using var form = new MultipartFormDataContent();
         if (fields is not null)
-        {
             foreach (var (k, v) in fields)
                 form.Add(new StringContent(v ?? string.Empty, Encoding.UTF8), k);
-        }
+
         foreach (var part in files)
         {
             var sc = new StreamContent(part.Content);
-            sc.Headers.ContentType = new MediaTypeHeaderValue(
-                string.IsNullOrWhiteSpace(part.ContentType) ? "application/octet-stream" : part.ContentType);
+            sc.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(part.ContentType) ? "application/octet-stream" : part.ContentType);
             form.Add(sc, part.Name, part.FileName);
         }
         req.Content = form;
 
-        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-        return await Read<Unit>(path, resp);
+        try
+        {
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            return await Read<Unit>(path, resp);
+        }
+        catch (TaskCanceledException tce) { return FailFromCancel<Unit>(path, tce); }
+        catch (HttpRequestException hre) { return FailFromHttp<Unit>(path, hre); }
+        catch (Exception ex) { return FailFromUnknown<Unit>(path, ex); }
     }
 
-    #region Helpers
-
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static StringContent CreateJson<T>(T data)
         => new(JsonSerializer.Serialize(data, Json), Encoding.UTF8, "application/json");
@@ -112,7 +154,7 @@ internal sealed class ApiClient : IApiClient
         var code = resp.StatusCode;
         var status = (int)code;
 
-        // 204/205 بدون بدنه
+        // 204/205
         if (code is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
         {
             return status is >= 200 and < 300
@@ -151,7 +193,7 @@ internal sealed class ApiClient : IApiClient
                 var pd = await resp.Content!.ReadFromJsonAsync<ProblemDetails>(Json);
                 return ApiResult<T>.Fail(pd, code);
             }
-            catch { /* fallthrough */ }
+            catch { /* fall-through */ }
         }
 
         var raw = (await resp.Content!.ReadAsStringAsync()) ?? string.Empty;
@@ -160,8 +202,44 @@ internal sealed class ApiClient : IApiClient
         return ApiResult<T>.Fail(problem, code);
     }
 
+    private ApiResult<T> FailFromCancel<T>(string path, TaskCanceledException tce)
+    {
+        // HttpClient.Timeout or RequestAborted
+        var pd = new ProblemDetails
+        {
+            Title = "Request cancelled or timed out",
+            Detail = tce.InnerException?.Message ?? tce.Message,
+            Status = StatusCodes.Status499ClientClosedRequest // نزدیک‌ترین معنا؛ یا 408 اگر ترجیح می‌دی
+        };
+        _logger.LogWarning(tce, "HTTP cancelled at {Path}", path);
+        return ApiResult<T>.Fail(pd, (HttpStatusCode)pd.Status!.Value);
+    }
+
+    private ApiResult<T> FailFromHttp<T>(string path, HttpRequestException hre)
+    {
+        var status = hre.StatusCode.HasValue ? (int)hre.StatusCode.Value : StatusCodes.Status502BadGateway;
+        var pd = new ProblemDetails
+        {
+            Title = "HTTP request failed",
+            Detail = hre.Message,
+            Status = status
+        };
+        _logger.LogWarning(hre, "HTTP error at {Path}", path);
+        return ApiResult<T>.Fail(pd, hre.StatusCode ?? HttpStatusCode.BadGateway);
+    }
+
+    private ApiResult<T> FailFromUnknown<T>(string path, Exception ex)
+    {
+        var pd = new ProblemDetails
+        {
+            Title = "Unexpected error",
+            Detail = ex.Message,
+            Status = StatusCodes.Status500InternalServerError
+        };
+        _logger.LogError(ex, "Unexpected error at {Path}", path);
+        return ApiResult<T>.Fail(pd, HttpStatusCode.InternalServerError);
+    }
+
     private static string Truncate(string? s, int max)
         => string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= max ? s : s[..max]);
-
-    #endregion
 }

@@ -1,12 +1,3 @@
-using DigiTekShop.Application.Auth.Login.Command;
-using DigiTekShop.Application.Auth.Logout.Command;
-using DigiTekShop.Application.Auth.LogoutAll.Command;
-using DigiTekShop.Application.Auth.Me.Query;
-using DigiTekShop.Application.Auth.Mfa.Command;
-using DigiTekShop.Application.Auth.Tokens.Command;
-using DigiTekShop.Contracts.DTOs.Auth.Me;
-using DigiTekShop.Contracts.DTOs.Auth.Mfa;
-
 namespace DigiTekShop.API.Controllers.Auth.V1;
 
 [ApiController]
@@ -38,19 +29,24 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
-        _logger.LogInformation("Login attempt for: {Login}", request.Login);
-        
+        using var scope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["cid"] = HttpContext.TraceIdentifier
+        });
+
+        _logger.LogDebug("Login attempt received");
+
         var result = await _sender.Send(new LoginCommand(request), ct);
-        
+
         if (result.IsSuccess && result.Value?.IsSuccess == true)
         {
-            _logger.LogInformation("Login successful for: {Login}", request.Login);
+            _logger.LogInformation("Login success");
         }
         else if (result.IsSuccess && result.Value?.IsChallenge == true)
         {
-            _logger.LogInformation("MFA challenge issued for: {Login}", request.Login);
+            _logger.LogInformation("Login requires MFA challenge");
         }
-        
+
         return this.ToActionResult(result);
     }
 
@@ -67,15 +63,21 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> VerifyMfa([FromBody] VerifyMfaRequest request, CancellationToken ct)
     {
-        _logger.LogInformation("MFA verification attempt for user: {UserId}", request.UserId);
-        
+        using var scope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["cid"] = HttpContext.TraceIdentifier,
+            ["userId"] = request.UserId
+        });
+
+        _logger.LogInformation("MFA verification attempt");
+
         var result = await _sender.Send(new VerifyMfaCommand(request), ct);
-        
+
         if (result.IsSuccess)
         {
-            _logger.LogInformation("MFA verification successful for user: {UserId}", request.UserId);
+            _logger.LogInformation("MFA verification success");
         }
-        
+
         return this.ToActionResult(result);
     }
 
@@ -92,15 +94,20 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken ct)
     {
+        using var scope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["cid"] = HttpContext.TraceIdentifier
+        });
+
         _logger.LogInformation("Token refresh attempt");
-        
+
         var result = await _sender.Send(new RefreshTokenCommand(request), ct);
-        
+
         if (result.IsSuccess)
         {
-            _logger.LogInformation("Token refresh successful");
+            _logger.LogInformation("Token refresh success");
         }
-        
+
         return this.ToActionResult(result);
     }
 
@@ -112,17 +119,20 @@ public sealed class AuthController : ControllerBase
     [Authorize]
     [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct)
     {
-        _logger.LogInformation("Logout attempt for user: {UserId}", request.UserId);
-        
+        using var scope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["cid"] = HttpContext.TraceIdentifier,
+            ["userId"] = request.UserId
+        });
+        _logger.LogInformation("Logout attempt");
         var result = await _sender.Send(new LogoutCommand(request), ct);
         
         if (result.IsSuccess)
         {
-            _logger.LogInformation("Logout successful for user: {UserId}", request.UserId);
+            _logger.LogInformation("Logout success");
         }
         
         return this.ToActionResult(result);
@@ -136,17 +146,22 @@ public sealed class AuthController : ControllerBase
     [Authorize]
     [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> LogoutAll([FromBody] LogoutAllRequest request, CancellationToken ct)
     {
-        _logger.LogInformation("Logout all sessions attempt for user: {UserId}", request.UserId);
-        
+        using var scope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["cid"] = HttpContext.TraceIdentifier,
+            ["userId"] = request.UserId
+        });
+
+        _logger.LogInformation("Logout all sessions attempt");
+
         var result = await _sender.Send(new LogoutAllCommand(request), ct);
         
         if (result.IsSuccess)
         {
-            _logger.LogInformation("Logout all sessions successful for user: {UserId}", request.UserId);
+            _logger.LogInformation("Logout all sessions success");
         }
         
         return this.ToActionResult(result);
@@ -163,11 +178,7 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
-        var userId = User.Identity?.Name;
-        _logger.LogInformation("Get current user info for: {UserId}", userId);
-        
         var result = await _sender.Send(new MeQuery(), ct);
-        
         return this.ToActionResult(result);
     }
 
