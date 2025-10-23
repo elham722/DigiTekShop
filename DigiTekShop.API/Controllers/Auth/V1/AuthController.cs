@@ -1,3 +1,6 @@
+using DigiTekShop.Application.Auth.LoginOrRegister.Command;
+using DigiTekShop.Contracts.DTOs.Auth.LoginOrRegister;
+
 namespace DigiTekShop.API.Controllers.Auth.V1;
 
 [ApiController]
@@ -17,69 +20,26 @@ public sealed class AuthController : ControllerBase
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    #region LOGIN
+    #region LoginOrRegister
 
- 
-    [HttpPost("login")]
+    [HttpPost("send-otp")]
     [AllowAnonymous]
     [EnableRateLimiting("AuthPolicy")]
-    [ProducesResponseType(typeof(ApiResponse<LoginResultDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
+    public async Task<IActionResult> SendOtp([FromBody] SendOtpRequestDto dto, CancellationToken ct)
     {
-        using var scope = _logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["cid"] = HttpContext.TraceIdentifier
-        });
-
-        _logger.LogDebug("Login attempt received");
-
-        var result = await _sender.Send(new LoginCommand(request), ct);
-
-        if (result.IsSuccess && result.Value?.IsSuccess == true)
-        {
-            _logger.LogInformation("Login success");
-        }
-        else if (result.IsSuccess && result.Value?.IsChallenge == true)
-        {
-            _logger.LogInformation("Login requires MFA challenge");
-        }
-
+        var result = await _sender.Send(new SendOtpCommand(dto), ct);
         return this.ToActionResult(result);
     }
 
-    #endregion
-
-    #region VERIFY MFA
-
-    [HttpPost("verify-mfa")]
+    [HttpPost("verify-otp")]
     [AllowAnonymous]
     [EnableRateLimiting("AuthPolicy")]
-    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> VerifyMfa([FromBody] VerifyMfaRequest request, CancellationToken ct)
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto dto, CancellationToken ct)
     {
-        using var scope = _logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["cid"] = HttpContext.TraceIdentifier,
-            ["userId"] = request.UserId
-        });
-
-        _logger.LogInformation("MFA verification attempt");
-
-        var result = await _sender.Send(new VerifyMfaCommand(request), ct);
-
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("MFA verification success");
-        }
-
+        var result = await _sender.Send(new VerifyOtpCommand(dto), ct);
         return this.ToActionResult(result);
     }
+
 
     #endregion
 

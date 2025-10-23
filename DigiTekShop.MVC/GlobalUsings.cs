@@ -1,13 +1,6 @@
-﻿global using System.Text;
-global using DigiTekShop.MVC.Models;
+﻿global using DigiTekShop.MVC.Models;
+global using DigiTekShop.MVC.Services;
+global using Microsoft.AspNetCore.Authentication.Cookies;
 global using Microsoft.AspNetCore.Mvc;
 global using System.Diagnostics;
-global using System.IdentityModel.Tokens.Jwt;
-global using System.Security.Claims;
-global using DigiTekShop.Contracts.DTOs.Auth.Login;
-global using DigiTekShop.Contracts.DTOs.Auth.Mfa;
-global using DigiTekShop.MVC.Services;
-global using DigiTekShop.SharedKernel.Enums.Auth;
-global using Microsoft.AspNetCore.Authentication;
-global using Microsoft.AspNetCore.Authentication.Cookies;
-global using Microsoft.AspNetCore.Authorization;
+global using System.Text;

@@ -1,9 +1,7 @@
 ﻿global using DigiTekShop.Contracts.DTOs.Auth.EmailConfirmation;
 global using DigiTekShop.Contracts.DTOs.Auth.Lockout;
-global using DigiTekShop.Contracts.DTOs.Auth.Login;
 global using DigiTekShop.Contracts.DTOs.Auth.LoginAttempts;
 global using DigiTekShop.Contracts.DTOs.Auth.Logout;
-global using DigiTekShop.Contracts.DTOs.Auth.Register;
 global using DigiTekShop.Contracts.DTOs.Auth.SecurityEvent;
 global using DigiTekShop.Contracts.DTOs.Auth.Token;
 global using DigiTekShop.Domain.Customer.Entities;

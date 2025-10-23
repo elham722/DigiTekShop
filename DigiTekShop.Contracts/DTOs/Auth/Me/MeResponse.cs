@@ -3,11 +3,12 @@
 public sealed record MeResponse
 {
     public Guid UserId { get; init; }
-    public string Email { get; init; } = default!;
-    public bool EmailConfirmed { get; init; }
-    public string? UserName { get; init; }
-    public string? PhoneNumber { get; init; }
-    public bool PhoneNumberConfirmed { get; init; }
+    public string Phone { get; init; } = default!;  
+    public string? FullName { get; init; }       
+    public string? Email { get; init; }          
+    public bool PhoneConfirmed { get; init; }
+    public DateTime? LastLoginAtUtc { get; init; }
+
 
     public IReadOnlyList<string> Roles { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> Permissions { get; init; } = Array.Empty<string>();

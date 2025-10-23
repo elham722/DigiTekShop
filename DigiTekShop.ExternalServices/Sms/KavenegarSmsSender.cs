@@ -43,7 +43,7 @@ public class KavenegarSmsSender : IPhoneSender
         };
     }
 
-    public async Task<Result> SendCodeAsync(string phoneNumber, string code, string? templateName = null)
+    public async Task<Result> SendCodeAsync(string phoneNumber, string code, string? templateName = null,CancellationToken ct = default)
     {
         try
         {

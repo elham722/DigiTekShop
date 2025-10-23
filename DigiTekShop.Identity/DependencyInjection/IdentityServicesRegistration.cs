@@ -1,6 +1,5 @@
 ﻿
 using DigiTekShop.Contracts.Abstractions.Identity.Device;
-using DigiTekShop.Contracts.Abstractions.Identity.Mfa;
 using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.Contracts.Options.Email;
 using DigiTekShop.Contracts.Options.Phone;
@@ -9,7 +8,6 @@ using DigiTekShop.Contracts.Options.Token;
 using DigiTekShop.Identity.Services.Device;
 using DigiTekShop.Identity.Services.Logout;
 using DigiTekShop.Identity.Services.Me;
-using DigiTekShop.Identity.Services.Mfa;
 using DigiTekShop.Identity.Services.Permission;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -66,9 +64,6 @@ public static class IdentityServicesRegistration
         services.AddSingleton(resolver => resolver.GetRequiredService<IOptions<JwtSettings>>().Value);
         services.AddScoped<ITokenService, TokenService>();
 
-        services.Configure<LoginFlowOptions>(configuration.GetSection("Auth:LoginFlow"));
-        services.AddScoped<ILoginService, LoginService>();
-
         services.Configure<IdentityLockoutOptions>(configuration.GetSection("Identity:Lockout"));
         services.AddScoped<ILockoutService, LockoutService>();
 
@@ -89,15 +84,12 @@ public static class IdentityServicesRegistration
         services.AddScoped<ISecurityEventService, SecurityEventService>();
 
 
-        services.AddScoped<IRegistrationService, RegistrationService>();
 
         services.AddScoped<IEncryptionService, EncryptionService>();
 
         services.AddScoped<IPermissionEvaluatorService, PermissionEvaluatorService>();
 
         services.AddScoped<IIdentityGateway, IdentityGateway>();
-
-        services.AddScoped<IMfaService, MfaService>();
 
         services.AddScoped<ILogoutService, LogoutService>();
 

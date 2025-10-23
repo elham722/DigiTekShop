@@ -53,11 +53,7 @@ public sealed class MeService : IMeService
         => new MeResponse
         {
             UserId = user.Id,
-            UserName = user.UserName ?? string.Empty,
             Email = user.Email ?? string.Empty,
-            EmailConfirmed = user.EmailConfirmed,
-            PhoneNumber = user.PhoneNumber,
-            PhoneNumberConfirmed = user.PhoneNumberConfirmed,
             Roles = roles?.ToArray() ?? Array.Empty<string>(),
         };
 }

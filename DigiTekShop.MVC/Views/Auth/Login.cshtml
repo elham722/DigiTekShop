@@ -1,5 +1,6 @@
-﻿@using DigiTekShop.Contracts.DTOs.Auth.Login
-@model LoginRequest
+﻿
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@model Microsoft.AspNetCore.Identity.Data.LoginRequest
 @{
     ViewData["Title"] = "Login";
     var returnUrl = (string?)ViewData["ReturnUrl"] ?? string.Empty;
@@ -27,7 +28,7 @@
                     </div>
                 }
 
-                <form asp-action="Login" method="post" novalidate class="max-w-md" id="login-form">
+                <form  method="post" novalidate class="max-w-md" id="login-form">
                     @Html.AntiForgeryToken()
 
                     @{
