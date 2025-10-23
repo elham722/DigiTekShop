@@ -109,8 +109,8 @@ html, body {
   font-family: var(--font-family);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
   transition: var(--transition);
-  direction: ltr;
-  text-align: left;
+  direction: rtl;
+  text-align: right;
 }
 
 .input:focus {
@@ -154,7 +154,8 @@ html, body {
 
 .eye-btn {
   position: absolute;
-  right: 15px;
+  left: 15px !important;
+  right: auto !important;
   top: 50%;
   transform: translateY(-50%);
   border: none;
@@ -571,6 +572,8 @@ html, body {
   .input {
     padding: 14px 18px;
     font-size: 15px;
+    direction: rtl;
+    text-align: right;
   }
   
   .btn-primary {
@@ -614,6 +617,8 @@ html, body {
   .input {
     padding: 12px 16px;
     font-size: 14px;
+    direction: rtl;
+    text-align: right;
   }
   
   .btn-primary {
@@ -652,6 +657,8 @@ html, body {
   .input {
     padding: 10px 14px;
     font-size: 13px;
+    direction: rtl;
+    text-align: right;
   }
   
   .btn-primary {
@@ -704,6 +711,8 @@ html, body {
     background: var(--input-bg);
     color: #fff;
     border-color: #444;
+    direction: rtl;
+    text-align: right;
   }
   
   .input::placeholder {
@@ -781,6 +790,8 @@ html, body {
     border: 1.5px solid rgba(15,20,30,0.12);
     background: #f8fafc; /* کنتراست خواناتر نسبت به input-bg */
     transition: box-shadow .2s, border-color .2s, transform .2s;
+    direction: rtl;
+    text-align: right;
 }
 
     .input:focus {
@@ -793,11 +804,12 @@ html, body {
 /* 5) فیلد پسورد با آیکن چشم: پدینگ راست کافی بده - حذف شد چون در بالا تعریف شده */
 
     .password-wrapper .input {
-        padding-inline-end: 48px;
+        padding-inline-start: 48px;
     }
 /* جا برای دکمه چشم */
 .eye-btn {
-    inset-inline-end: 10px;
+    left: 10px !important;
+    right: auto !important;
     top: 50%;
     transform: translateY(-50%);
     width: 32px;
@@ -904,6 +916,8 @@ html, body {
         background: #1f2937;
         border-color: #334155;
         color: #e5e7eb;
+        direction: rtl;
+        text-align: right;
     }
 
         .input::placeholder {
@@ -933,4 +947,33 @@ html, body {
     border: 1px solid #fecdd3;
     background: #fff1f2;
     color: #9f1239;
+}
+
+/* 15) راست‌چین کردن اجباری فیلدهای ورودی */
+input.input,
+input[type="text"].input,
+input[type="password"].input,
+input[type="email"].input {
+    direction: rtl !important;
+    text-align: right !important;
+    unicode-bidi: normal !important;
+}
+
+input.input::placeholder,
+input[type="text"].input::placeholder,
+input[type="password"].input::placeholder,
+input[type="email"].input::placeholder {
+    direction: rtl;
+    text-align: right;
+    unicode-bidi: normal;
+}
+
+/* 16) اجباری کردن موقعیت آیکن چشم در سمت چپ */
+#togglePassword.eye-btn,
+button.eye-btn,
+.password-wrapper .eye-btn {
+    left: 15px !important;
+    right: auto !important;
+    inset-inline-start: 15px !important;
+    inset-inline-end: auto !important;
 }
