@@ -1,7 +1,4 @@
-﻿using DigiTekShop.Application.Common.Events;
-using DigiTekShop.Contracts.Integration.Events.Identity;
-
-namespace DigiTekShop.Identity.Events;
+﻿namespace DigiTekShop.Identity.Events;
 
 public sealed class IdentityIntegrationEventMapper : IIntegrationEventMapper
 {
@@ -9,7 +6,7 @@ public sealed class IdentityIntegrationEventMapper : IIntegrationEventMapper
     {
         foreach (var de in domainEvents)
         {
-            if (de is UserRegisteredDomainEvent e) // ✅ الان match میشه
+            if (de is UserRegisteredDomainEvent e)
             {
                 yield return new UserRegisteredIntegrationEvent(
                     MessageId: Guid.NewGuid(),

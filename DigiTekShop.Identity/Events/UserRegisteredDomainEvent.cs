@@ -1,6 +1,4 @@
-﻿using DigiTekShop.SharedKernel.DomainShared.Events;
-
-namespace DigiTekShop.Identity.Events
+﻿namespace DigiTekShop.Identity.Events
 {
     public sealed record UserRegisteredDomainEvent : DomainEvent
     {

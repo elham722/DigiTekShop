@@ -3,7 +3,6 @@ using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.Contracts.Options.Caching;
 using DigiTekShop.Contracts.Options.Email;
 using DigiTekShop.Contracts.Options.Messaging;
-using DigiTekShop.Contracts.Options.Password;
 using DigiTekShop.Contracts.Options.Phone;
 using DigiTekShop.Contracts.Options.Security;
 using DigiTekShop.Contracts.Options.Token;
@@ -17,10 +16,8 @@ namespace DigiTekShop.API.Extensions.Options
         {
             // Auth
             services.AddOptions<JwtSettings>().Bind(cfg.GetSection("JwtSettings"));
-            services.AddOptions<PasswordPolicyOptions>().Bind(cfg.GetSection("PasswordPolicy"));
             services.AddOptions<EmailConfirmationOptions>().Bind(cfg.GetSection("EmailConfirmation"));
             services.AddOptions<PhoneVerificationOptions>().Bind(cfg.GetSection("PhoneVerification"));
-            services.AddOptions<PasswordResetOptions>().Bind(cfg.GetSection("PasswordReset"));
 
             // Caching / Redis
             services.AddOptions<RedisCacheOptions>().Bind(cfg.GetSection("RedisCache"));

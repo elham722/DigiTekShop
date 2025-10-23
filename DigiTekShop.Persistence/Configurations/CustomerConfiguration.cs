@@ -8,63 +8,60 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> b)
     {
-        
         b.ToTable("Customers");
 
-        
         b.HasKey(x => x.Id);
         b.Property(x => x.Id)
-            .HasConversion(
-                id => id.Value,          
-                v => new CustomerId(v)) 
+            .HasConversion(id => id.Value, v => new CustomerId(v))
             .ValueGeneratedNever();
 
-        
-        b.Property(x => x.UserId)
-            .IsRequired();
+        b.Property(x => x.UserId).IsRequired();
 
         b.Property(x => x.FullName)
             .IsRequired()
             .HasMaxLength(200);
 
         b.Property(x => x.Email)
-            .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(256)
+            .IsRequired(false);
 
         b.Property(x => x.Phone)
-            .HasMaxLength(30);
+            .HasMaxLength(32)
+            .IsRequired(false);
 
-        b.Property(x => x.IsActive)
-            .HasDefaultValue(true);
+        b.Property(x => x.IsActive).HasDefaultValue(true);
 
-        
-        b.Property(x => x.CreatedAtUtc)
-            .IsRequired();
-
+        b.Property(x => x.CreatedAtUtc).IsRequired();
         b.Property(x => x.UpdatedAtUtc);
 
-      
         b.Property(x => x.Version)
             .IsRowVersion()
             .IsConcurrencyToken();
 
-        
         b.HasIndex(x => x.UserId);
-        b.HasIndex(x => x.Email).IsUnique();
-
-         b.Ignore(x => x.DomainEvents);
 
        
+        b.HasIndex(x => x.Email)
+            .IsUnique()
+            .HasFilter("[Email] IS NOT NULL")
+            .HasDatabaseName("UX_Customers_Email_NotNull");
+
+        
+        b.HasIndex(x => x.Phone)
+            .IsUnique()
+            .HasFilter("[Phone] IS NOT NULL")
+            .HasDatabaseName("UX_Customers_Phone_NotNull");
+
+        b.Ignore(x => x.DomainEvents);
+
         b.Metadata.FindNavigation(nameof(Customer.Addresses))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
 
         b.OwnsMany(x => x.Addresses, a =>
         {
             a.ToTable("CustomerAddresses");
-
             a.WithOwner().HasForeignKey("CustomerId");
 
-          
             a.Property<int>("Id");
             a.HasKey("Id");
 
@@ -76,14 +73,22 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             a.Property(p => p.Country).IsRequired().HasMaxLength(100);
             a.Property(p => p.IsDefault).IsRequired();
 
-            
             a.HasIndex("CustomerId");
             a.HasIndex(p => new { p.PostalCode, p.City });
 
-            
+           
             a.HasIndex("CustomerId", nameof(DigiTekShop.Domain.Customer.ValueObjects.Address.IsDefault))
              .IsUnique()
              .HasFilter("[IsDefault] = 1");
         });
+
+        b.ToTable(tb =>
+        {
+            tb.HasCheckConstraint(
+                "CK_Customers_Phone_E164_IR",
+                "( [Phone] IS NULL ) OR ([Phone] LIKE '+98__________')"  
+            );
+        });
     }
 }
+

@@ -89,7 +89,7 @@ public class UserDevice
         TrustUntil(nowUtc + window);
     }
 
-    public bool IsCurrentlyTrusted(DateTime nowUtc)
+    public bool IsCurrentlyTrusted(DateTimeOffset nowUtc) 
         => TrustedUntilUtc.HasValue && TrustedUntilUtc.Value > nowUtc;
 
     public bool IsInactive(TimeSpan threshold, DateTime nowUtc)

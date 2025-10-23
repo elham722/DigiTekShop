@@ -1,8 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using DigiTekShop.SharedKernel.DomainShared.Events;
-
-namespace DigiTekShop.Identity.Context;
+﻿namespace DigiTekShop.Identity.Context;
 
 public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
 {
@@ -20,9 +16,7 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
     public DbSet<LoginAttempt> LoginAttempts => Set<LoginAttempt>();
     public DbSet<PhoneVerification> PhoneVerifications => Set<PhoneVerification>();
-    public DbSet<PasswordHistory> PasswordHistories => Set<PasswordHistory>();
     public DbSet<UserMfa> UserMfa => Set<UserMfa>();
-    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<IdentityOutboxMessage> IdentityOutboxMessages => Set<IdentityOutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder builder)

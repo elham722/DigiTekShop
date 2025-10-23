@@ -214,7 +214,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
 
             if (last is null)
             {
-                var pv = PhoneVerification.Create(userId, hash, createdAtUtc, expiresUtc, phoneNumber);
+                var pv = PhoneVerification.CreateForUser(userId, hash, createdAtUtc, expiresUtc, phoneNumber);
                 _db.PhoneVerifications.Add(pv);
             }
             else

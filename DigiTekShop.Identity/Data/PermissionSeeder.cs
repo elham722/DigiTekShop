@@ -1,8 +1,3 @@
-using DigiTekShop.Identity.Context;
-using DigiTekShop.Identity.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-
 namespace DigiTekShop.Identity.Data;
 
 public static class PermissionSeeder

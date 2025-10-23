@@ -20,12 +20,21 @@ public class LoginAttempt
     public static LoginAttempt Create(
         Guid? userId,
         LoginStatus status,
-        DateTime attemptedAtUtc,             
+        DateTime attemptedAtUtc,
         string? ipAddress = null,
         string? userAgent = null,
         string? loginNameOrEmail = null,
         string? loginNameOrEmailNormalized = null)
     {
+        string? normalized = null;
+        if (!string.IsNullOrWhiteSpace(loginNameOrEmail))
+        {
+            if (DigiTekShop.SharedKernel.Utilities.Text.Normalization
+                             .TryNormalizePhoneIranE164(loginNameOrEmail, out var e164) && e164 is not null)
+                normalized = e164;
+            else
+                normalized = loginNameOrEmail.Trim().ToLowerInvariant();
+        }
         return new LoginAttempt
         {
             UserId = userId,
@@ -35,13 +44,11 @@ public class LoginAttempt
             UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : userAgent,
             LoginNameOrEmail = string.IsNullOrWhiteSpace(loginNameOrEmail) ? null : loginNameOrEmail,
             LoginNameOrEmailNormalized = string.IsNullOrWhiteSpace(loginNameOrEmailNormalized)
-                ? Normalize(loginNameOrEmail)
+                ? normalized
                 : loginNameOrEmailNormalized
         };
     }
 
-    private static string? Normalize(string? s)
-        => string.IsNullOrWhiteSpace(s) ? null : s.Trim().ToLowerInvariant();
 }
 
 

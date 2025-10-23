@@ -8,7 +8,7 @@ namespace DigiTekShop.Identity.Configurations;
 
             // Configure properties
             builder.Property(pv => pv.UserId)
-                .IsRequired();
+                .IsRequired(false);
 
             builder.Property(pv => pv.CodeHash)
                 .IsRequired()
@@ -24,7 +24,7 @@ namespace DigiTekShop.Identity.Configurations;
                 .IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
             builder.Property(pv => pv.PhoneNumber)
-                .HasMaxLength(20)
+                .HasMaxLength(32)
                 .IsRequired(false);
 
             builder.Property(pv => pv.IsVerified)
@@ -52,28 +52,27 @@ namespace DigiTekShop.Identity.Configurations;
                 .IsRequired(false);
 
         // Configure indexes
-        builder.HasIndex(pv => pv.UserId)
-                .HasDatabaseName("IX_PhoneVerifications_UserId");
+        builder.HasIndex(pv => pv.PhoneNumber).HasDatabaseName("IX_PhoneVerifications_Phone");
 
-            builder.HasIndex(pv => pv.ExpiresAtUtc)
+        builder.HasIndex(pv => pv.ExpiresAtUtc)
                 .HasDatabaseName("IX_PhoneVerifications_ExpiresAt");
 
             builder.HasIndex(pv => pv.CreatedAtUtc)
                 .HasDatabaseName("IX_PhoneVerifications_CreatedAt");
 
-            builder.HasIndex(pv => new { pv.UserId, pv.ExpiresAtUtc })
-                .HasDatabaseName("IX_PhoneVerifications_UserId_ExpiresAt");
+        builder.HasIndex(pv => new { pv.PhoneNumber, pv.ExpiresAtUtc })
+               .HasDatabaseName("IX_PhoneVerifications_Phone_ExpiresAt");
 
-            builder.HasIndex(pv => new { pv.UserId, pv.CreatedAtUtc })
-                .HasDatabaseName("IX_PhoneVerifications_UserId_CreatedAt");
+        builder.HasIndex(pv => new { pv.PhoneNumber, pv.CreatedAtUtc })
+                .HasDatabaseName("IX_PhoneVerifications_Phone_CreatedAt");
 
-            builder.HasIndex(pv => new { pv.UserId, pv.CodeHash, pv.ExpiresAtUtc })
+        builder.HasIndex(pv => new { pv.PhoneNumber, pv.CodeHash, pv.ExpiresAtUtc })
                 .IsUnique()
-                .HasDatabaseName("UX_PhoneVerifications_User_Code_ExpiresAt");
+               .HasDatabaseName("UX_PhoneVerifications_Phone_Code_ExpiresAt");
 
-          
-            builder.HasIndex(pv => new { pv.UserId, pv.IsVerified })
-                .HasDatabaseName("IX_PhoneVerifications_User_IsVerified");
+
+        builder.HasIndex(pv => new { pv.PhoneNumber, pv.IsVerified })
+                .HasDatabaseName("IX_PhoneVerifications_Phone_IsVerified");
 
     }
 }

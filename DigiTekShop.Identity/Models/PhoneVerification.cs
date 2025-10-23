@@ -5,7 +5,7 @@ namespace DigiTekShop.Identity.Models;
 public class PhoneVerification
 {
     public Guid Id { get; private set; } = Guid.NewGuid();
-    public Guid UserId { get; private set; }
+    public Guid? UserId { get; private set; }
 
     public string CodeHash { get; private set; } = null!;
     public int Attempts { get; private set; }
@@ -26,7 +26,7 @@ public class PhoneVerification
 
     private PhoneVerification() { }
 
-    public static PhoneVerification Create(
+    public static PhoneVerification CreateForUser(
         Guid userId,
         string codeHash,
         DateTime createdAtUtc,
@@ -46,9 +46,34 @@ public class PhoneVerification
             Attempts = 0,
             CreatedAtUtc = createdAtUtc,
             ExpiresAtUtc = expiresAtUtc,
-            PhoneNumber = TrimTo(phoneNumber, 32),        
-            IpAddress = TrimTo(ipAddress, 45),         
-            UserAgent = TrimTo(userAgent, 256)
+            PhoneNumber = TrimTo(phoneNumber, 32),
+            IpAddress = TrimTo(ipAddress, 45),
+            UserAgent = TrimTo(userAgent, 512)
+        };
+    }
+
+    public static PhoneVerification CreateForPhone(
+         string codeHash,
+            DateTime createdAtUtc,
+            DateTime expiresAtUtc,
+            string phoneNumber,
+           string? ipAddress = null,
+            string? userAgent = null)
+    {
+        Guard.AgainstNullOrEmpty(codeHash, nameof(codeHash));
+        Guard.AgainstPastDate(expiresAtUtc, () => DateTime.UtcNow, nameof(expiresAtUtc));
+        Guard.AgainstNullOrEmpty(phoneNumber, nameof(phoneNumber));
+
+        return new PhoneVerification
+        {
+            UserId = null,
+            CodeHash = codeHash,
+            Attempts = 0,
+            CreatedAtUtc = createdAtUtc,
+            ExpiresAtUtc = expiresAtUtc,
+            PhoneNumber = TrimTo(phoneNumber, 32),
+            IpAddress = TrimTo(ipAddress, 45),
+            UserAgent = TrimTo(userAgent, 512)
         };
     }
 
@@ -72,7 +97,7 @@ public class PhoneVerification
 
         if (!string.IsNullOrWhiteSpace(phoneNumber)) PhoneNumber = TrimTo(phoneNumber, 32);
         if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = TrimTo(ipAddress, 45);
-        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = TrimTo(userAgent, 256);
+        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = TrimTo(userAgent, 512);
     }
 
     public bool TryIncrementAttempts(int maxAttempts = DefaultMaxAttempts)

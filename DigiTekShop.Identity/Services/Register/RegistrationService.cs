@@ -79,7 +79,7 @@ public sealed class RegistrationService : IRegistrationService
             }
 
             
-            var user = User.Create(emailNorm, emailNorm);
+            var user = User.CreateFromPhone(emailNorm);
             user.UserName = emailNorm;
             user.Email = emailNorm;
             if (!string.IsNullOrWhiteSpace(phoneNorm)) user.PhoneNumber = phoneNorm;
