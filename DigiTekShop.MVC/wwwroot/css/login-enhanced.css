@@ -149,7 +149,7 @@ html, body {
 
 .password-wrapper {
   position: relative;
-  display: flex;
+  display: block;
 }
 
 .eye-btn {
@@ -463,8 +463,9 @@ html, body {
   font-size: 12px;
   margin-top: 4px;
   margin-bottom: 8px;
-  display: none;
+  display: block;
   font-weight: 500;
+  min-height: 18px;
 }
 
 .form-error {
@@ -789,10 +790,7 @@ html, body {
         background: #fff;
     }
 
-/* 5) فیلد پسورد با آیکن چشم: پدینگ راست کافی بده */
-.password-wrapper {
-    position: relative;
-}
+/* 5) فیلد پسورد با آیکن چشم: پدینگ راست کافی بده - حذف شد چون در بالا تعریف شده */
 
     .password-wrapper .input {
         padding-inline-end: 48px;
@@ -806,14 +804,7 @@ html, body {
     height: 32px;
 }
 
-/* 6) نمایش پیام خطا دقیقاً زیر فیلد مرتبط */
-.field-error {
-    display: block; /* همیشه جای خود را نگه می‌دارد */
-    min-height: 18px;
-    margin: 6px 2px 0 0;
-    color: #e11d48;
-    font-size: 12px;
-}
+/* 6) نمایش پیام خطا دقیقاً زیر فیلد مرتبط - حذف شد چون در بالا تعریف شده */
 /* اگر کلاینت کلاس is-invalid گذاشت، کنتراست حاشیه بیشتر شود */
 .input.is-invalid {
     border-color: #e11d48;
