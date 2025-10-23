@@ -977,3 +977,26 @@ button.eye-btn,
     inset-inline-start: 15px !important;
     inset-inline-end: auto !important;
 }
+
+/* 17) استایل checkbox "مرا به خاطر بسپار" */
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0;
+    cursor: pointer;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #e16b91;
+    cursor: pointer;
+}
+
+.checkbox-label {
+    font-size: 14px;
+    color: #666;
+    cursor: pointer;
+    user-select: none;
+}

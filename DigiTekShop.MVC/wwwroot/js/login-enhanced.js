@@ -101,7 +101,7 @@ class LoginForm {
         this.clearFieldError(field);
 
         // Email validation
-        if (fieldName === 'EmailOrUsername') {
+        if (fieldName === 'Login') {
             if (!value) {
                 errorMessage = 'ایمیل یا نام کاربری الزامی است';
                 isValid = false;
@@ -256,51 +256,27 @@ class LoginForm {
         if (!this.form) return;
 
         this.form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleFormSubmission();
-        });
-    }
-
-    async handleFormSubmission() {
-        const submitButton = this.form.querySelector('.btn-primary');
-        const formData = new FormData(this.form);
-        
-        // Validate all fields
-        const inputs = this.form.querySelectorAll('input[required]');
-        let isFormValid = true;
-        
-        inputs.forEach(input => {
-            if (!this.validateField(input)) {
-                isFormValid = false;
+            // فقط validation انجام بده، فرم را submit کن
+            const inputs = this.form.querySelectorAll('input[required]');
+            let isFormValid = true;
+            
+            inputs.forEach(input => {
+                if (!this.validateField(input)) {
+                    isFormValid = false;
+                }
+            });
+            
+            if (!isFormValid) {
+                e.preventDefault();
+                return;
             }
+            
+            // اگر validation درست بود، فرم را submit کن
+            // e.preventDefault() را حذف کردیم تا فرم به سرور برود
         });
-
-        if (!isFormValid) {
-            this.showNotification('لطفاً تمام فیلدهای الزامی را به درستی پر کنید', 'error');
-            return;
-        }
-
-        // Add loading state
-        this.setButtonLoading(submitButton, true);
-
-        try {
-            // Simulate API call
-            await this.simulateApiCall(formData);
-            
-            // Success handling
-            this.showNotification('ورود با موفقیت انجام شد', 'success');
-            
-            // Redirect after delay
-            setTimeout(() => {
-                window.location.href = '/Dashboard';
-            }, 1500);
-            
-        } catch (error) {
-            this.showNotification('خطا در ورود. لطفاً دوباره تلاش کنید', 'error');
-        } finally {
-            this.setButtonLoading(submitButton, false);
-        }
     }
+
+    // handleFormSubmission حذف شد - فرم حالا مستقیماً به سرور می‌رود
 
     setButtonLoading(button, isLoading) {
         if (isLoading) {
