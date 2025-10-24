@@ -1,6 +1,6 @@
 /**
- * DigiTekShop Auth (OTP) – final
- * هماهنگ با: /api/v1/auth/send-otp , /api/v1/auth/verify-otp
+ * DigiTekShop Auth (OTP) – trimmed for server-managed tokens
+ * هماهنگ با: /Auth/SendOtp , /Auth/VerifyOtp  (MVC endpoints)
  */
 
 const API_SEND = '/Auth/SendOtp';
@@ -12,20 +12,7 @@ function csrf() {
     return m ? m.content : '';
 }
 
-function getDeviceId() {
-    const key = 'dts_device_id';
-    let v = localStorage.getItem(key);
-    if (!v && window.crypto?.randomUUID) {
-        v = crypto.randomUUID();
-        localStorage.setItem(key, v);
-    } else if (!v) {
-        v = 'dev_' + Math.random().toString(36).slice(2) + '_' + Date.now();
-        localStorage.setItem(key, v);
-    }
-    return v;
-}
-
-// ورودی کاربر: 09xxxxxxxxx  → بک‌اند: +989xxxxxxxxx
+// ورودی کاربر: 09xxxxxxxxx → +989xxxxxxxxx
 function normalizeIranPhoneE164(input) {
     if (!input) return null;
     let s = ('' + input).replace(/[^\d+]/g, '');
@@ -42,8 +29,6 @@ class AuthManager {
         this.currentStep = 'phone';
         this.rawPhone = '';
         this.normalizedPhone = '';
-        this.rememberDevice = true;
-        this.deviceId = getDeviceId();
         this.timerId = null;
         this.count = 60;
 
@@ -57,7 +42,6 @@ class AuthManager {
         this.phoneForm = document.getElementById('phoneForm');
         this.otpForm = document.getElementById('otpForm');
         this.phoneInput = document.getElementById('phoneNumber');
-        this.rememberEl = document.getElementById('rememberDevice');
         this.displayPhone = document.getElementById('displayPhone');
         this.resendBtn = document.getElementById('resendBtn');
         this.countdownText = document.getElementById('countdownText');
@@ -67,9 +51,8 @@ class AuthManager {
         this.phoneForm.addEventListener('submit', (e) => { e.preventDefault(); this.sendOtp(); });
         this.otpForm.addEventListener('submit', (e) => { e.preventDefault(); this.verifyOtp(); });
         this.resendBtn.addEventListener('click', () => this.resend());
-        this.rememberEl.addEventListener('change', e => this.rememberDevice = !!e.target.checked);
 
-        // ورودی شماره فقط عدد و حداکثر 11 رقم (فرمت 09xxxxxxxxx)
+        // ورودی شماره فقط عدد و حداکثر 11 رقم (09xxxxxxxxx)
         this.phoneInput.addEventListener('input', (e) => {
             e.target.value = e.target.value.replace(/[^\d]/g, '').slice(0, 11);
         });
@@ -180,7 +163,7 @@ class AuthManager {
     async sendOtp() {
         if (!this.validatePhone(true)) return;
 
-        this.rawPhone = this.phoneInput.value.trim();            // 09…
+        this.rawPhone = this.phoneInput.value.trim();                // 09…
         this.normalizedPhone = normalizeIranPhoneE164(this.rawPhone); // +989…
         if (!this.normalizedPhone) { this.toast('شماره معتبر نیست', 'warning'); return; }
 
@@ -195,9 +178,7 @@ class AuthManager {
                     'RequestVerificationToken': csrf() || ''
                 },
                 body: JSON.stringify({
-                    phone: this.normalizedPhone,
-                    deviceId: this.deviceId,
-                    rememberDevice: !!this.rememberDevice
+                    phone: this.normalizedPhone
                 })
             });
 
@@ -237,9 +218,7 @@ class AuthManager {
                 },
                 body: JSON.stringify({
                     phone: this.normalizedPhone,
-                    code: code,
-                    deviceId: this.deviceId,
-                    rememberDevice: !!this.rememberDevice
+                    code: code
                 })
             });
 
@@ -253,14 +232,7 @@ class AuthManager {
                 return;
             }
 
-            // LoginResponseDto: { userId, accessToken, accessTokenExpiresAtUtc, refreshToken, refreshTokenExpiresAtUtc, isNewUser }
-            window.tokenManager?.setTokens({
-                accessToken: data.accessToken,
-                refreshToken: data.refreshToken,
-                accessTokenExpiresAtUtc: data.accessTokenExpiresAtUtc
-            });
-            window.tokenManager?.setUser({ userId: data.userId });
-
+            // موفق: کوکی Auth سمت MVC ست می‌شود، RT سمت API ست می‌شود (HttpOnly).
             this.showStep('success');
             setTimeout(() => window.location.href = REDIRECT_AFTER_LOGIN, 1200);
         } catch {

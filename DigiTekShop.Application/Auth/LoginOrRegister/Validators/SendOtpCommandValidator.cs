@@ -15,9 +15,6 @@ public sealed class SendOtpCommandValidator : AbstractValidator<SendOtpCommand>
             .MaximumLength(32)
             .Must(BeValidIranPhone).WithMessage("شماره موبایل معتبر ایران نیست.");
 
-        RuleFor(x => x.Dto.DeviceId)
-            .MaximumLength(64);
-
     }
 
     private static bool BeValidIranPhone(string? raw)

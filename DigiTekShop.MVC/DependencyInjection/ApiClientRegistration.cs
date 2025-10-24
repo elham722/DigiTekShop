@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 using Polly;
 using Polly.Extensions.Http;
 
-namespace DigiTekShop.MVC.Services;
+namespace DigiTekShop.MVC.DependencyInjection;
 
 public static class ApiClientRegistration
 {
@@ -24,10 +24,32 @@ public static class ApiClientRegistration
             .Validate(o => o.TimeoutSeconds is >= 1 and <= 120, "Timeout out of range (1-120)")
             .ValidateOnStart();
 
+
+        services.AddSingleton(new CookieContainer()); // share container
+
+        services.AddHttpClient("ApiRaw", (sp, http) =>
+            {
+                var opt = sp.GetRequiredService<IOptions<ApiClientOptions>>().Value;
+                http.BaseAddress = new Uri(opt.BaseAddress.TrimEnd('/') + "/");
+                http.Timeout = TimeSpan.FromSeconds(opt.TimeoutSeconds);
+            })
+            .ConfigurePrimaryHttpMessageHandler((sp) =>
+            {
+                return new SocketsHttpHandler
+                {
+                    UseCookies = true,
+                    CookieContainer = sp.GetRequiredService<CookieContainer>(),
+                    AutomaticDecompression = DecompressionMethods.All,
+                    ConnectTimeout = TimeSpan.FromSeconds(10),
+                };
+            });
+
         services.AddHttpContextAccessor();
+        services.AddScoped<ITokenStore, CookieClaimsTokenStore>();
 
         services.AddTransient<CorrelationHandler>();
         services.AddTransient<BearerTokenHandler>();
+        services.AddTransient<AutoRefreshTokenHandler>();
         services.AddTransient<DiagnosticsHandler>();
 
         var optSnap = cfg.GetSection("ApiClient").Get<ApiClientOptions>() ?? new ApiClientOptions();
@@ -55,33 +77,34 @@ public static class ApiClientRegistration
                     handledEventsAllowedBeforeBreaking: optSnap.CircuitBreakErrors,
                     durationOfBreak: TimeSpan.FromSeconds(optSnap.CircuitDurationSeconds));
 
+
         services.AddHttpClient<IApiClient, ApiClient>((sp, http) =>
             {
                 var opt = sp.GetRequiredService<IOptions<ApiClientOptions>>().Value;
                 http.BaseAddress = new Uri(opt.BaseAddress.TrimEnd('/') + "/");
                 http.Timeout = TimeSpan.FromSeconds(opt.TimeoutSeconds);
-
-                http.DefaultRequestVersion = HttpVersion.Version20;
-                http.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-
-                http.DefaultRequestHeaders.Accept.Clear();
-                http.DefaultRequestHeaders.Add("Accept", "application/json");
+                http.DefaultRequestHeaders.Accept.ParseAdd("application/json");
                 http.DefaultRequestHeaders.UserAgent.ParseAdd("DigiTekShop.MVC/1.0");
             })
-            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            .AddHttpMessageHandler<CorrelationHandler>()
+            .AddHttpMessageHandler<BearerTokenHandler>()
+            .AddHttpMessageHandler<AutoRefreshTokenHandler>()
+            .AddHttpMessageHandler<DiagnosticsHandler>()
+            .AddPolicyHandler((req) => req.Method == HttpMethod.Get ? retryPolicy : Policy.NoOpAsync<HttpResponseMessage>())
+            .AddPolicyHandler(circuitBreakerPolicy)
+            .ConfigurePrimaryHttpMessageHandler(sp => new SocketsHttpHandler
             {
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
-                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+                UseCookies = true,
+                CookieContainer = sp.GetRequiredService<CookieContainer>(),
+                AutomaticDecompression = DecompressionMethods.All,
                 PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
                 MaxConnectionsPerServer = 50,
                 EnableMultipleHttp2Connections = false,
                 ConnectTimeout = TimeSpan.FromSeconds(10),
-                SslOptions = new System.Net.Security.SslClientAuthenticationOptions
-                {
-                    RemoteCertificateValidationCallback = (sender, cert, chain, errors)
-                        => env.IsDevelopment() ? true : errors == System.Net.Security.SslPolicyErrors.None
-                }
             });
+
+
 
 
         return services;

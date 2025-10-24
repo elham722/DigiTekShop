@@ -3,6 +3,4 @@ public sealed class VerifyOtpRequestDto
 {
     public string Phone { get; init; } = default!;
     public string Code { get; init; } = default!;
-    public string? DeviceId { get; init; }
-    public bool RememberDevice { get; init; }
 }

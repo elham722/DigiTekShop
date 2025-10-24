@@ -20,9 +20,6 @@ public sealed class VerifyOtpCommandValidator : AbstractValidator<VerifyOtpComma
             .NotEmpty().WithMessage("کد OTP الزامی است.")
             .Length(4, 8).WithMessage("طول کد OTP باید بین 4 تا 8 باشد.")
             .Matches(new Regex(@"^\d+$")).WithMessage("کد OTP باید فقط عدد باشد.");
-
-        RuleFor(x => x.Dto.DeviceId)
-            .MaximumLength(64);
     }
 
     private static bool BeValidIranPhone(string? raw)

@@ -11,6 +11,7 @@ internal sealed class ApiClient : IApiClient
 {
     private readonly HttpClient _http;
     private readonly ILogger<ApiClient> _logger;
+    private readonly IHttpContextAccessor _ctx;
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -20,10 +21,10 @@ internal sealed class ApiClient : IApiClient
         WriteIndented = false
     };
 
-    public ApiClient(HttpClient http, ILogger<ApiClient> logger)
+    
+    public ApiClient(HttpClient http, ILogger<ApiClient> logger, IHttpContextAccessor ctx)
     {
-        _http = http;
-        _logger = logger;
+        _http = http; _logger = logger; _ctx = ctx;
     }
 
     public async Task<ApiResult<TResponse>> GetAsync<TResponse>(string path, CancellationToken ct = default)
@@ -32,7 +33,7 @@ internal sealed class ApiClient : IApiClient
         Prepare(req);
         try
         {
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, AmbientCt(ct));
             return await Read<TResponse>(path, resp);
         }
         catch (TaskCanceledException tce)
@@ -56,7 +57,7 @@ internal sealed class ApiClient : IApiClient
         req.Content = CreateJson(body);
         try
         {
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, AmbientCt(ct));
             return await Read<TResponse>(path, resp);
         }
         catch (TaskCanceledException tce) { return FailFromCancel<TResponse>(path, tce); }
@@ -71,7 +72,7 @@ internal sealed class ApiClient : IApiClient
         req.Content = CreateJson(body);
         try
         {
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, AmbientCt(ct));
             return await Read<Unit>(path, resp);
         }
         catch (TaskCanceledException tce) { return FailFromCancel<Unit>(path, tce); }
@@ -86,7 +87,7 @@ internal sealed class ApiClient : IApiClient
         req.Content = CreateJson(body);
         try
         {
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, AmbientCt(ct));
             return await Read<TResponse>(path, resp);
         }
         catch (TaskCanceledException tce) { return FailFromCancel<TResponse>(path, tce); }
@@ -100,7 +101,7 @@ internal sealed class ApiClient : IApiClient
         Prepare(req);
         try
         {
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, AmbientCt(ct));
             return await Read<Unit>(path, resp);
         }
         catch (TaskCanceledException tce) { return FailFromCancel<Unit>(path, tce); }
@@ -120,15 +121,18 @@ internal sealed class ApiClient : IApiClient
 
         foreach (var part in files)
         {
+            if (part.Content.CanSeek) part.Content.Position = 0; 
             var sc = new StreamContent(part.Content);
-            sc.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(part.ContentType) ? "application/octet-stream" : part.ContentType);
+            sc.Headers.ContentType = new MediaTypeHeaderValue(
+                string.IsNullOrWhiteSpace(part.ContentType) ? "application/octet-stream" : part.ContentType);
             form.Add(sc, part.Name, part.FileName);
         }
+
         req.Content = form;
 
         try
         {
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, AmbientCt(ct));
             return await Read<Unit>(path, resp);
         }
         catch (TaskCanceledException tce) { return FailFromCancel<Unit>(path, tce); }
@@ -249,6 +253,9 @@ internal sealed class ApiClient : IApiClient
 
     private static string Truncate(string? s, int max)
         => string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= max ? s : s[..max]);
+
+    private CancellationToken AmbientCt(CancellationToken ct)
+        => ct.CanBeCanceled ? ct : (_ctx.HttpContext?.RequestAborted ?? CancellationToken.None);
 
     #endregion
 }

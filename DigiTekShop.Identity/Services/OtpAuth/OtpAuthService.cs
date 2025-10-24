@@ -52,6 +52,7 @@ public sealed class OtpAuthService : IAuthService
     {
         var ip = _client.IpAddress ?? "n/a";
         var ua = _client.UserAgent ?? "n/a";
+        var deviceId = _client.DeviceId ?? "unknown";
 
         // Normalize & validate phone
         var phone = Normalization.NormalizePhoneIranE164(dto.Phone);
@@ -174,7 +175,7 @@ public sealed class OtpAuthService : IAuthService
     {
         var ip = _client.IpAddress ?? "n/a";
         var ua = _client.UserAgent ?? "n/a";
-        var deviceId = _client.DeviceId ?? dto.DeviceId ?? "unknown";
+        var deviceId = _client.DeviceId ?? "unknown";
 
         var phone = Normalization.NormalizePhoneIranE164(dto.Phone);
         if (string.IsNullOrWhiteSpace(phone) || !Regex.IsMatch(phone, _phoneOpts.Security.AllowedPhonePattern))
@@ -242,7 +243,7 @@ public sealed class OtpAuthService : IAuthService
         await _db.SaveChangesAsync(ct);
 
         await _devices.UpsertAsync(user.Id, deviceId, ua, ip, ct);
-        if (dto.RememberDevice && _phoneOpts.TrustDeviceDays > 0)
+        if ( _phoneOpts.TrustDeviceDays > 0)
         {
             await _devices.TrustAsync(user.Id, deviceId, TimeSpan.FromDays(_phoneOpts.TrustDeviceDays), ct);
         }

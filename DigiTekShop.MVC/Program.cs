@@ -1,4 +1,4 @@
-﻿using DigiTekShop.MVC.Services;
+﻿using DigiTekShop.MVC.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 
