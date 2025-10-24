@@ -11,6 +11,7 @@ using DigiTekShop.Identity.Services.Me;
 using DigiTekShop.Identity.Services.Permission;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using DigiTekShop.Identity.Services.OtpAuth;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 
@@ -71,6 +72,7 @@ public static class IdentityServicesRegistration
         services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
 
         services.Configure<PhoneVerificationOptions>(configuration.GetSection("PhoneVerification"));
+        services.AddScoped<IAuthService, OtpAuthService>();
         services.AddScoped<IPhoneVerificationService, PhoneVerificationService>();
 
         services.Configure<LoginAttemptOptions>(configuration.GetSection("Auth:LoginAttempts"));

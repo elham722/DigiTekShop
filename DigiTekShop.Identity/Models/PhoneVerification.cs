@@ -121,7 +121,7 @@ public class PhoneVerification
             IpAddress = TrimTo(ipAddress, 45);
 
         if (!string.IsNullOrWhiteSpace(userAgent))
-            UserAgent = TrimTo(userAgent, 256);
+            UserAgent = TrimTo(userAgent, 512);
     }
 
     public bool IsExpired(DateTime nowUtc) => nowUtc >= ExpiresAtUtc;
