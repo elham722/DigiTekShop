@@ -64,7 +64,9 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
             .IsRowVersion()
             .IsRequired();
 
-        
+     
+
+
         builder.Ignore(rt => rt.IsRevoked);
         builder.Ignore(rt => rt.IsExpired);
         builder.Ignore(rt => rt.IsActive);
@@ -76,6 +78,8 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
             .HasForeignKey(rt => rt.UserId)
             .OnDelete(DeleteBehavior.Cascade)
             .IsRequired();
+
+        builder.HasQueryFilter(rt => rt.User != null && !rt.User.IsDeleted);
 
         builder.HasIndex(rt => rt.TokenHash)
             .IsUnique()

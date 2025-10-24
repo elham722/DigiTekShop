@@ -16,12 +16,14 @@ namespace DigiTekShop.Identity.Configurations;
             builder.Property(up => up.IsGranted)
                 .HasDefaultValue(true);
 
-            // Configure relationships
-            builder.HasOne(up => up.User)
-                .WithMany(u => u.UserPermissions)
-                .HasForeignKey(up => up.UserId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .IsRequired(false);
+        builder.HasOne(up => up.User)
+            .WithMany(u => u.UserPermissions)
+            .HasForeignKey(up => up.UserId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired();
+
+        builder.HasQueryFilter(up => up.User != null && !up.User.IsDeleted);
+
 
         builder.HasOne(up => up.Permission)
                 .WithMany(p => p.UserPermissions)

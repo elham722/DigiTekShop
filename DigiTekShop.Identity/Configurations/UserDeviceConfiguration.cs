@@ -46,8 +46,9 @@ internal class UserDeviceConfiguration : IEntityTypeConfiguration<UserDevice>
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Cascade)
             .IsRequired();
+        b.HasQueryFilter(ud => ud.User != null && !ud.User.IsDeleted);
 
-        
+
         b.HasIndex(x => new { x.UserId, x.DeviceId })
             .IsUnique()
             .HasDatabaseName("UX_UserDevices_User_DeviceId");

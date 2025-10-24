@@ -37,7 +37,6 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
         b.HasQueryFilter(u => !u.IsDeleted);
 
 
-      
         b.HasIndex(u => u.NormalizedEmail)
             .HasFilter("[IsDeleted] = 0")
             .HasDatabaseName("IX_Users_NormalizedEmail_Active");
