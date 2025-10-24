@@ -1,6 +1,6 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 
-namespace DigiTekShop.Application.Auth.LoginOrRegister.Command;
+namespace DigiTekShop.Application.Auth.LoginOrRegister.Commands;
 public sealed class SendOtpCommandHandler : ICommandHandler<SendOtpCommand>
 {
     private readonly IAuthService _auth;

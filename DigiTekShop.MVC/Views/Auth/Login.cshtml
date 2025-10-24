@@ -1,1 +1,193 @@
-﻿
+﻿@using Microsoft.AspNetCore.Antiforgery
+@inject IAntiforgery Antiforgery
+@{
+    var tokens = Antiforgery.GetAndStoreTokens(Context);
+}
+
+@{
+    ViewData["Title"] = "ورود و ثبت نام";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - DigiTekShop</title>
+    <meta name="request-verification-token" content="@tokens.RequestToken" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="auth-body">
+ 
+    <div class="bg-animation">
+        <div class="floating-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+            <div class="shape shape-4"></div>
+            <div class="shape shape-5"></div>
+        </div>
+    </div>
+
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+
+           
+            <div class="col-lg-6 d-none d-lg-flex auth-left">
+                <div class="auth-branding">
+                    <div class="brand-logo">
+                        <i class="fas fa-shopping-cart"></i>
+                        <h1>DigiTekShop</h1>
+                    </div>
+                    <div class="brand-tagline">
+                        <h2>فروشگاه آنلاین تکنولوژی</h2>
+                        <p>بهترین محصولات دیجیتال را با بهترین قیمت خریداری کنید</p>
+                    </div>
+                    <div class="brand-features">
+                        <div class="feature-item"><i class="fas fa-shipping-fast"></i><span>ارسال سریع</span></div>
+                        <div class="feature-item"><i class="fas fa-shield-alt"></i><span>پرداخت امن</span></div>
+                        <div class="feature-item"><i class="fas fa-headset"></i><span>پشتیبانی ۲۴/۷</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- فرم احراز هویت -->
+            <div class="col-lg-6 auth-right">
+                <div class="auth-container">
+                    <div class="mobile-logo d-lg-none">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>DigiTekShop</span>
+                    </div>
+
+                    <div class="auth-form-container">
+                        <!-- هدر -->
+                        <div class="auth-header">
+                            <h3 class="auth-title">خوش آمدید</h3>
+                            <p class="auth-subtitle"></p>
+                        </div>
+
+                        <!-- مرحله 1: شماره -->
+                        <div id="phoneStep" class="auth-step active">
+                            <form id="phoneForm" class="auth-form" autocomplete="off" novalidate>
+                                 <input name="__RequestVerificationToken" type="hidden" value="@tokens.RequestToken" /> 
+                                <div class="form-group">
+                                    <label for="phoneNumber" class="form-label">
+                                        <i class="fas fa-mobile-alt"></i>  برای ادامه، شماره موبایل خود را وارد کنید
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="tel"
+                                               id="phoneNumber"
+                                               name="phoneNumber"
+                                               class="form-control"
+                                               placeholder="مثلاً ۰۹۳۵۱۲۳۴۵۶۷"
+                                               inputmode="numeric"
+                                               pattern="^09\d{9}$"
+                                               maxlength="11"
+                                               required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="rememberDevice" name="rememberDevice" class="form-check-input" checked>
+                                        <label for="rememberDevice" class="form-check-label">این دستگاه را به خاطر بسپار</label>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-lg w-100 auth-btn">
+                                    <span class="btn-text"> ورود </span>
+                                    <span class="btn-spinner d-none"><i class="fas fa-spinner fa-spin"></i></span>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- مرحله 2: کد -->
+                        <div id="otpStep" class="auth-step" aria-hidden="true">
+                            <div class="auth-header">
+                                <button type="button" class="btn btn-link back-btn" onclick="goBackToPhone()" aria-label="بازگشت">
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                                <h3 class="auth-title">تایید شماره موبایل</h3>
+                                <p class="auth-subtitle">
+                                    کد ۶ رقمی ارسال شده به
+                                    <span id="displayPhone" class="phone-display"></span>
+                                    را وارد کنید
+                                </p>
+                            </div>
+
+                            <form id="otpForm" class="auth-form" autocomplete="off" novalidate>
+                                <input name="__RequestVerificationToken" type="hidden" value="@tokens.RequestToken" />
+                                <div class="form-group">
+                                    <label class="form-label"><i class="fas fa-key"></i> کد تایید</label>
+                                    <div class="otp-input-container" role="group" aria-label="OTP">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم اول">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم دوم">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم سوم">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم چهارم">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم پنجم">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم ششم">
+                                    </div>
+                                    <input type="hidden" id="otpCode" name="otpCode">
+                                </div>
+
+                                <div class="resend-section">
+                                    <p class="resend-text">
+                                        کد را دریافت نکردید؟
+                                        <button type="button" id="resendBtn" class="btn btn-link resend-link" disabled>ارسال مجدد</button>
+                                    </p>
+                                    <div class="countdown" id="countdown">
+                                        <i class="far fa-clock"></i>
+                                        <span id="countdownText">0:60</span>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-lg w-100 auth-btn">
+                                    <span class="btn-text">تایید و ورود</span>
+                                    <span class="btn-spinner d-none"><i class="fas fa-spinner fa-spin"></i></span>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- مرحله موفقیت -->
+                        <div id="successStep" class="auth-step" aria-hidden="true">
+                            <div class="success-container">
+                                <div class="success-icon"><i class="fas fa-check-circle"></i></div>
+                                <h3 class="success-title">ورود موفقیت‌آمیز</h3>
+                                <p class="success-message">در حال انتقال به داشبورد...</p>
+                                <div class="success-spinner"><i class="fas fa-spinner fa-spin"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="auth-footer">
+                        <p class="footer-text">
+                            با ورود به سایت،
+                            <a class="footer-link" href="/legal/terms">قوانین و مقررات</a>
+                            و
+                            <a class="footer-link" href="/legal/privacy">حریم خصوصی</a>
+                            را می‌پذیرید
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/auth-token.js" asp-append-version="true" defer></script>
+    <script src="~/js/auth.js" asp-append-version="true" defer></script>
+</body>
+</html>

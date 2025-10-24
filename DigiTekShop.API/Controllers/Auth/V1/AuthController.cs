@@ -1,4 +1,4 @@
-using DigiTekShop.Application.Auth.LoginOrRegister.Command;
+using DigiTekShop.Application.Auth.LoginOrRegister.Commands;
 using DigiTekShop.Contracts.DTOs.Auth.LoginOrRegister;
 
 namespace DigiTekShop.API.Controllers.Auth.V1;

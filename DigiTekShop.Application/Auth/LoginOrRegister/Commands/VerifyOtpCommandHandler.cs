@@ -1,7 +1,7 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 using DigiTekShop.Contracts.DTOs.Auth.LoginOrRegister;
 
-namespace DigiTekShop.Application.Auth.LoginOrRegister.Command;
+namespace DigiTekShop.Application.Auth.LoginOrRegister.Commands;
 public sealed class VerifyOtpCommandHandler : ICommandHandler<VerifyOtpCommand, LoginResponseDto>
 {
     private readonly IAuthService _auth;

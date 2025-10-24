@@ -1,4 +1,4 @@
-using DigiTekShop.MVC.Services;
+﻿using DigiTekShop.MVC.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -40,6 +40,18 @@ builder.Services.AddLogging(logging =>
     logging.AddDebug();
     logging.SetMinimumLevel(LogLevel.Information);
 });
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "RequestVerificationToken";         // برای Ajax
+    options.FormFieldName = "__RequestVerificationToken";    // برای فرم‌های عادی
+    options.Cookie.Name = "__Host-DTS.AntiXsrf";             // نام امن برای کوکی
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+});
+
 
 var app = builder.Build();
 

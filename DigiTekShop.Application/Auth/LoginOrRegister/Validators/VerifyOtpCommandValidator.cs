@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Application.Auth.LoginOrRegister.Command;
+﻿using DigiTekShop.Application.Auth.LoginOrRegister.Commands;
 using DigiTekShop.SharedKernel.Utilities.Text;
 using System.Text.RegularExpressions;
 
