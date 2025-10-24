@@ -31,7 +31,6 @@ namespace DigiTekShop.Persistence.Migrations
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("Email")
-                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
@@ -46,8 +45,8 @@ namespace DigiTekShop.Persistence.Migrations
                         .HasDefaultValue(true);
 
                     b.Property<string>("Phone")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<DateTimeOffset?>("UpdatedAtUtc")
                         .HasColumnType("datetimeoffset");
@@ -64,11 +63,21 @@ namespace DigiTekShop.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("UX_Customers_Email_NotNull")
+                        .HasFilter("[Email] IS NOT NULL");
+
+                    b.HasIndex("Phone")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Customers_Phone_NotNull")
+                        .HasFilter("[Phone] IS NOT NULL");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Customers_Phone_E164_IR", "( [Phone] IS NULL ) OR ([Phone] LIKE '+98__________')");
+                        });
                 });
 
             modelBuilder.Entity("DigiTekShop.Persistence.Models.OutboxMessage", b =>
