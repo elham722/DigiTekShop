@@ -1,4 +1,4 @@
-﻿<header class="page-header d-md-block d-none">
+﻿<header class="page-header d-md-block d-none site-header">
     <!-- start banner -->
     <div class="alert banner-container alert-dismissible fade show" role="alert">
         <a href="#" class="banner-placement rounded-0"
@@ -7,7 +7,7 @@
     </div>
     <!-- end banner -->
     <!-- start of page-header-top -->
-    <div class="page-header--top">
+    <div class="page-header--top topbar">
         <div class="container">
             <div class="d-flex align-items-center justify-content-between">
                 <div class="page-header--top-right">
@@ -73,10 +73,10 @@
                     <div class="search-container">
                         <form action="#" class="search-form">
                             <input type="text" class="form-control search-field" placeholder="جستجو کنید..">
-                            <button class="btn btn-primary btn-search btn-action">
+                            <button class="btn header-grad-btn btn-search btn-action">
                                 <i class="ri-search-2-line"></i>
                             </button>
-                            <button class="btn btn-primary btn-close-search-result btn-action d-none">
+                            <button class="btn header-grad-btn btn-close-search-result btn-action d-none">
                                 <i class="ri-close-line"></i>
                             </button>
                         </form>
@@ -318,11 +318,11 @@
     </div>
     <!-- end of page-header-middle -->
     <!-- start of page-header-bottom -->
-    <div class="page-header--bottom">
+    <div class="page-header--bottom catbar">
         <div class="container">
             <div class="d-flex align-items-center">
                 <div class="vertical-menu">
-                    <a href="#" class="vertical-menu-btn">دسته بندی کالاها <i class="ri-apps-fill icon"></i></a>
+                    <button class="btn btn-outline-secondary vertical-menu-btn" data-bs-toggle="offcanvas" data-bs-target="#categoryOffcanvas" aria-controls="categoryOffcanvas">دسته بندی کالاها <i class="ri-apps-fill icon"></i></button>
                     <div class="vertical-menu-items">
                         <ul>
                             <li class="mega-menu-category show">
@@ -419,7 +419,7 @@
     <div class="page-header-responsive-row mb-3">
         <div class="d-flex align-items-center">
             <div class="navigation-container">
-                <button class="toggle-navigation"></button>
+                <button class="btn btn-outline-secondary toggle-navigation" data-bs-toggle="offcanvas" data-bs-target="#mobileMenuOffcanvas" aria-controls="mobileMenuOffcanvas"></button>
                 <div class="navigation">
                     <div class="navigation-header">
                         <div class="logo-container logo-box">
@@ -530,10 +530,10 @@
         <div class="search-container">
             <form action="#" class="search-form">
                 <input type="text" class="form-control search-field" placeholder="جستجو کنید..">
-                <button class="btn btn-primary btn-search btn-action">
+                <button class="btn header-grad-btn btn-search btn-action">
                     <i class="ri-search-2-line"></i>
                 </button>
-                <button class="btn btn-primary btn-close-search-result btn-action d-none">
+                <button class="btn header-grad-btn btn-close-search-result btn-action d-none">
                     <i class="ri-close-line"></i>
                 </button>
             </form>
@@ -562,3 +562,69 @@
         </div>
     </div>
 </header>
+
+<!-- Category Offcanvas -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="categoryOffcanvas" aria-labelledby="categoryOffcanvasLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="categoryOffcanvasLabel">دسته‌بندی کالاها</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <ul class="vertical-menu-items">
+            <li class="mega-menu-category">
+                <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown">کالای دیجیتال</a>
+                <ul class="dropdown-menu mega-menu">
+                    <li><a class="dropdown-item" href="#">لوازم جانبی گوشی</a></li>
+                    <li><a class="dropdown-item" href="#">گوشی موبایل</a></li>
+                    <li><a class="dropdown-item" href="#">واقعیت مجازی</a></li>
+                    <li><a class="dropdown-item" href="#">مچ‌بند و ساعت هوشمند</a></li>
+                </ul>
+            </li>
+            <li class="mega-menu-category">
+                <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown">مد و پوشاک</a>
+                <ul class="dropdown-menu mega-menu">
+                    <li><a class="dropdown-item" href="#">لباس زنانه</a></li>
+                    <li><a class="dropdown-item" href="#">لباس مردانه</a></li>
+                    <li><a class="dropdown-item" href="#">لباس بچگانه</a></li>
+                </ul>
+            </li>
+            <li><a href="#" class="dropdown-item">اسباب‌بازی</a></li>
+            <li><a href="#" class="dropdown-item">زیبایی و سلامت</a></li>
+            <li><a href="#" class="dropdown-item">خانه و آشپزخانه</a></li>
+            <li><a href="#" class="dropdown-item">لوازم تحریر</a></li>
+            <li><a href="#" class="dropdown-item">ورزش و سفر</a></li>
+            <li><a href="#" class="dropdown-item">سوپرمارکت</a></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Mobile Menu Offcanvas -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenuOffcanvas" aria-labelledby="mobileMenuOffcanvasLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="mobileMenuOffcanvasLabel">منو</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <ul class="menu">
+            <li>
+                <a href="#" class="dropdown-toggle" data-bs-toggle="collapse" data-bs-target="#womenSubmenu">زنانه</a>
+                <ul class="collapse" id="womenSubmenu">
+                    <li><a href="#">لباس</a></li>
+                    <li><a href="#">کفش</a></li>
+                    <li><a href="#">اکسسوری</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="#" class="dropdown-toggle" data-bs-toggle="collapse" data-bs-target="#menSubmenu">مردانه</a>
+                <ul class="collapse" id="menSubmenu">
+                    <li><a href="#">لباس</a></li>
+                    <li><a href="#">کفش</a></li>
+                    <li><a href="#">اکسسوری</a></li>
+                </ul>
+            </li>
+            <li><a href="#">فروش ویژه</a></li>
+            <li><a href="#">برندها</a></li>
+            <li><a href="#">خانه طراحان ایرانی</a></li>
+        </ul>
+    </div>
+</div>
