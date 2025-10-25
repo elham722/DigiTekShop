@@ -27,8 +27,8 @@ namespace DigiTekShop.API.Extensions.Options
             // Messaging
             services.AddOptions<EmailOptions>().Bind(cfg.GetSection("Email"));
             services.AddOptions<SmtpSettings>().Bind(cfg.GetSection("SmtpSettings"));
-            services.AddOptions<SmsOptions>().Bind(cfg.GetSection("Sms"));
-            services.AddOptions<KavenegarOptions>().Bind(cfg.GetSection("Kavenegar"));
+            services.AddOptions<SmsOptions>().Bind(cfg.GetSection("PhoneSender"));
+            services.AddOptions<KavenegarOptions>().Bind(cfg.GetSection("SmsIr"));
 
             // Security
             services.AddOptions<DeviceLimitsOptions>().Bind(cfg.GetSection("DeviceLimits"));
