@@ -265,7 +265,6 @@ public sealed class OtpAuthService : IAuthService
         // بعد از اینکه pv.MarkAsVerified(...) و user.SetPhoneNumber(...confirmed: true) را انجام دادی:
         var shouldRaiseUserRegistered =
             (user.PhoneNumberConfirmed == true)   // الان تأیید است
-            && isNew                              // کاربر تازه ساخته شده بود
             && user.CustomerId is null;           // هنوز Customer لینک نشده
 
         if (shouldRaiseUserRegistered)
