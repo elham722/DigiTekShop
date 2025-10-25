@@ -1,4 +1,4 @@
-(function ($) {
+(function () {
   "use strict";
   let THEME = {};
 
@@ -8,8 +8,8 @@
   };
   /*====== end Example ======*/
 
-  $(window).on("load", function () {});
-  $(document).ready(function () {
+  window.addEventListener("load", function () {});
+  document.addEventListener("DOMContentLoaded", function () {
     THEME.Example();
   });
-})(jQuery);
+})();
