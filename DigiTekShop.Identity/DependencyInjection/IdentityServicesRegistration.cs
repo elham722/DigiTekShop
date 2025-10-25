@@ -12,6 +12,8 @@ using DigiTekShop.Identity.Services.Permission;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using DigiTekShop.Identity.Services.OtpAuth;
+using DigiTekShop.Identity.Events.PhoneVerification;
+using DigiTekShop.Identity.Events.Mapper;
 
 namespace DigiTekShop.Identity.DependencyInjection;
 
@@ -102,11 +104,11 @@ public static class IdentityServicesRegistration
 
         #region Event & outbox
 
-        services.AddScoped<IdentityIntegrationEventMapper>();
+        services.AddScoped<IIntegrationEventMapper,IdentityIntegrationEventMapper>();
 
         services.AddScoped<IIntegrationEventHandler<AddCustomerIdIntegrationEvent>, CustomerCreatedHandler>();
 
-        services.AddScoped<IIntegrationEventHandler<UserRegisteredIntegrationEvent>, UserRegisteredNotificationHandler>();
+        services.AddScoped<IIntegrationEventHandler<PhoneVerificationIssuedIntegrationEvent>, PhoneVerificationIssuedHandler>();
 
         services.Configure<NotificationFeatureFlags>(configuration.GetSection(NotificationFeatureFlags.SectionName));
 

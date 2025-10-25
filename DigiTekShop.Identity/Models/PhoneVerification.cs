@@ -1,6 +1,4 @@
-﻿using DigiTekShop.SharedKernel.Exceptions.Validation;
-
-namespace DigiTekShop.Identity.Models;
+﻿namespace DigiTekShop.Identity.Models;
 
 public class PhoneVerification
 {
@@ -20,10 +18,14 @@ public class PhoneVerification
 
     public bool IsVerified { get; private set; }
 
+    public string? CodeHashAlgo { get; private set; }    
+    public int SecretVersion { get; private set; }        
+    public string? EncryptedCodeProtected { get; private set; } 
+    public string? DeviceId { get; private set; }           
+
     public byte[]? RowVersion { get; private set; }
 
     private const int DefaultMaxAttempts = 5;
-
     private PhoneVerification() { }
 
     public static PhoneVerification CreateForUser(
@@ -33,7 +35,11 @@ public class PhoneVerification
         DateTime expiresAtUtc,
         string? phoneNumber = null,
         string? ipAddress = null,
-        string? userAgent = null)
+        string? userAgent = null,
+        string? deviceId = null,
+        string? codeHashAlgo = "HMACSHA256",
+        int secretVersion = 1,
+        string? encryptedCodeProtected = null)
     {
         Guard.AgainstEmpty(userId, nameof(userId));
         Guard.AgainstNullOrEmpty(codeHash, nameof(codeHash));
@@ -43,37 +49,16 @@ public class PhoneVerification
         {
             UserId = userId,
             CodeHash = codeHash,
+            CodeHashAlgo = codeHashAlgo,
+            SecretVersion = secretVersion,
+            EncryptedCodeProtected = encryptedCodeProtected,
             Attempts = 0,
             CreatedAtUtc = createdAtUtc,
             ExpiresAtUtc = expiresAtUtc,
             PhoneNumber = TrimTo(phoneNumber, 32),
             IpAddress = TrimTo(ipAddress, 45),
-            UserAgent = TrimTo(userAgent, 512)
-        };
-    }
-
-    public static PhoneVerification CreateForPhone(
-         string codeHash,
-            DateTime createdAtUtc,
-            DateTime expiresAtUtc,
-            string phoneNumber,
-           string? ipAddress = null,
-            string? userAgent = null)
-    {
-        Guard.AgainstNullOrEmpty(codeHash, nameof(codeHash));
-        Guard.AgainstPastDate(expiresAtUtc, () => DateTime.UtcNow, nameof(expiresAtUtc));
-        Guard.AgainstNullOrEmpty(phoneNumber, nameof(phoneNumber));
-
-        return new PhoneVerification
-        {
-            UserId = null,
-            CodeHash = codeHash,
-            Attempts = 0,
-            CreatedAtUtc = createdAtUtc,
-            ExpiresAtUtc = expiresAtUtc,
-            PhoneNumber = TrimTo(phoneNumber, 32),
-            IpAddress = TrimTo(ipAddress, 45),
-            UserAgent = TrimTo(userAgent, 512)
+            UserAgent = TrimTo(userAgent, 512),
+            DeviceId = TrimTo(deviceId, 128)
         };
     }
 
@@ -83,12 +68,19 @@ public class PhoneVerification
         DateTime newExpiresAtUtc,
         string? phoneNumber = null,
         string? ipAddress = null,
-        string? userAgent = null)
+        string? userAgent = null,
+        string? deviceId = null,
+        string? codeHashAlgo = "HMACSHA256",
+        int secretVersion = 1,
+        string? encryptedCodeProtected = null)
     {
         Guard.AgainstNullOrEmpty(newHash, nameof(newHash));
         Guard.AgainstPastDate(newExpiresAtUtc, () => DateTime.UtcNow, nameof(newExpiresAtUtc));
 
         CodeHash = newHash;
+        CodeHashAlgo = codeHashAlgo;
+        SecretVersion = secretVersion;
+        EncryptedCodeProtected = encryptedCodeProtected;
         CreatedAtUtc = newCreatedAtUtc;
         ExpiresAtUtc = newExpiresAtUtc;
         Attempts = 0;
@@ -98,34 +90,24 @@ public class PhoneVerification
         if (!string.IsNullOrWhiteSpace(phoneNumber)) PhoneNumber = TrimTo(phoneNumber, 32);
         if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = TrimTo(ipAddress, 45);
         if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = TrimTo(userAgent, 512);
+        if (!string.IsNullOrWhiteSpace(deviceId)) DeviceId = TrimTo(deviceId, 128);
     }
 
     public bool TryIncrementAttempts(int maxAttempts = DefaultMaxAttempts)
-    {
-        if (Attempts >= maxAttempts) return false;
-        Attempts++;
-        return true;
-    }
+    { if (Attempts >= maxAttempts) return false; Attempts++; return true; }
 
     public void ResetAttempts() => Attempts = 0;
 
     public void MarkAsVerified(DateTime nowUtc)
-    {
-        IsVerified = true;
-        VerifiedAtUtc = nowUtc;
-    }
+    { IsVerified = true; VerifiedAtUtc = nowUtc; }
 
     public void UpdateRequestInfo(string? ipAddress = null, string? userAgent = null)
     {
-        if (!string.IsNullOrWhiteSpace(ipAddress))
-            IpAddress = TrimTo(ipAddress, 45);
-
-        if (!string.IsNullOrWhiteSpace(userAgent))
-            UserAgent = TrimTo(userAgent, 512);
+        if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = TrimTo(ipAddress, 45);
+        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = TrimTo(userAgent, 512);
     }
 
     public bool IsExpired(DateTime nowUtc) => nowUtc >= ExpiresAtUtc;
-
     public bool IsValid(DateTime nowUtc, int maxAttempts = DefaultMaxAttempts)
         => !IsExpired(nowUtc) && !IsVerified && Attempts < maxAttempts;
 

@@ -3,7 +3,7 @@ using DigiTekShop.Application.Common.Events;
 using DigiTekShop.Application.Common.Messaging;
 using DigiTekShop.Contracts.Abstractions.Caching;
 using DigiTekShop.Contracts.Options.RabbitMq;
-using DigiTekShop.Identity.Events;
+using DigiTekShop.Identity.Events.Mapper;
 using DigiTekShop.Infrastructure.Background;
 using DigiTekShop.Infrastructure.Caching;
 using DigiTekShop.Infrastructure.DomainEvents;

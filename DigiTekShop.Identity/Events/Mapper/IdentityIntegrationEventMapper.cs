@@ -1,4 +1,6 @@
-﻿namespace DigiTekShop.Identity.Events;
+﻿using DigiTekShop.Identity.Events.PhoneVerification;
+
+namespace DigiTekShop.Identity.Events.Mapper;
 
 public sealed class IdentityIntegrationEventMapper : IIntegrationEventMapper
 {
@@ -16,6 +18,17 @@ public sealed class IdentityIntegrationEventMapper : IIntegrationEventMapper
                     PhoneNumber: e.PhoneNumber,
                     OccurredOn: e.OccurredOn,
                     CorrelationId: e.CorrelationId
+                );
+            }
+            if (de is PhoneVerificationIssuedDomainEvent eDe)
+            {
+                yield return new PhoneVerificationIssuedIntegrationEvent(
+                    MessageId: Guid.NewGuid(),
+                    UserId: eDe.UserId,
+                    PhoneNumber: eDe.PhoneNumber,
+                    PhoneVerificationId: eDe.PhoneVerificationId,
+                    OccurredOn: eDe.OccurredOn,
+                    CorrelationId: eDe.CorrelationId
                 );
             }
         }

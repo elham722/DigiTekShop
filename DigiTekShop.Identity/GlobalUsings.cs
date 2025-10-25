@@ -43,4 +43,14 @@ global using System.Collections.Generic;
 global using System.Linq;
 global using System.Text;
 global using System.Threading.Tasks;
+global using DigiTekShop.Contracts.Abstractions.ExternalServices.PhoneSender;
+global using DigiTekShop.Contracts.Abstractions.Identity.Device;
+global using DigiTekShop.Contracts.DTOs.Auth.LoginOrRegister;
+global using DigiTekShop.Contracts.DTOs.Auth.Token;
+global using DigiTekShop.Contracts.Options.Phone;
+global using DigiTekShop.SharedKernel.Enums.Auth;
+global using DigiTekShop.SharedKernel.Utilities.Security;
+global using DigiTekShop.SharedKernel.Utilities.Text;
+global using System.Security.Cryptography;
+global using System.Text.RegularExpressions;
 
