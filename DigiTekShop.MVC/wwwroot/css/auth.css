@@ -29,6 +29,12 @@
     box-sizing: border-box;
 }
 
+/* Remove all focus outlines and shadows */
+*:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 body.auth-body {
     font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: linear-gradient(135deg, var(--primary-light) 0%, #f0f0f0 100%);
@@ -161,17 +167,12 @@ body.auth-body {
     color: var(--text-primary);
     direction: ltr;
     text-align: center;
+    outline: none;
 }
 
 .phone-input:focus {
     border-color: var(--primary-dark);
     outline: none;
-}
-
-.phone-input:focus:hover {
-    border-color: var(--primary-dark);
-    outline: none;
-    transform: scale(1.02);
 }
 
 .phone-input::placeholder {
@@ -182,7 +183,7 @@ body.auth-body {
 /* Login Button */
 .login-btn {
     width: 100%;
-    background: linear-gradient(135deg, var(--primary-orange), var(--primary-red));
+    background: #F77F00;
     border: none;
     border-radius: 12px;
     padding: 15px 20px;
@@ -201,7 +202,7 @@ body.auth-body {
 }
 
 .login-btn:hover {
-    background: linear-gradient(135deg, var(--primary-red), var(--primary-orange));
+    background: #e06d00;
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
@@ -431,6 +432,18 @@ body.auth-body {
     line-height: 1.5;
 }
 
+.privacy-link {
+    color: var(--primary-dark);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.privacy-link:hover {
+    color: var(--primary-red);
+    text-decoration: underline;
+}
+
 /* Toast Styles */
 .toast-container {
     z-index: 1050;
@@ -466,7 +479,6 @@ body.auth-body {
 /* Error States */
 .form-control.is-invalid {
     border-color: var(--primary-red);
-    box-shadow: 0 0 0 3px rgba(214, 40, 40, 0.1);
 }
 
 .invalid-feedback {
@@ -479,7 +491,6 @@ body.auth-body {
 /* Success States */
 .form-control.is-valid {
     border-color: var(--primary-orange);
-    box-shadow: 0 0 0 3px rgba(247, 127, 0, 0.1);
 }
 
 /* Responsive Design */

@@ -82,7 +82,7 @@ class AuthManager {
             if (e.key === 'Enter') { e.preventDefault(); this.sendOtp(); }
         });
 
-        this.phoneInput.addEventListener('blur', () => this.validatePhone(true));
+        // this.phoneInput.addEventListener('blur', () => this.validatePhone(true));
 
         // Enter روی هر کادر OTP، به‌جای submit فرم، verifyOtp را صدا بزن
         document.addEventListener('keydown', (e) => {
