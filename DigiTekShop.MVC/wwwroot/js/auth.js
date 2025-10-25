@@ -325,13 +325,22 @@ class AuthManager {
             });
 
             let data = {};
-            try { data = await res.json(); } catch { /* 204 */ }
+            try { 
+                data = await res.json(); 
+                console.log('Response data:', data);
+            } catch (e) { 
+                console.log('JSON parse error:', e);
+                console.log('Response status:', res.status);
+                console.log('Response headers:', res.headers);
+            }
 
             if (!res.ok) {
                 this.hideLoading();
-                const msg = (data?.errorCode === 'RATE_LIMIT_EXCEEDED')
+                console.log('Response not OK:', res.status, data);
+                const errorCode = data?.errorCode || data?.extensions?.errorCode;
+                const msg = (errorCode === 'RATE_LIMIT_EXCEEDED')
                     ? 'خیلی سریع درخواست دادید؛ چند دقیقه‌ی دیگر دوباره تلاش کنید.'
-                    : (data?.errors?.[0] || data?.message || 'ارسال کد ناموفق بود');
+                    : (data?.errors?.[0] || data?.detail || data?.message || 'ارسال کد ناموفق بود');
                 this.toast(msg, 'warning');
                 return;
             }
