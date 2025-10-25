@@ -51,10 +51,10 @@ public static class IdentityServicesRegistration
             options.Lockout.MaxFailedAccessAttempts = 5;
             options.Lockout.AllowedForNewUsers = true;
 
-            options.User.RequireUniqueEmail = true;
+            options.User.RequireUniqueEmail = false;
 
-            options.SignIn.RequireConfirmedEmail = true; 
-            options.SignIn.RequireConfirmedPhoneNumber = false;
+            options.SignIn.RequireConfirmedEmail = false; 
+            options.SignIn.RequireConfirmedPhoneNumber = true;
         })
         .AddEntityFrameworkStores<DigiTekShopIdentityDbContext>()
         .AddDefaultTokenProviders();
@@ -104,7 +104,7 @@ public static class IdentityServicesRegistration
 
         #region Event & outbox
 
-        services.AddScoped<IIntegrationEventMapper,IdentityIntegrationEventMapper>();
+        services.AddScoped<IdentityIntegrationEventMapper>();
 
         services.AddScoped<IIntegrationEventHandler<AddCustomerIdIntegrationEvent>, CustomerCreatedHandler>();
 
@@ -246,11 +246,12 @@ public static class IdentityServicesRegistration
                         // Active user check
                         var userMgr = sp.GetRequiredService<UserManager<User>>();
                         var user = await userMgr.FindByIdAsync(sub);
-                        if (user is null || user.IsDeleted || !user.EmailConfirmed)
+                        if (user is null || user.IsDeleted || !(user.EmailConfirmed || user.PhoneNumberConfirmed))
                         {
-                            logger.LogWarning("[JWT] User inactive. SUB={Sub}", sub);
                             ctx.Fail("user inactive");
+                            return;
                         }
+
                     },
 
                     OnAuthenticationFailed = ctx =>

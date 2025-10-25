@@ -106,8 +106,6 @@ public sealed class OtpAuthService : IAuthService
             }
         }
 
-        var isNewUser = false;
-
         if (user is null)
         {
             user = User.CreateFromPhone(phone, customerId: null, phoneConfirmed: false);
@@ -115,20 +113,10 @@ public sealed class OtpAuthService : IAuthService
             var create = await _users.CreateAsync(user);
             if (!create.Succeeded)
             {
-                _log.LogWarning("Create user failed for phone={Phone}", phone);
+                _log.LogWarning("Create user failed for phone={Phone}. Errors: {Errors}",
+                    phone, string.Join(", ", create.Errors.Select(e => $"{e.Code}:{e.Description}")));
                 return Result.Failure(ErrorCodes.Common.OPERATION_FAILED);
             }
-
-            isNewUser = true;
-
-            _sink.Raise(new UserRegisteredDomainEvent(
-                user.Id,
-                Email: user.Email ?? string.Empty,
-                FullName: user.NormalizedEmail,      
-                PhoneNumber: phone,
-                OccurredOn: DateTimeOffset.UtcNow,
-                CorrelationId: _corr.GetCorrelationId()
-            ));
         }
 
 
@@ -260,10 +248,28 @@ public sealed class OtpAuthService : IAuthService
         // }
 
         // Success
+        var wasPhoneConfirmed = user.PhoneNumberConfirmed;
+
         pv.MarkAsVerified(DateTime.UtcNow);
         user.SetPhoneNumber(phone, confirmed: true);
         user.RecordLogin(DateTime.UtcNow);
+
+        // ✅ اگر قبلاً تأیید نبود، الان که شد، رویداد ثبت‌نام را بلند کن
+        if (!wasPhoneConfirmed)
+        {
+            _sink.Raise(new UserRegisteredDomainEvent(
+                UserId: user.Id,
+                Email: user.Email ?? string.Empty,
+                FullName: null,                    // اگر فیلدی داری اینجا ست کن
+                PhoneNumber: phone,
+                OccurredOn: DateTimeOffset.UtcNow,
+                CorrelationId: _corr.GetCorrelationId()
+            ));
+        }
+
+        // ⚠️ خیلی مهم: Raise قبل از SaveChanges باشد تا Interceptor Outbox پیام را بنویسد
         await _db.SaveChangesAsync(ct);
+
 
         await _devices.UpsertAsync(user.Id, deviceId, ua, ip, ct);
         if (_phoneOpts.TrustDeviceDays > 0)

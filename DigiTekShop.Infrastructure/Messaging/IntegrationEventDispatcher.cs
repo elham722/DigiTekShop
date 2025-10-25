@@ -55,7 +55,28 @@ namespace DigiTekShop.Infrastructure.Messaging
                         _log.LogInformation("Dispatched AddCustomerIdIntegrationEvent for UserId {UserId} -> CustomerId {CustomerId}", evt.UserId, evt.CustomerId);
                         break;
                     }
-                // اینجا بقیه‌ی ایونت‌ها را هم اضافه کن ...
+                case "DigiTekShop.Contracts.Integration.Events.Identity.PhoneVerificationIssuedIntegrationEvent":
+                {
+                    var evt = JsonSerializer.Deserialize<PhoneVerificationIssuedIntegrationEvent>(payload)!;
+                    using var scope = _sp.CreateScope();
+                    var handlers = scope.ServiceProvider.GetServices<IIntegrationEventHandler<PhoneVerificationIssuedIntegrationEvent>>();
+                    foreach (var h in handlers)
+                    {
+                        try
+                        {
+                            await h.HandleAsync(evt, ct);
+                            _log.LogInformation("✅ Dispatched PhoneVerificationIssuedIntegrationEvent to {Handler} for UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.LogError(ex, "❌ Handler {Handler} failed for PhoneVerificationIssuedIntegrationEvent UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                    }
+                    break;
+                }
+
                 default:
                     _log.LogWarning("No handler for integration event type {Type}", type);
                     break;
