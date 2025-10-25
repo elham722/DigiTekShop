@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/DigiTekShop.MVC.styles.css" asp-append-version="true" />
+    
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <!-- Custom Notification Styles -->
+    <link rel="stylesheet" href="~/css/notifications.css" asp-append-version="true" />
 </head>
 <body>
     <header>
@@ -40,6 +46,16 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Custom Notification System -->
+    <script src="~/js/notifications.js" asp-append-version="true"></script>
+    
+    <!-- API Helpers -->
+    <script src="~/js/api-helpers.js" asp-append-version="true"></script>
+    
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

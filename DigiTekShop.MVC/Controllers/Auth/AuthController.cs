@@ -1,5 +1,6 @@
 ﻿using DigiTekShop.Contracts.DTOs.Auth.LoginOrRegister;
 using DigiTekShop.Contracts.DTOs.Auth.Logout;
+using DigiTekShop.MVC.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
 
@@ -32,16 +33,19 @@ public sealed class AuthController : Controller
     [Consumes("application/json")]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpRequestDto dto, CancellationToken ct)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+        {
+            return this.JsonValidationError("لطفاً اطلاعات را صحیح وارد کنید", ModelState);
+        }
 
         var result = await _api.PostAsync<SendOtpRequestDto, object>(ApiRoutes.Auth.SentOtp, dto, ct);
         if (!result.Success)
         {
             _logger.LogWarning("SendOtp failed: {Status} {Detail}", (int)result.StatusCode, result.Problem?.Detail);
-            return StatusCode((int)result.StatusCode, result.Problem);
+            return this.JsonError("خطا در ارسال کد. لطفاً دوباره تلاش کنید");
         }
 
-        return Ok(new { message = "OTP sent successfully" });
+        return this.JsonSuccess("کد تأیید با موفقیت ارسال شد");
     }
 
     [HttpPost]
@@ -49,41 +53,49 @@ public sealed class AuthController : Controller
     [Consumes("application/json")]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto dto, [FromQuery] string? returnUrl, CancellationToken ct)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+        {
+            return this.JsonValidationError("لطفاً اطلاعات را صحیح وارد کنید", ModelState);
+        }
 
         var result = await _api.PostAsync<VerifyOtpRequestDto, LoginResponseDto>(ApiRoutes.Auth.VerifyOtp, dto, ct);
         if (!result.Success || result.Data is null)
         {
             _logger.LogWarning("VerifyOtp failed: {Status} {Detail}", (int)result.StatusCode, result.Problem?.Detail);
-            return StatusCode((int)result.StatusCode, result.Problem);
+            return this.JsonError("کد تأیید اشتباه است. لطفاً دوباره تلاش کنید");
         }
 
         var login = result.Data;
 
-        
-        var principal = BuildPrincipalFromLogin(login);
-
-        
-        var props = new AuthenticationProperties
+        try
         {
-            IsPersistent = true,
-            AllowRefresh = true,
-            ExpiresUtc = login.AccessTokenExpiresAtUtc   
-        };
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            principal,
-            props);
+            var principal = BuildPrincipalFromLogin(login);
 
-        await _tokenStore.UpdateAccessTokenAsync(login.AccessToken, login.AccessTokenExpiresAtUtc, ct);
+            var props = new AuthenticationProperties
+            {
+                IsPersistent = true,
+                AllowRefresh = true,
+                ExpiresUtc = login.AccessTokenExpiresAtUtc   
+            };
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                props);
 
-        var safeReturn = NormalizeReturnUrl(returnUrl);
-        return Ok(new
+            await _tokenStore.UpdateAccessTokenAsync(login.AccessToken, login.AccessTokenExpiresAtUtc, ct);
+
+            var safeReturn = NormalizeReturnUrl(returnUrl);
+            return this.JsonSuccess("ورود با موفقیت انجام شد", new
+            {
+                redirectUrl = string.IsNullOrEmpty(safeReturn) ? "/" : safeReturn,
+                isNewUser = login.IsNewUser
+            });
+        }
+        catch (Exception ex)
         {
-            message = "Login successful",
-            redirectUrl = string.IsNullOrEmpty(safeReturn) ? "/" : safeReturn,
-            isNewUser = login.IsNewUser
-        });
+            _logger.LogError(ex, "Error during login process");
+            return this.JsonError("خطا در فرآیند ورود. لطفاً دوباره تلاش کنید");
+        }
     }
 
     [HttpPost]
