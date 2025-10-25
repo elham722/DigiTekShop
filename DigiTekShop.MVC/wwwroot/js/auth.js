@@ -294,6 +294,36 @@ class AuthManager {
         }
     }
 
+    // Helper functions for response validation
+    isFailData(data) {
+        if (!data || typeof data !== 'object') return false;
+        const success = (data.success ?? data.Success);
+        const problem = (data.problem ?? data.Problem);
+        const errorCode = data?.errorCode || data?.extensions?.errorCode;
+
+        // هر حالت رایج شکست:
+        if (success === false) return true;
+        if (problem) return true;
+        if (errorCode && errorCode !== 'OK') return true;
+
+        // اگر ساختار ProblemDetails خالی نیست:
+        if (data?.status && data?.title) return true;
+
+        return false;
+    }
+
+    extractMessage(data, fallback = 'عملیات ناموفق بود') {
+        return (
+            data?.message ||
+            data?.detail ||
+            data?.title ||
+            data?.errors?.[0] ||
+            data?.problem?.detail ||
+            data?.Problem?.detail ||
+            fallback
+        );
+    }
+
     async sendOtp() {
         console.log('sendOtp called');
         if (!this.validatePhone(true)) return;
@@ -313,13 +343,18 @@ class AuthManager {
         this.showLoading('در حال ارسال کد...', 'لطفاً صبر کنید');
         
         try {
+            const csrfToken = csrf();
+            if (!csrfToken) {
+                console.warn('CSRF token not found - check meta tag');
+            }
+            
             const res = await fetch(API_SEND, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
-                    'RequestVerificationToken': csrf() || ''
+                    'RequestVerificationToken': csrfToken || ''
                 },
                 body: JSON.stringify({ phone: this.normalizedPhone })
             });
@@ -334,17 +369,22 @@ class AuthManager {
                 console.log('Response headers:', res.headers);
             }
 
-            if (!res.ok) {
+            // بررسی هم HTTP status و هم response body
+            if (!res.ok || this.isFailData(data)) {
                 this.hideLoading();
-                console.log('Response not OK:', res.status, data);
+                console.log('Response not OK or fail data:', res.status, data);
+                
+                // اگر ریت‌لیمیت است پیام مناسب بده
                 const errorCode = data?.errorCode || data?.extensions?.errorCode;
-                const msg = (errorCode === 'RATE_LIMIT_EXCEEDED')
+                const msg = (res.status === 429 || errorCode === 'RATE_LIMIT_EXCEEDED')
                     ? 'خیلی سریع درخواست دادید؛ چند دقیقه‌ی دیگر دوباره تلاش کنید.'
-                    : (data?.errors?.[0] || data?.detail || data?.message || 'ارسال کد ناموفق بود');
+                    : this.extractMessage(data, 'ارسال کد ناموفق بود');
+
                 this.toast(msg, 'warning');
-                return;
+                return; // ❗️ به مرحله‌ی OTP نرو
             }
 
+            // فقط وقتی ok و موفقیت واقعی بود:
             this.hideLoading();
             this.displayPhone.textContent = this.rawPhone; // نمایش 09…
             this.showStep('otp');
@@ -362,6 +402,13 @@ class AuthManager {
     async verifyOtp() {
         if (this.inFlight.verify) return;
 
+        // گارد: اگر شماره نرمال شده نداریم، برگرد به مرحله شماره
+        if (!this.normalizedPhone) {
+            this.toast('مجدداً شماره را وارد کنید', 'warning');
+            this.showStep('phone');
+            return;
+        }
+
         const hidden = document.getElementById('otpCode');
         const rawCode = hidden ? hidden.value : this.otpInputs.map(i => i.value || '').join('');
         const code = normalizeDigits(rawCode).replace(/[^\d]/g, '');
@@ -377,13 +424,18 @@ class AuthManager {
         this.showLoading('در حال تأیید کد...', 'لطفاً صبر کنید');
         
         try {
+            const csrfToken = csrf();
+            if (!csrfToken) {
+                console.warn('CSRF token not found - check meta tag');
+            }
+            
             const res = await fetch(API_VERIFY, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
-                    'RequestVerificationToken': csrf() || ''
+                    'RequestVerificationToken': csrfToken || ''
                 },
                 body: JSON.stringify({
                     phone: this.normalizedPhone,
@@ -392,19 +444,25 @@ class AuthManager {
             });
 
             let data = {};
-            try { data = await res.json(); } catch { }
+            try { 
+                data = await res.json(); 
+                console.log('Verify response:', res.status, data);
+            } catch (e) { 
+                console.log('Verify JSON parse error:', e);
+            }
 
-            if (!res.ok) {
+            // بررسی هم HTTP status و هم response body
+            if (!res.ok || this.isFailData(data)) {
                 this.hideLoading();
-                this.toast(data?.errors?.[0] || data?.message || 'کد اشتباه یا منقضی است', 'error');
+                this.toast(this.extractMessage(data, 'کد اشتباه یا منقضی است'), 'error');
                 this.otpInputs.forEach(i => i.value = '');
                 this.updateHiddenOtp();
                 this.otpInputs[0].focus();
                 return;
             }
 
+            // موفقیت واقعی
             this.hideLoading();
-            // موفق: کوکی Auth سمت MVC ست می‌شود، RT سمت API HttpOnly
             this.toast('ورود موفق! خوش آمدید به DigiTekShop', 'success');
             this.showStep('success');
             setTimeout(() => window.location.href = REDIRECT_AFTER_LOGIN, 2000);
