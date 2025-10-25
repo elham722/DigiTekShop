@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Identity.Migrations
 {
     [DbContext(typeof(DigiTekShopIdentityDbContext))]
-    [Migration("20251024174618_firstmig")]
+    [Migration("20251025074320_firstmig")]
     partial class firstmig
     {
         /// <inheritdoc />
@@ -319,10 +319,21 @@ namespace DigiTekShop.Identity.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("CodeHashAlgo")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("EncryptedCodeProtected")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("ExpiresAtUtc")
                         .HasColumnType("datetime2");
@@ -345,6 +356,11 @@ namespace DigiTekShop.Identity.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<int>("SecretVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("UserAgent")
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
@@ -366,21 +382,16 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasIndex("PhoneNumber")
                         .HasDatabaseName("IX_PhoneVerifications_Phone");
 
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("PhoneNumber", "CreatedAtUtc")
-                        .HasDatabaseName("IX_PhoneVerifications_Phone_CreatedAt");
-
-                    b.HasIndex("PhoneNumber", "ExpiresAtUtc")
-                        .HasDatabaseName("IX_PhoneVerifications_Phone_ExpiresAt");
-
-                    b.HasIndex("PhoneNumber", "IsVerified")
-                        .HasDatabaseName("IX_PhoneVerifications_Phone_IsVerified");
-
                     b.HasIndex("PhoneNumber", "CodeHash", "ExpiresAtUtc")
                         .IsUnique()
                         .HasDatabaseName("UX_PhoneVerifications_Phone_Code_ExpiresAt")
                         .HasFilter("[PhoneNumber] IS NOT NULL");
+
+                    b.HasIndex("PhoneNumber", "IsVerified", "ExpiresAtUtc")
+                        .HasDatabaseName("IX_PV_Phone_Active");
+
+                    b.HasIndex("UserId", "IsVerified", "ExpiresAtUtc")
+                        .HasDatabaseName("IX_PV_User_Active");
 
                     b.ToTable("PhoneVerifications");
                 });
@@ -1110,7 +1121,8 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasOne("DigiTekShop.Identity.Models.User", "User")
                         .WithMany("UserPermissions")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Permission");
 

@@ -225,6 +225,10 @@ namespace DigiTekShop.Identity.Migrations
                     IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: true),
                     UserAgent = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
                     IsVerified = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    CodeHashAlgo = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
+                    SecretVersion = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    EncryptedCodeProtected = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    DeviceId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
                 },
                 constraints: table =>
@@ -570,24 +574,14 @@ namespace DigiTekShop.Identity.Migrations
                 column: "PhoneNumber");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PhoneVerifications_Phone_CreatedAt",
+                name: "IX_PV_Phone_Active",
                 table: "PhoneVerifications",
-                columns: new[] { "PhoneNumber", "CreatedAtUtc" });
+                columns: new[] { "PhoneNumber", "IsVerified", "ExpiresAtUtc" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_PhoneVerifications_Phone_ExpiresAt",
+                name: "IX_PV_User_Active",
                 table: "PhoneVerifications",
-                columns: new[] { "PhoneNumber", "ExpiresAtUtc" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PhoneVerifications_Phone_IsVerified",
-                table: "PhoneVerifications",
-                columns: new[] { "PhoneNumber", "IsVerified" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PhoneVerifications_UserId",
-                table: "PhoneVerifications",
-                column: "UserId");
+                columns: new[] { "UserId", "IsVerified", "ExpiresAtUtc" });
 
             migrationBuilder.CreateIndex(
                 name: "UX_PhoneVerifications_Phone_Code_ExpiresAt",

@@ -211,18 +211,26 @@ public sealed class OtpAuthService : IAuthService
             return Result<LoginResponseDto>.Failure(ErrorCodes.Identity.INVALID_CREDENTIALS);
         }
 
-        // Latest active OTP
+        // Latest active OTP by UserId
         var pv = await _db.PhoneVerifications
             .OrderByDescending(x => x.CreatedAtUtc)
             .FirstOrDefaultAsync(x => x.UserId == user.Id && !x.IsVerified && x.ExpiresAtUtc > DateTime.UtcNow, ct);
 
+        _log.LogInformation("[VerifyOTP] user={UserId}, normalizedPhone={Phone}", user.Id, phone);
+        // ⬇️ fallback by PhoneNumber (مثل SendOtp)
         if (pv is null)
         {
-            await UniformDelayAsync(ct);
-            await RecordAttempt(user.Id, LoginStatus.Failed, dto.Phone, ip, ua, ct);
-            return Result<LoginResponseDto>.Failure(ErrorCodes.Identity.INVALID_CREDENTIALS);
+            _log.LogWarning("[VerifyOTP] No active PV found for user={UserId} or phone={Phone}", user.Id, phone);
+            pv = await _db.PhoneVerifications
+                .OrderByDescending(x => x.CreatedAtUtc)
+                .FirstOrDefaultAsync(x => x.PhoneNumber == phone && !x.IsVerified && x.ExpiresAtUtc > DateTime.UtcNow, ct);
         }
 
+        if (pv is not null)
+        {
+            _log.LogInformation("[VerifyOTP] PV found: id={PV}, expires={ExpUtc:o}, attempts={Att}/{Max}",
+                pv.Id, pv.ExpiresAtUtc, pv.Attempts, _phoneOpts.MaxAttempts);
+        }
         if (!pv.IsValid(DateTime.UtcNow, _phoneOpts.MaxAttempts))
         {
             await RecordAttempt(user.Id, LoginStatus.Failed, dto.Phone, ip, ua, ct);
@@ -231,6 +239,8 @@ public sealed class OtpAuthService : IAuthService
 
         // Verify code (constant-time)
         var codeHash = HashOtp(dto.Code, _phoneOpts.CodeHashSecret);
+        _log.LogInformation("[VerifyOTP] comparing hashes: len(input)={InLen}, len(stored)={StLen}",
+            codeHash?.Length ?? 0, pv.CodeHash?.Length ?? 0);
         if (!FixedTimeEquals(codeHash, pv.CodeHash))
         {
             pv.TryIncrementAttempts(_phoneOpts.MaxAttempts);
@@ -360,10 +370,11 @@ public sealed class OtpAuthService : IAuthService
 
     private static string HashOtp(string code, string secret)
     {
-        using var hmac = new HMACSHA256(System.Text.Encoding.UTF8.GetBytes(secret));
-        var bytes = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(code));
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var bytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(code));
         return Convert.ToBase64String(bytes);
     }
+
 
     private static bool FixedTimeEquals(string a, string b)
     {

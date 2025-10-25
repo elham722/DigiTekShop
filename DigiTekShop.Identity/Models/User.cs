@@ -28,7 +28,7 @@ public class User : IdentityUser<Guid>
 
     public static User CreateFromPhone(string rawPhone, Guid? customerId = null, bool phoneConfirmed = false)
     {
-        var phone = Normalization.NormalizePhone(rawPhone);
+        var phone = Normalization.NormalizePhoneIranE164(rawPhone);
 
         return new User
         {
@@ -64,7 +64,7 @@ public class User : IdentityUser<Guid>
 
     public void SetPhoneNumber(string rawPhone, bool confirmed = false)
     {
-        var phone = Normalization.NormalizePhone(rawPhone);
+        var phone = Normalization.NormalizePhoneIranE164(rawPhone);
         PhoneNumber = phone;
         NormalizedPhoneNumber = phone;
         PhoneNumberConfirmed = confirmed;
