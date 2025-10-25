@@ -1,21 +1,4 @@
-﻿
-using DigiTekShop.Contracts.Abstractions.Identity.Device;
-using DigiTekShop.Contracts.Options.Auth;
-using DigiTekShop.Contracts.Options.Email;
-using DigiTekShop.Contracts.Options.Phone;
-using DigiTekShop.Contracts.Options.Security;
-using DigiTekShop.Contracts.Options.Token;
-using DigiTekShop.Identity.Services.Device;
-using DigiTekShop.Identity.Services.Logout;
-using DigiTekShop.Identity.Services.Me;
-using DigiTekShop.Identity.Services.Permission;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using DigiTekShop.Identity.Services.OtpAuth;
-using DigiTekShop.Identity.Events.PhoneVerification;
-using DigiTekShop.Identity.Events.Mapper;
-
-namespace DigiTekShop.Identity.DependencyInjection;
+﻿namespace DigiTekShop.Identity.DependencyInjection;
 
 public static class IdentityServicesRegistration
 {

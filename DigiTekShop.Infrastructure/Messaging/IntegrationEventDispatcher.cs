@@ -29,6 +29,7 @@ namespace DigiTekShop.Infrastructure.Messaging
                         
                         // Dispatch to all registered handlers for this event
                         var handlers = scope.ServiceProvider.GetServices<IIntegrationEventHandler<UserRegisteredIntegrationEvent>>();
+
                         foreach (var handler in handlers)
                         {
                             try

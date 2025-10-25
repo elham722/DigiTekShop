@@ -7,6 +7,20 @@ const API_SEND = '/Auth/SendOtp';
 const API_VERIFY = '/Auth/VerifyOtp';
 const REDIRECT_AFTER_LOGIN = '/';
 
+// ارقام فارسی/عربی را به لاتین تبدیل می‌کند و کاراکترهای نامرئی را حذف می‌کند
+function normalizeDigits(s) {
+    if (!s) return '';
+    const map = {
+        '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
+        '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+    };
+    return ('' + s)
+        .replace(/[\u200c\u200e\u200f\u202a\u202b\u202c]/g, '') // حذف RTL/LRM/ZWNJ
+        .split('')
+        .map(ch => map[ch] ?? ch)
+        .join('');
+}
+
 function csrf() {
     const m = document.querySelector('meta[name="request-verification-token"]');
     return m ? m.content : '';
@@ -15,7 +29,7 @@ function csrf() {
 // ورودی کاربر: 09xxxxxxxxx → +989xxxxxxxxx
 function normalizeIranPhoneE164(input) {
     if (!input) return null;
-    let s = ('' + input).replace(/[^\d+]/g, '');
+    let s = normalizeDigits(input).replace(/[^\d+]/g, '');
     if (s.startsWith('0098')) s = s.replace(/^0098/, '+98');
     if (s.startsWith('09')) s = '+98' + s.substring(1);
     else if (s.startsWith('9') && s.length === 10) s = '+98' + s;
@@ -31,6 +45,7 @@ class AuthManager {
         this.normalizedPhone = '';
         this.timerId = null;
         this.count = 60;
+        this.inFlight = { send: false, verify: false };
 
         this.cacheEls();
         this.bindEvents();
@@ -52,13 +67,20 @@ class AuthManager {
         this.otpForm.addEventListener('submit', (e) => { e.preventDefault(); this.verifyOtp(); });
         this.resendBtn.addEventListener('click', () => this.resend());
 
-        // ورودی شماره فقط عدد و حداکثر 11 رقم (09xxxxxxxxx)
+        // ورودی شماره فقط عدد و حداکثر 11 رقم (09xxxxxxxxx) + نرمال‌سازی ارقام
         this.phoneInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/[^\d]/g, '').slice(0, 11);
+            const raw = normalizeDigits(e.target.value);
+            e.target.value = raw.replace(/[^\d]/g, '').slice(0, 11);
         });
+
+        // جلوگیری از submit ناخواسته با Enter روی فیلد شماره
+        this.phoneInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); this.sendOtp(); }
+        });
+
         this.phoneInput.addEventListener('blur', () => this.validatePhone(true));
 
-        // Enter روی OTP
+        // Enter روی هر کادر OTP، به‌جای submit فرم، verifyOtp را صدا بزن
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && e.target.classList.contains('otp-input')) {
                 e.preventDefault();
@@ -69,26 +91,52 @@ class AuthManager {
 
     setupOtpInputs() {
         this.otpInputs = Array.from(document.querySelectorAll('.otp-input'));
+        this.otpContainer = document.querySelector('.otp-input-container');
+
         const moveNext = (idx) => { if (idx < this.otpInputs.length - 1) this.otpInputs[idx + 1].focus(); };
+
+        // اگر کاربر روی کانتینر کلیک کرد، روی اولین خانه‌ی خالی فوکوس کن
+        if (this.otpContainer) {
+            this.otpContainer.addEventListener('click', () => {
+                const firstEmpty = this.otpInputs.find(i => !i.value);
+                (firstEmpty || this.otpInputs[0]).focus();
+            });
+        }
 
         this.otpInputs.forEach((el, idx) => {
             el.addEventListener('input', (e) => {
-                e.target.value = e.target.value.replace(/[^\d]/g, '').slice(0, 1);
-                if (e.target.value) moveNext(idx);
+                // تبدیل ارقام فارسی/عربی
+                const raw = normalizeDigits(e.target.value);
+                // اگر کاربر چند رقم باهم چسباند (کیبورد/اتو‌فیل)، پخش کن
+                if (raw.length > 1) {
+                    let k = 0;
+                    for (let i = idx; i < this.otpInputs.length && k < raw.length; i++, k++) {
+                        this.otpInputs[i].value = raw[k].replace(/[^\d]/g, '').slice(0, 1);
+                    }
+                    // فوکوس روی اولین خالی بعد از پخش
+                    const firstEmpty = this.otpInputs.find(i => !i.value);
+                    (firstEmpty || this.otpInputs[this.otpInputs.length - 1]).focus();
+                } else {
+                    e.target.value = raw.replace(/[^\d]/g, '').slice(0, 1);
+                    if (e.target.value) moveNext(idx);
+                }
                 this.updateHiddenOtp();
             });
+
             el.addEventListener('keydown', (e) => {
                 if (e.key === 'Backspace' && !e.target.value && idx > 0) this.otpInputs[idx - 1].focus();
             });
+
             el.addEventListener('paste', (e) => {
                 e.preventDefault();
-                const s = (e.clipboardData.getData('text') || '').replace(/[^\d]/g, '').slice(0, 6);
+                const s = normalizeDigits(e.clipboardData.getData('text') || '').replace(/[^\d]/g, '').slice(0, 6);
                 for (let i = 0; i < s.length && i < this.otpInputs.length; i++) this.otpInputs[i].value = s[i];
                 this.updateHiddenOtp();
                 this.otpInputs[Math.min(s.length, this.otpInputs.length - 1)].focus();
             });
         });
     }
+
 
     updateHiddenOtp() {
         const code = this.otpInputs.map(i => i.value || '').join('');
@@ -144,7 +192,10 @@ class AuthManager {
     toast(message, type = 'info') {
         const container = document.getElementById('toastContainer');
         const id = `t${Date.now()}`;
-        const icon = { success: 'check-circle', error: 'exclamation-circle', warning: 'exclamation-triangle', info: 'info-circle' }[type] || 'info-circle';
+        const icon = {
+            success: 'check-circle', error: 'exclamation-circle',
+            warning: 'exclamation-triangle', info: 'info-circle'
+        }[type] || 'info-circle';
         container.insertAdjacentHTML('beforeend', `
       <div id="${id}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-header">
@@ -162,11 +213,13 @@ class AuthManager {
 
     async sendOtp() {
         if (!this.validatePhone(true)) return;
+        if (this.inFlight.send) return;
 
-        this.rawPhone = this.phoneInput.value.trim();                // 09…
-        this.normalizedPhone = normalizeIranPhoneE164(this.rawPhone); // +989…
+        this.rawPhone = normalizeDigits(this.phoneInput.value.trim());   // 09…
+        this.normalizedPhone = normalizeIranPhoneE164(this.rawPhone);    // +989…
         if (!this.normalizedPhone) { this.toast('شماره معتبر نیست', 'warning'); return; }
 
+        this.inFlight.send = true;
         this.setLoading('phoneForm', true);
         try {
             const res = await fetch(API_SEND, {
@@ -177,16 +230,17 @@ class AuthManager {
                     'X-Requested-With': 'XMLHttpRequest',
                     'RequestVerificationToken': csrf() || ''
                 },
-                body: JSON.stringify({
-                    phone: this.normalizedPhone
-                })
+                body: JSON.stringify({ phone: this.normalizedPhone })
             });
 
             let data = {};
-            try { data = await res.json(); } catch { }
+            try { data = await res.json(); } catch { /* 204 */ }
 
             if (!res.ok) {
-                this.toast(data?.errors?.[0] || data?.message || 'ارسال کد ناموفق بود', 'error');
+                const msg = (data?.errorCode === 'RATE_LIMIT_EXCEEDED')
+                    ? 'خیلی سریع درخواست دادید؛ چند دقیقه‌ی دیگر دوباره تلاش کنید.'
+                    : (data?.errors?.[0] || data?.message || 'ارسال کد ناموفق بود');
+                this.toast(msg, 'warning');
                 return;
             }
 
@@ -198,14 +252,19 @@ class AuthManager {
             this.toast('خطا در ارتباط با سرور', 'error');
         } finally {
             this.setLoading('phoneForm', false);
+            this.inFlight.send = false;
         }
     }
 
     async verifyOtp() {
+        if (this.inFlight.verify) return;
+
         const hidden = document.getElementById('otpCode');
-        const code = hidden ? hidden.value : this.otpInputs.map(i => i.value || '').join('');
+        const rawCode = hidden ? hidden.value : this.otpInputs.map(i => i.value || '').join('');
+        const code = normalizeDigits(rawCode).replace(/[^\d]/g, '');
         if (code.length !== 6) { this.toast('کد ۶ رقمی را کامل کنید', 'warning'); return; }
 
+        this.inFlight.verify = true;
         this.setLoading('otpForm', true);
         try {
             const res = await fetch(API_VERIFY, {
@@ -228,17 +287,19 @@ class AuthManager {
             if (!res.ok) {
                 this.toast(data?.errors?.[0] || data?.message || 'کد اشتباه یا منقضی است', 'error');
                 this.otpInputs.forEach(i => i.value = '');
+                this.updateHiddenOtp();
                 this.otpInputs[0].focus();
                 return;
             }
 
-            // موفق: کوکی Auth سمت MVC ست می‌شود، RT سمت API ست می‌شود (HttpOnly).
+            // موفق: کوکی Auth سمت MVC ست می‌شود، RT سمت API HttpOnly
             this.showStep('success');
             setTimeout(() => window.location.href = REDIRECT_AFTER_LOGIN, 1200);
         } catch {
             this.toast('خطا در ارتباط با سرور', 'error');
         } finally {
             this.setLoading('otpForm', false);
+            this.inFlight.verify = false;
         }
     }
 
@@ -260,3 +321,14 @@ function goBackToPhone() {
 document.addEventListener('DOMContentLoaded', () => {
     window.authManager = new AuthManager();
 });
+
+document.addEventListener('keydown', (e) => {
+    if (this.currentStep !== 'otp') return;
+    if (!/^\d$/.test(e.key)) return;
+    const target = this.otpInputs.find(i => !i.value) || this.otpInputs[this.otpInputs.length - 1];
+    target.value = e.key;
+    this.updateHiddenOtp();
+    const nextEmpty = this.otpInputs.find(i => !i.value);
+    (nextEmpty || target).focus();
+});
+

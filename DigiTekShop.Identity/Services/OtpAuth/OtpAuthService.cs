@@ -257,25 +257,32 @@ public sealed class OtpAuthService : IAuthService
         //     return Result<LoginResponseDto>.Failure(ErrorCodes.Common.VALIDATION_FAILED);
         // }
 
-        // Success
-        var wasPhoneConfirmed = user.PhoneNumberConfirmed;
 
         pv.MarkAsVerified(DateTime.UtcNow);
         user.SetPhoneNumber(phone, confirmed: true);
         user.RecordLogin(DateTime.UtcNow);
 
-        // ✅ اگر قبلاً تأیید نبود، الان که شد، رویداد ثبت‌نام را بلند کن
-        if (!wasPhoneConfirmed)
+        // بعد از اینکه pv.MarkAsVerified(...) و user.SetPhoneNumber(...confirmed: true) را انجام دادی:
+        var shouldRaiseUserRegistered =
+            (user.PhoneNumberConfirmed == true)   // الان تأیید است
+            && isNew                              // کاربر تازه ساخته شده بود
+            && user.CustomerId is null;           // هنوز Customer لینک نشده
+
+        if (shouldRaiseUserRegistered)
         {
             _sink.Raise(new UserRegisteredDomainEvent(
                 UserId: user.Id,
                 Email: user.Email ?? string.Empty,
-                FullName: null,                    // اگر فیلدی داری اینجا ست کن
-                PhoneNumber: phone,
+                FullName: !string.IsNullOrWhiteSpace(user.NormalizedEmail) ? user.NormalizedEmail :
+                !string.IsNullOrWhiteSpace(user.Email) ? user.Email :
+                !string.IsNullOrWhiteSpace(user.PhoneNumber) ? user.PhoneNumber :
+                $"user-{user.Id:N}",
+                PhoneNumber: user.PhoneNumber ?? string.Empty,
                 OccurredOn: DateTimeOffset.UtcNow,
                 CorrelationId: _corr.GetCorrelationId()
             ));
         }
+
 
         // ⚠️ خیلی مهم: Raise قبل از SaveChanges باشد تا Interceptor Outbox پیام را بنویسد
         await _db.SaveChangesAsync(ct);

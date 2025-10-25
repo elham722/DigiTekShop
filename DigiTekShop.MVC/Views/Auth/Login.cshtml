@@ -123,12 +123,15 @@
                                 <div class="form-group">
                                     <label class="form-label"><i class="fas fa-key"></i> کد تایید</label>
                                     <div class="otp-input-container" role="group" aria-label="OTP">
-                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم اول">
-                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم دوم">
-                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم سوم">
-                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم چهارم">
-                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم پنجم">
-                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="رقم ششم">
+                                      <input type="text" class="otp-input" maxlength="1"
+                                              inputmode="numeric" pattern="[0-9]*" dir="ltr"
+                                              autocomplete="one-time-code" name="one-time-code" aria-label="رقم اول">
+
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]*" dir="ltr" aria-label="رقم دوم">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]*" dir="ltr" aria-label="رقم سوم">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]*" dir="ltr" aria-label="رقم چهارم">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]*" dir="ltr" aria-label="رقم پنجم">
+                                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]*" dir="ltr" aria-label="رقم ششم">
                                     </div>
                                     <input type="hidden" id="otpCode" name="otpCode">
                                 </div>

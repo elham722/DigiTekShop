@@ -53,4 +53,16 @@ global using DigiTekShop.SharedKernel.Utilities.Security;
 global using DigiTekShop.SharedKernel.Utilities.Text;
 global using System.Security.Cryptography;
 global using System.Text.RegularExpressions;
+global using DigiTekShop.Contracts.Options.Auth;
+global using DigiTekShop.Contracts.Options.Email;
+global using DigiTekShop.Contracts.Options.Security;
+global using DigiTekShop.Contracts.Options.Token;
+global using DigiTekShop.Identity.Events.Mapper;
+global using DigiTekShop.Identity.Services.Device;
+global using DigiTekShop.Identity.Services.Logout;
+global using DigiTekShop.Identity.Services.Me;
+global using DigiTekShop.Identity.Services.OtpAuth;
+global using DigiTekShop.Identity.Services.Permission;
+global using System.IdentityModel.Tokens.Jwt;
+global using System.Security.Claims;
 
