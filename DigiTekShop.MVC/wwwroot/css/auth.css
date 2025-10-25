@@ -82,7 +82,7 @@ body.auth-body {
 .logo-placeholder {
     width: 80px;
     height: 80px;
-    background: linear-gradient(135deg, var(--primary-orange), var(--primary-red));
+    background: #D62828;
     border-radius: 50%;
     display: flex;
     align-items: center;

@@ -194,7 +194,7 @@ class AuthManager {
 
     setLoading(formId, on) {
         const form = document.getElementById(formId);
-        const btn = form.querySelector('.auth-btn');
+        const btn = form.querySelector('.login-btn');
         form.classList.toggle('loading', on);
         btn.disabled = on;
         btn.querySelector('.btn-text').classList.toggle('d-none', on);
@@ -295,6 +295,7 @@ class AuthManager {
     }
 
     async sendOtp() {
+        console.log('sendOtp called');
         if (!this.validatePhone(true)) return;
         if (this.inFlight.send) return;
 
