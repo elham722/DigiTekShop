@@ -1,6 +1,4 @@
-﻿using DigiTekShop.MVC.Components.CategoryMenu;
-using DigiTekShop.MVC.Components.MiniCart;
-using DigiTekShop.MVC.Components.UserMenu;
+﻿
 using DigiTekShop.MVC.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -55,9 +53,6 @@ builder.Services.AddAntiforgery(options =>
         : CookieSecurePolicy.Always;
 });
 
-builder.Services.AddScoped<ICurrentUserProfileService, FakeCurrentUserProfileService>();
-builder.Services.AddScoped<ICartQueryService, FakeCartQueryService>();
-builder.Services.AddScoped<ICategoryQueryService, FakeCategoryQueryService>();
 var app = builder.Build();
 
 
