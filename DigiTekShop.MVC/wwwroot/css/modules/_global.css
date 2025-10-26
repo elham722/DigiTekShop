@@ -39,10 +39,15 @@
   opacity: 1;
 }
 
+.logo-section .logo-container.logo-box {
+  min-width: 180px;
+  padding: 5px 0;
+}
+
 /* Responsive logo */
 @media (max-width: 992px) {
-  .logo-container.logo-box {
-    min-width: 180px;
+  .logo-section .logo-container.logo-box {
+    min-width: 150px;
   }
   
   .logo-container .logo img {
@@ -51,8 +56,8 @@
 }
 
 @media (max-width: 768px) {
-  .logo-container.logo-box {
-    min-width: 150px;
+  .logo-section .logo-container.logo-box {
+    min-width: 120px;
   }
   
   .logo-container .logo img {
@@ -61,8 +66,8 @@
 }
 
 @media (max-width: 576px) {
-  .logo-container.logo-box {
-    min-width: 120px;
+  .logo-section .logo-container.logo-box {
+    min-width: 100px;
   }
   
   .logo-container .logo img {
