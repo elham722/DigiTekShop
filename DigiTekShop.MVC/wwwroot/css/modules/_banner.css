@@ -33,58 +33,54 @@
 }
 
 .banner-container a.banner-placement {
+  background-image: url(/images/banner/017.jpg);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   width: 100%;
-  min-height: 40px;
+  min-height: 60px;
   display: block;
+  visibility: visible;
+  opacity: 1;
 }
 
-/* Responsive banner heights - کمتر شده */
+/* Responsive banner heights - 60px */
 @media (min-width: 1200px) {
   .banner-container a.banner-placement {
-    min-height: 50px;
+    min-height: 60px;
   }
 }
 
 @media (max-width: 1199px) and (min-width: 992px) {
   .banner-container a.banner-placement {
-    min-height: 45px;
+    min-height: 60px;
   }
 }
 
 @media (max-width: 991px) and (min-width: 768px) {
   .banner-container a.banner-placement {
-    min-height: 40px;
+    min-height: 60px;
   }
 }
 
 @media (max-width: 767px) {
   .banner-container a.banner-placement {
-    min-height: 35px;
+    min-height: 50px;
   }
 }
 
 @media (max-width: 576px) {
   .banner-container a.banner-placement {
-    min-height: 30px;
+    min-height: 45px;
   }
 }
 
-/* Ensure banner is always visible - با اولویت بالا */
+/* Ensure banner is always visible */
 .alert.banner-container {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  height: auto !important;
-}
-
-.alert.banner-container a.banner-placement {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 40px !important;
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  height: auto;
 }
 
 /* Banner hover effects */
@@ -105,17 +101,9 @@
   
   /* اطمینان از نمایش banner در تبلت */
   .alert.banner-container {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-  
-  .alert.banner-container a.banner-placement {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    min-height: 35px !important;
-    height: 35px !important;
+    display: block;
+    visibility: visible;
+    opacity: 1;
   }
 }
 
@@ -127,18 +115,10 @@
   
   /* اطمینان از نمایش banner در موبایل */
   .alert.banner-container {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    height: auto !important;
-  }
-  
-  .alert.banner-container a.banner-placement {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    min-height: 30px !important;
-    height: 30px !important;
+    display: block;
+    visibility: visible;
+    opacity: 1;
+    height: auto;
   }
 }
 
@@ -181,17 +161,9 @@
   
   /* اطمینان از نمایش banner در لپ‌تاپ */
   .alert.banner-container {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-  
-  .alert.banner-container a.banner-placement {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    min-height: 40px !important;
-    height: 40px !important;
+    display: block;
+    visibility: visible;
+    opacity: 1;
   }
 }
 
