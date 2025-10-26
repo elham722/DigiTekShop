@@ -1,0 +1,252 @@
+/* ==========================================================================
+   Variables
+   متغیرهای اصلی پروژه
+========================================================================== */
+
+/* ==========================================================================
+   Fonts
+========================================================================== */
+$font-primary: 'iranyekan', sans-serif;
+$font-primary-num: 'iranyekanfanum', sans-serif;
+$font-secondary: 'AdobeClean', sans-serif;
+$font-icon: 'remixicon';
+
+$font-size-base: 14px;
+$font-size-sm: 12px;
+$font-size-lg: 16px;
+$font-size-xl: 18px;
+$font-size-xxl: 20px;
+
+$font-weight-light: 300;
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+$font-weight-extrabold: 800;
+$font-weight-black: 900;
+
+$line-height-base: 1.5;
+$line-height-sm: 1.25;
+$line-height-lg: 1.75;
+
+/* ==========================================================================
+   Colors
+========================================================================== */
+// Primary Colors
+$primary: #2962ff;
+$primary-light: lighten($primary, 10%);
+$primary-dark: darken($primary, 10%);
+
+// Secondary Colors
+$secondary: #6c757d;
+$secondary-light: lighten($secondary, 10%);
+$secondary-dark: darken($secondary, 10%);
+
+// Status Colors
+$success: #28a745;
+$info: #17a2b8;
+$warning: #ffc107;
+$danger: #dc3545;
+$light: #f8f9fa;
+$dark: #343a40;
+
+// Text Colors
+$text-primary: #212121;
+$text-secondary: #6c757d;
+$text-muted: #999;
+$text-light: #fff;
+
+// Background Colors
+$bg-primary: #fff;
+$bg-secondary: #f8f9fa;
+$bg-dark: #212529;
+
+// Border Colors
+$border-color: #dee2e6;
+$border-color-light: #e9ecef;
+$border-color-dark: #adb5bd;
+
+/* ==========================================================================
+   Spacing
+========================================================================== */
+$spacer: 1rem;
+$spacers: (
+  0: 0,
+  1: $spacer * 0.25,
+  2: $spacer * 0.5,
+  3: $spacer,
+  4: $spacer * 1.5,
+  5: $spacer * 3,
+  6: $spacer * 4,
+  7: $spacer * 5
+);
+
+/* ==========================================================================
+   Border Radius
+========================================================================== */
+$border-radius: 0.375rem;
+$border-radius-sm: 0.25rem;
+$border-radius-lg: 0.5rem;
+$border-radius-xl: 1rem;
+$border-radius-pill: 50rem;
+
+/* ==========================================================================
+   Shadows
+========================================================================== */
+$box-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+$box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+$box-shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+$box-shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.075);
+
+/* ==========================================================================
+   Breakpoints
+========================================================================== */
+$grid-breakpoints: (
+  xs: 0,
+  sm: 576px,
+  md: 768px,
+  lg: 992px,
+  xl: 1200px,
+  xxl: 1400px
+);
+
+$container-max-widths: (
+  sm: 540px,
+  md: 720px,
+  lg: 960px,
+  xl: 1140px,
+  xxl: 1320px
+);
+
+/* ==========================================================================
+   Z-Index
+========================================================================== */
+$zindex-dropdown: 1000;
+$zindex-sticky: 1020;
+$zindex-fixed: 1030;
+$zindex-modal-backdrop: 1040;
+$zindex-modal: 1050;
+$zindex-popover: 1060;
+$zindex-tooltip: 1070;
+$zindex-toast: 1080;
+
+/* ==========================================================================
+   Transitions
+========================================================================== */
+$transition-base: all 0.3s ease-in-out;
+$transition-fast: all 0.15s ease-in-out;
+$transition-slow: all 0.5s ease-in-out;
+
+/* ==========================================================================
+   Animation
+========================================================================== */
+$animation-duration: 0.3s;
+$animation-timing-function: ease-in-out;
+$animation-delay: 0s;
+$animation-iteration-count: 1;
+$animation-direction: normal;
+$animation-fill-mode: both;
+
+/* ==========================================================================
+   Grid
+========================================================================== */
+$grid-columns: 12;
+$grid-gutter-width: 1.5rem;
+$grid-row-columns: 6;
+
+/* ==========================================================================
+   Forms
+========================================================================== */
+$input-padding-y: 0.375rem;
+$input-padding-x: 0.75rem;
+$input-font-size: $font-size-base;
+$input-line-height: $line-height-base;
+$input-border-width: 1px;
+$input-border-color: $border-color;
+$input-border-radius: $border-radius;
+$input-focus-border-color: $primary;
+$input-focus-box-shadow: 0 0 0 0.2rem rgba($primary, 0.25);
+
+/* ==========================================================================
+   Buttons
+========================================================================== */
+$btn-padding-y: 0.375rem;
+$btn-padding-x: 0.75rem;
+$btn-font-size: $font-size-base;
+$btn-line-height: $line-height-base;
+$btn-border-width: 1px;
+$btn-border-radius: $border-radius;
+$btn-transition: $transition-base;
+
+/* ==========================================================================
+   Cards
+========================================================================== */
+$card-spacer-y: 1rem;
+$card-spacer-x: 1rem;
+$card-border-width: 1px;
+$card-border-color: $border-color;
+$card-border-radius: $border-radius;
+$card-box-shadow: $box-shadow-sm;
+
+/* ==========================================================================
+   Navigation
+========================================================================== */
+$navbar-padding-y: 0.5rem;
+$navbar-padding-x: 1rem;
+$navbar-nav-link-padding-x: 0.5rem;
+$navbar-brand-font-size: 1.25rem;
+
+/* ==========================================================================
+   Tables
+========================================================================== */
+$table-cell-padding-y: 0.5rem;
+$table-cell-padding-x: 0.5rem;
+$table-cell-padding-y-sm: 0.25rem;
+$table-cell-padding-x-sm: 0.25rem;
+$table-border-width: 1px;
+$table-border-color: $border-color;
+
+/* ==========================================================================
+   Modals
+========================================================================== */
+$modal-inner-padding: 1rem;
+$modal-header-padding-y: 1rem;
+$modal-header-padding-x: 1rem;
+$modal-header-border-width: 1px;
+$modal-header-border-color: $border-color;
+$modal-footer-border-width: 1px;
+$modal-footer-border-color: $border-color;
+
+/* ==========================================================================
+   Tooltips
+========================================================================== */
+$tooltip-font-size: 0.875rem;
+$tooltip-max-width: 200px;
+$tooltip-color: $text-light;
+$tooltip-bg: $dark;
+$tooltip-border-radius: $border-radius;
+$tooltip-opacity: 0.9;
+$tooltip-padding-y: 0.25rem;
+$tooltip-padding-x: 0.5rem;
+$tooltip-margin: 0;
+
+/* ==========================================================================
+   Popovers
+========================================================================== */
+$popover-font-size: 0.875rem;
+$popover-bg: $bg-primary;
+$popover-max-width: 276px;
+$popover-border-width: 1px;
+$popover-border-color: $border-color;
+$popover-border-radius: $border-radius;
+$popover-box-shadow: $box-shadow;
+$popover-header-bg: $bg-secondary;
+$popover-header-color: $text-primary;
+$popover-header-padding-y: 0.5rem;
+$popover-header-padding-x: 0.75rem;
+$popover-body-color: $text-primary;
+$popover-body-padding-y: 0.75rem;
+$popover-body-padding-x: 0.75rem;
+$popover-arrow-width: 1rem;
+$popover-arrow-height: 0.5rem;
+$popover-arrow-color: $popover-bg;

@@ -1,0 +1,71 @@
+/* ==========================================================================
+   Main SCSS File
+   فایل اصلی SCSS
+========================================================================== */
+
+/* ==========================================================================
+   Core Files
+========================================================================== */
+@import 'core/variables';
+@import 'mixins/mixins';
+@import 'functions/functions';
+@import 'core/base';
+
+/* ==========================================================================
+   Component Files
+========================================================================== */
+@import 'components/header';
+@import 'components/footer';
+
+/* ==========================================================================
+   Page Files
+========================================================================== */
+@import 'pages/home';
+
+/* ==========================================================================
+   Additional Components (can be added later)
+========================================================================== */
+// @import 'components/button';
+// @import 'components/card';
+// @import 'components/modal';
+// @import 'components/form';
+// @import 'components/navigation';
+// @import 'components/slider';
+// @import 'components/table';
+// @import 'components/alert';
+// @import 'components/badge';
+// @import 'components/breadcrumb';
+// @import 'components/dropdown';
+// @import 'components/pagination';
+// @import 'components/progress';
+// @import 'components/spinner';
+// @import 'components/tooltip';
+// @import 'components/popover';
+// @import 'components/carousel';
+// @import 'components/collapse';
+// @import 'components/list-group';
+// @import 'components/toast';
+
+/* ==========================================================================
+   Additional Pages (can be added later)
+========================================================================== */
+// @import 'pages/product';
+// @import 'pages/cart';
+// @import 'pages/checkout';
+// @import 'pages/profile';
+// @import 'pages/auth';
+// @import 'pages/contact';
+// @import 'pages/about';
+// @import 'pages/blog';
+// @import 'pages/faq';
+// @import 'pages/404';
+
+/* ==========================================================================
+   Utilities
+========================================================================== */
+@import 'utilities/utilities';
+
+/* ==========================================================================
+   Dark Mode
+========================================================================== */
+@import 'themes/dark';

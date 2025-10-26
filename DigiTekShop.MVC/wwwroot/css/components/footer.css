@@ -1,0 +1,317 @@
+/* ==========================================================================
+   Footer Components
+========================================================================== */
+
+.page-footer {
+  background-color: #fff;
+  border-top: 1px solid #efefef;
+}
+
+@media (max-width: 576px) {
+  .page-footer .footer-logo-area {
+    padding-right: 0;
+    padding-left: 0;
+  }
+  .page-footer .footer-logo-area .logo-container {
+    min-width: 100%;
+  }
+}
+
+/* ==========================================================================
+   Footer Logo Area
+========================================================================== */
+.page-footer .footer-logo-area {
+  padding: 2rem 0;
+}
+
+.page-footer .footer-logo-area .logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.page-footer .footer-logo-area .logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #212121;
+}
+
+.page-footer .footer-logo-area .logo img {
+  max-width: 120px;
+  height: auto;
+}
+
+.page-footer .footer-logo-area .logo-text {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-right: 0.5rem;
+}
+
+/* ==========================================================================
+   Footer Services
+========================================================================== */
+.page-footer .services {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 2rem 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 2rem;
+}
+
+.page-footer .service-container {
+  flex: 1;
+  min-width: 200px;
+}
+
+.page-footer .service {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: #212121;
+  transition: all 0.3s ease;
+}
+
+.page-footer .service:hover {
+  color: #2962ff;
+}
+
+.page-footer .service-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.page-footer .service-icon img {
+  max-width: 24px;
+  height: auto;
+}
+
+.page-footer .service-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Footer Widgets
+========================================================================== */
+.page-footer .widget {
+  margin-bottom: 2rem;
+}
+
+.page-footer .widget-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #212121;
+  margin-bottom: 1rem;
+}
+
+.page-footer .widget-content {
+  color: #6c757d;
+}
+
+.page-footer .widget-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.page-footer .widget-list ul li {
+  margin-bottom: 0.5rem;
+}
+
+.page-footer .widget-list ul li a {
+  color: #6c757d;
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.page-footer .widget-list ul li a:hover {
+  color: #2962ff;
+}
+
+/* ==========================================================================
+   Footer Social Links
+========================================================================== */
+.page-footer .widget-socials ul {
+  display: flex;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.page-footer .widget-socials ul li a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: #f8f9fa;
+  color: #6c757d;
+  border-radius: 50%;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.page-footer .widget-socials ul li a:hover {
+  background-color: #2962ff;
+  color: white;
+}
+
+.page-footer .widget-socials ul li a i {
+  font-size: 1.2rem;
+}
+
+/* ==========================================================================
+   Footer Newsletter
+========================================================================== */
+.page-footer .widget-newsletter form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.page-footer .widget-newsletter .form-control {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.page-footer .widget-newsletter .form-control:focus {
+  outline: none;
+  border-color: #2962ff;
+  box-shadow: 0 0 0 0.2rem rgba(41, 98, 255, 0.25);
+}
+
+.page-footer .widget-newsletter .btn {
+  padding: 0.75rem 1.5rem;
+  background-color: #2962ff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.page-footer .widget-newsletter .btn:hover {
+  background-color: #1e53e5;
+}
+
+/* ==========================================================================
+   Footer Trust Symbols
+========================================================================== */
+.page-footer .trust-symbol {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.page-footer .trust-symbol a {
+  display: inline-block;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 15px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.page-footer .trust-symbol a:hover {
+  border-color: #2962ff;
+  box-shadow: 0 2px 8px rgba(41, 98, 255, 0.1);
+}
+
+.page-footer .trust-symbol a img {
+  max-width: 80px;
+  height: auto;
+}
+
+/* ==========================================================================
+   Footer Expandable Text
+========================================================================== */
+.page-footer .expandable-text {
+  position: relative;
+  overflow: hidden;
+}
+
+.page-footer .expandable-text_text {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.page-footer .expandable-text_text .fs-6 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #212121;
+}
+
+.page-footer .expandable-text_text .fs-7 {
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-align: justify;
+}
+
+.page-footer .expandable-text-expand-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  cursor: pointer;
+  color: #2962ff;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.page-footer .expandable-text-expand-btn:hover {
+  color: #1e53e5;
+}
+
+.page-footer .expandable-text-expand-btn .show-less {
+  display: none;
+}
+
+.page-footer .expandable-text.expanded .show-more {
+  display: none;
+}
+
+.page-footer .expandable-text.expanded .show-less {
+  display: inline;
+}
+
+/* ==========================================================================
+   Footer Copyright
+========================================================================== */
+.page-footer .copy-right {
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.875rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid #eee;
+  margin-top: 2rem;
+}
+
+/* ==========================================================================
+   Mini Footer
+========================================================================== */
+.page-mini-footer {
+  background-color: #fff;
+  border-top: 1px solid #efefef;
+  padding: 1rem 0;
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.875rem;
+}

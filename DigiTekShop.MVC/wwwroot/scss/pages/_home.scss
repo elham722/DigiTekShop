@@ -1,0 +1,499 @@
+/* ==========================================================================
+   Home Page
+   صفحه اصلی
+========================================================================== */
+
+.home-page {
+  /* ==========================================================================
+     Main Banner
+  ========================================================================== */
+  .main-banner {
+    margin-bottom: 2rem;
+
+    .banner-container {
+      position: relative;
+      border-radius: $border-radius-lg;
+      overflow: hidden;
+      box-shadow: $box-shadow;
+
+      .banner-slider {
+        .swiper-slide {
+          position: relative;
+          height: 400px;
+
+          @include media-breakpoint-down(md) {
+            height: 300px;
+          }
+
+          .banner-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+
+          .banner-content {
+            position: absolute;
+            top: 50%;
+            right: 2rem;
+            transform: translateY(-50%);
+            color: $text-light;
+            z-index: 2;
+
+            @include media-breakpoint-down(md) {
+              right: 1rem;
+              left: 1rem;
+              text-align: center;
+            }
+
+            .banner-title {
+              font-size: 2.5rem;
+              font-weight: $font-weight-bold;
+              margin-bottom: 1rem;
+              text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+
+              @include media-breakpoint-down(md) {
+                font-size: 2rem;
+              }
+
+              @include media-breakpoint-down(sm) {
+                font-size: 1.5rem;
+              }
+            }
+
+            .banner-description {
+              font-size: $font-size-lg;
+              margin-bottom: 1.5rem;
+              text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+
+              @include media-breakpoint-down(md) {
+                font-size: $font-size-base;
+              }
+            }
+
+            .banner-btn {
+              display: inline-block;
+              padding: 12px 24px;
+              background-color: $primary;
+              color: $text-light;
+              text-decoration: none;
+              border-radius: $border-radius;
+              font-weight: $font-weight-medium;
+              @include transition($transition-base);
+
+              &:hover {
+                background-color: darken($primary, 10%);
+                transform: translateY(-2px);
+              }
+            }
+          }
+
+          &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(0, 0, 0, 0.3), transparent);
+            z-index: 1;
+          }
+        }
+      }
+
+      .banner-pagination {
+        .swiper-pagination-bullet {
+          background-color: rgba(255, 255, 255, 0.5);
+          opacity: 1;
+
+          &.swiper-pagination-bullet-active {
+            background-color: $text-light;
+          }
+        }
+      }
+
+      .banner-navigation {
+        .swiper-button-next,
+        .swiper-button-prev {
+          color: $text-light;
+          background-color: rgba(0, 0, 0, 0.3);
+          border-radius: 50%;
+          width: 50px;
+          height: 50px;
+          @include transition($transition-base);
+
+          &:hover {
+            background-color: rgba(0, 0, 0, 0.5);
+          }
+
+          &::after {
+            font-size: 1.25rem;
+          }
+        }
+      }
+    }
+  }
+
+  /* ==========================================================================
+     Sidebar Banners
+  ========================================================================== */
+  .sidebar-banners {
+    margin-bottom: 2rem;
+
+    .banner-item {
+      margin-bottom: 1rem;
+      border-radius: $border-radius-lg;
+      overflow: hidden;
+      box-shadow: $box-shadow-sm;
+      @include transition($transition-base);
+
+      &:hover {
+        box-shadow: $box-shadow;
+        transform: translateY(-2px);
+      }
+
+      .banner-link {
+        display: block;
+        position: relative;
+        overflow: hidden;
+
+        .banner-image {
+          width: 100%;
+          height: 200px;
+          object-fit: cover;
+          @include transition($transition-base);
+        }
+
+        .banner-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(45deg, rgba(0, 0, 0, 0.3), transparent);
+          opacity: 0;
+          @include transition($transition-base);
+        }
+
+        &:hover {
+          .banner-image {
+            transform: scale(1.05);
+          }
+
+          .banner-overlay {
+            opacity: 1;
+          }
+        }
+      }
+    }
+  }
+
+  /* ==========================================================================
+     Product Sections
+  ========================================================================== */
+  .product-section {
+    margin-bottom: 3rem;
+
+    .section-header {
+      @include flexbox(row, space-between, center);
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid $border-color;
+
+      .section-title {
+        font-size: $font-size-xl;
+        font-weight: $font-weight-bold;
+        color: $text-primary;
+        margin: 0;
+      }
+
+      .section-link {
+        color: $primary;
+        text-decoration: none;
+        font-weight: $font-weight-medium;
+        @include transition($transition-base);
+
+        &:hover {
+          color: darken($primary, 10%);
+        }
+      }
+    }
+
+    .product-slider {
+      .swiper-slide {
+        height: auto;
+      }
+
+      .product-card {
+        background-color: $bg-primary;
+        border: 1px solid $border-color;
+        border-radius: $border-radius-lg;
+        overflow: hidden;
+        @include transition($transition-base);
+
+        &:hover {
+          box-shadow: $box-shadow;
+          transform: translateY(-2px);
+        }
+
+        .product-image {
+          position: relative;
+          overflow: hidden;
+
+          .product-img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            @include transition($transition-base);
+          }
+
+          .product-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: $danger;
+            color: $text-light;
+            padding: 4px 8px;
+            border-radius: $border-radius;
+            font-size: $font-size-sm;
+            font-weight: $font-weight-medium;
+          }
+
+          .product-actions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            @include flexbox(column, center, center);
+            gap: 0.5rem;
+            opacity: 0;
+            @include transition($transition-base);
+
+            .action-btn {
+              @include flexbox(row, center, center);
+              width: 35px;
+              height: 35px;
+              background-color: $bg-primary;
+              color: $text-secondary;
+              border: none;
+              border-radius: 50%;
+              cursor: pointer;
+              @include transition($transition-base);
+
+              &:hover {
+                background-color: $primary;
+                color: $text-light;
+              }
+            }
+          }
+
+          &:hover {
+            .product-actions {
+              opacity: 1;
+            }
+          }
+        }
+
+        .product-content {
+          padding: 1rem;
+
+          .product-title {
+            margin-bottom: 0.5rem;
+
+            a {
+              color: $text-primary;
+              text-decoration: none;
+              font-weight: $font-weight-medium;
+              @include transition($transition-base);
+
+              &:hover {
+                color: $primary;
+              }
+            }
+          }
+
+          .product-rating {
+            @include flexbox(row, flex-start, center);
+            gap: 0.25rem;
+            margin-bottom: 0.5rem;
+
+            .star {
+              color: $warning;
+              font-size: $font-size-sm;
+
+              &.empty {
+                color: $border-color;
+              }
+            }
+
+            .rating-count {
+              color: $text-muted;
+              font-size: $font-size-sm;
+              margin-right: 0.5rem;
+            }
+          }
+
+          .product-price {
+            @include flexbox(row, space-between, center);
+            margin-bottom: 1rem;
+
+            .price-current {
+              color: $primary;
+              font-weight: $font-weight-bold;
+              font-size: $font-size-lg;
+            }
+
+            .price-old {
+              color: $text-muted;
+              text-decoration: line-through;
+              font-size: $font-size-sm;
+            }
+          }
+
+          .product-actions-bottom {
+            @include flexbox(row, space-between, center);
+
+            .add-to-cart {
+              flex: 1;
+              padding: 8px 16px;
+              background-color: $primary;
+              color: $text-light;
+              border: none;
+              border-radius: $border-radius;
+              font-weight: $font-weight-medium;
+              cursor: pointer;
+              @include transition($transition-base);
+
+              &:hover {
+                background-color: darken($primary, 10%);
+              }
+            }
+
+            .wishlist-btn {
+              @include flexbox(row, center, center);
+              width: 40px;
+              height: 40px;
+              background-color: $bg-secondary;
+              color: $text-secondary;
+              border: none;
+              border-radius: $border-radius;
+              cursor: pointer;
+              @include transition($transition-base);
+
+              &:hover {
+                background-color: $danger;
+                color: $text-light;
+              }
+            }
+          }
+        }
+      }
+
+      .slider-navigation {
+        @include flexbox(row, center, center);
+        gap: 1rem;
+        margin-top: 2rem;
+
+        .slider-btn {
+          @include flexbox(row, center, center);
+          width: 40px;
+          height: 40px;
+          background-color: $bg-secondary;
+          color: $text-secondary;
+          border: none;
+          border-radius: 50%;
+          cursor: pointer;
+          @include transition($transition-base);
+
+          &:hover {
+            background-color: $primary;
+            color: $text-light;
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+        }
+      }
+    }
+  }
+
+  /* ==========================================================================
+     Categories Section
+  ========================================================================== */
+  .categories-section {
+    margin-bottom: 3rem;
+
+    .category-slider {
+      .category-item {
+        text-align: center;
+        padding: 1rem;
+        border-radius: $border-radius-lg;
+        @include transition($transition-base);
+
+        &:hover {
+          background-color: $bg-secondary;
+        }
+
+        .category-image {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          object-fit: cover;
+          margin: 0 auto 1rem;
+          @include transition($transition-base);
+        }
+
+        .category-title {
+          font-size: $font-size-sm;
+          font-weight: $font-weight-medium;
+          color: $text-primary;
+          margin: 0;
+        }
+
+        &:hover {
+          .category-image {
+            transform: scale(1.1);
+          }
+        }
+      }
+    }
+  }
+
+  /* ==========================================================================
+     Services Section
+  ========================================================================== */
+  .services-section {
+    background-color: $bg-secondary;
+    padding: 3rem 0;
+    margin-bottom: 3rem;
+
+    .service-item {
+      text-align: center;
+      padding: 1rem;
+
+      .service-icon {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 1rem;
+        @include flexbox(row, center, center);
+        background-color: $primary;
+        color: $text-light;
+        border-radius: 50%;
+        font-size: 1.5rem;
+      }
+
+      .service-title {
+        font-size: $font-size-base;
+        font-weight: $font-weight-medium;
+        color: $text-primary;
+        margin-bottom: 0.5rem;
+      }
+
+      .service-description {
+        color: $text-secondary;
+        font-size: $font-size-sm;
+        line-height: $line-height-lg;
+      }
+    }
+  }
+}

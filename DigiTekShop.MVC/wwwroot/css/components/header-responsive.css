@@ -1,0 +1,287 @@
+/* ==========================================================================
+   Responsive Header
+========================================================================== */
+
+.page-header-responsive {
+  padding: 10px 0.75rem;
+  position: relative;
+  z-index: 100;
+}
+
+.page-header-responsive .page-header-responsive-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   Navigation Toggle
+========================================================================== */
+.page-header-responsive .toggle-navigation {
+  border: 0;
+  background-color: transparent;
+  padding: 0;
+  margin-left: 15px;
+  text-align: right;
+}
+
+.page-header-responsive .toggle-navigation::before {
+  content: "\EF3E";
+  font-family: remixicon;
+  font-size: 28px;
+}
+
+/* ==========================================================================
+   Logo
+========================================================================== */
+.page-header-responsive .logo img {
+  max-width: 150px;
+}
+
+@media (max-width: 480px) {
+  .page-header-responsive .logo img {
+    max-width: 100px;
+  }
+}
+
+/* ==========================================================================
+   Navigation
+========================================================================== */
+.page-header-responsive .navigation {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  bottom: 0;
+  width: 84vw;
+  background-color: #fff;
+  padding-bottom: 60px;
+  overflow-y: auto;
+  z-index: 3;
+  transition: all 0.3s ease-in;
+}
+
+.page-header-responsive .navigation.show {
+  right: 0;
+}
+
+.page-header-responsive .navigation .navigation-body {
+  padding: 10px 15px;
+  position: relative;
+}
+
+.page-header-responsive .navigation .navigation-body ul {
+  list-style: none;
+}
+
+.page-header-responsive .navigation .navigation-body ul a {
+  text-decoration: none;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li a {
+  display: flex;
+  align-items: center;
+  color: #000;
+  font-weight: 500;
+  border-bottom: 1px solid #eee;
+  height: 50px;
+  padding: 0 15px;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li a.toggle-submenu {
+  position: relative;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li a.toggle-submenu::after {
+  content: "\EA64";
+  font-family: remixicon;
+  font-size: 18px;
+  position: absolute;
+  left: 0;
+}
+
+/* ==========================================================================
+   Submenu
+========================================================================== */
+.page-header-responsive .navigation .navigation-body .menu li .submenu {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  bottom: 0;
+  width: 84vw;
+  background-color: #fff;
+  box-sizing: border-box;
+  padding: 15px;
+  transition: all 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  z-index: 4;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu.show {
+  right: 0;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu .close-submenu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #000;
+  font-weight: 500;
+  height: 50px;
+  margin-bottom: 15px;
+  border-radius: 5px;
+  position: relative;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu .close-submenu i {
+  position: absolute;
+  right: 10px;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu li a {
+  line-height: 30px;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu li a.toggle-submenu {
+  position: relative;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu li a.toggle-submenu::after {
+  content: "\EA64";
+  font-family: remixicon;
+  font-size: 18px;
+  position: absolute;
+  left: 0;
+}
+
+/* ==========================================================================
+   Navigation Overlay
+========================================================================== */
+.page-header-responsive .navigation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease-in;
+}
+
+.page-header-responsive .navigation-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ==========================================================================
+   User Options (Responsive)
+========================================================================== */
+.page-header-responsive .user-options {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-header-responsive .user-option {
+  position: relative;
+}
+
+.page-header-responsive .user-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f8f9fa;
+  color: #6c757d;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.page-header-responsive .user-option-btn:hover {
+  background-color: #2962ff;
+  color: white;
+}
+
+.page-header-responsive .user-option-btn .icon {
+  font-size: 1.2rem;
+}
+
+.page-header-responsive .user-option-btn .counter {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #dc3545;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+/* ==========================================================================
+   Search Container (Responsive)
+========================================================================== */
+.page-header-responsive .search-container {
+  margin-top: 1rem;
+}
+
+.page-header-responsive .search-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.page-header-responsive .search-field {
+  width: 100%;
+  padding: 0.75rem 3rem 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 25px;
+  font-size: 0.875rem;
+}
+
+.page-header-responsive .search-field:focus {
+  outline: none;
+  border-color: #2962ff;
+  box-shadow: 0 0 0 0.2rem rgba(41, 98, 255, 0.25);
+}
+
+.page-header-responsive .btn-search {
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: #2962ff;
+  color: white;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-header-responsive .search-result-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: none;
+}
+
+.page-header-responsive .search-result-container.show {
+  display: block;
+}

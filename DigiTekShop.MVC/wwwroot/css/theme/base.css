@@ -1,0 +1,108 @@
+/* ==========================================================================
+   Reset & Base Styles
+========================================================================== */
+ul {
+  padding: 0;
+  margin: 0;
+}
+
+.simplebar-track.simplebar-vertical {
+  width: 7px;
+  left: 0;
+  right: auto;
+}
+
+.simplebar-track .simplebar-scrollbar::before {
+  background-color: #efefef;
+  opacity: 1 !important;
+}
+
+.container {
+  max-width: 1320px;
+}
+
+body {
+  background-color: #fff;
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  color: var(--dark-color);
+}
+
+.page-wrapper {
+  direction: rtl;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+}
+
+.page-wrapper .page-content {
+  flex: 1 1 auto;
+  padding: 45px 0;
+}
+
+@media (max-width: 768px) {
+  .page-wrapper .page-content {
+    padding: 25px 0;
+  }
+}
+
+.page-wrapper .page-content.page-auth {
+  display: flex;
+  align-items: center;
+}
+
+/* ==========================================================================
+   Typography
+========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-primary);
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+h4 { font-size: 1.5rem; }
+h5 { font-size: 1.25rem; }
+h6 { font-size: 1rem; }
+
+p {
+  margin-bottom: 1rem;
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Form Elements
+========================================================================== */
+input, textarea, select {
+  font-family: var(--font-family-primary);
+}
+
+button {
+  font-family: var(--font-family-primary);
+}
+
+/* ==========================================================================
+   RTL Support
+========================================================================== */
+.dir-rtl {
+  direction: rtl !important;
+}
+
+.dir-ltr {
+  direction: ltr !important;
+}

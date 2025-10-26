@@ -1,0 +1,39 @@
+/* ==========================================================================
+   Main CSS File - Import All Components
+========================================================================== */
+
+/* ==========================================================================
+   Theme Files
+========================================================================== */
+@import url('./theme/tokens.css');
+@import url('./theme/base.css');
+@import url('./theme/utilities.css');
+@import url('./theme/dark.css');
+
+/* ==========================================================================
+   Component Files
+========================================================================== */
+@import url('./components/header.css');
+@import url('./components/header-responsive.css');
+@import url('./components/footer.css');
+
+/* ==========================================================================
+   Page Files
+========================================================================== */
+@import url('./pages/home.css');
+
+/* ==========================================================================
+   Additional Components (can be added later)
+========================================================================== */
+/* @import url('./components/search.css'); */
+/* @import url('./components/minicart.css'); */
+/* @import url('./components/catbar.css'); */
+/* @import url('./components/navbar.css'); */
+
+/* ==========================================================================
+   Additional Pages (can be added later)
+========================================================================== */
+/* @import url('./pages/product.css'); */
+/* @import url('./pages/cart.css'); */
+/* @import url('./pages/checkout.css'); */
+/* @import url('./pages/profile.css'); */

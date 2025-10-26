@@ -1,0 +1,244 @@
+/* ==========================================================================
+   Functions
+   توابع کمکی SCSS
+========================================================================== */
+
+/* ==========================================================================
+   Color Functions
+========================================================================== */
+@function color-contrast($background, $color-contrast-dark: $dark, $color-contrast-light: $light, $min-contrast-ratio: 4.5) {
+  $foregrounds: $color-contrast-light, $color-contrast-dark;
+  $max-ratio: 0;
+  $max-ratio-color: null;
+
+  @each $color in $foregrounds {
+    $contrast-ratio: contrast-ratio($background, $color);
+    @if $contrast-ratio > $min-contrast-ratio {
+      @return $color;
+    } @else if $contrast-ratio > $max-ratio {
+      $max-ratio: $contrast-ratio;
+      $max-ratio-color: $color;
+    }
+  }
+
+  @warn "Found no color leading to #{$min-contrast-ratio}:1 contrast ratio against #{$background}...";
+
+  @return $max-ratio-color;
+}
+
+@function contrast-ratio($background, $foreground) {
+  $l1: luminance($background);
+  $l2: luminance(opaque($background, $foreground));
+
+  @return if($l1 > $l2, ($l1 + 0.05) / ($l2 + 0.05), ($l2 + 0.05) / ($l1 + 0.05));
+}
+
+@function luminance($color) {
+  $rgb: (
+    "r": red($color),
+    "g": green($color),
+    "b": blue($color)
+  );
+
+  @each $name, $value in $rgb {
+    $adjusted: 0;
+    $value: $value / 255;
+
+    @if $value <= 0.03928 {
+      $value: $value / 12.92;
+    } @else {
+      $value: ($value + 0.055) / 1.055;
+      $value: pow($value, 2.4);
+    }
+
+    $rgb: map-merge($rgb, ($name: $value));
+  }
+
+  @return (map-get($rgb, "r") * 0.2126) + (map-get($rgb, "g") * 0.7152) + (map-get($rgb, "b") * 0.0722);
+}
+
+@function opaque($background, $foreground) {
+  @return mix(rgba($foreground, 1), $background, opacity($foreground) * 100);
+}
+
+/* ==========================================================================
+   Math Functions
+========================================================================== */
+@function pow($number, $exponent) {
+  $value: 1;
+
+  @if $exponent > 0 {
+    @for $i from 1 through $exponent {
+      $value: $value * $number;
+    }
+  } @else if $exponent < 0 {
+    @for $i from 1 through -$exponent {
+      $value: $value / $number;
+    }
+  }
+
+  @return $value;
+}
+
+@function sqrt($r) {
+  $x0: 1;
+  $x1: $x0;
+
+  @for $i from 1 through 10 {
+    $x1: $x0 - ($x0 * $x0 - abs($r)) / (2 * $x0);
+    $x0: $x1;
+  }
+
+  @return $x1;
+}
+
+/* ==========================================================================
+   String Functions
+========================================================================== */
+@function str-replace($string, $search, $replace: "") {
+  $index: str-index($string, $search);
+
+  @if $index {
+    @return str-slice($string, 1, $index - 1) + $replace + str-replace(str-slice($string, $index + str-length($search)), $search, $replace);
+  }
+
+  @return $string;
+}
+
+/* ==========================================================================
+   List Functions
+========================================================================== */
+@function list-remove($list, $value) {
+  $new-list: ();
+  
+  @each $item in $list {
+    @if $item != $value {
+      $new-list: append($new-list, $item);
+    }
+  }
+  
+  @return $new-list;
+}
+
+@function list-join($list1, $list2) {
+  @each $item in $list2 {
+    $list1: append($list1, $item);
+  }
+  
+  @return $list1;
+}
+
+/* ==========================================================================
+   Map Functions
+========================================================================== */
+@function map-get-next($map, $key) {
+  $keys: map-keys($map);
+  $index: index($keys, $key);
+  
+  @if $index and $index < length($keys) {
+    @return nth($keys, $index + 1);
+  }
+  
+  @return null;
+}
+
+@function map-get-prev($map, $key) {
+  $keys: map-keys($map);
+  $index: index($keys, $key);
+  
+  @if $index and $index > 1 {
+    @return nth($keys, $index - 1);
+  }
+  
+  @return null;
+}
+
+/* ==========================================================================
+   Breakpoint Functions
+========================================================================== */
+@function breakpoint-infix($name, $breakpoints: $grid-breakpoints) {
+  @return if(breakpoint-min($name, $breakpoints) == null, "", "-#{$name}");
+}
+
+@function breakpoint-min($name, $breakpoints: $grid-breakpoints) {
+  $min: map-get($breakpoints, $name);
+  @return if($min != 0, $min, null);
+}
+
+@function breakpoint-max($name, $breakpoints: $grid-breakpoints) {
+  $next: map-get-next($breakpoints, $name);
+  @return if($next, $next - 0.02, null);
+}
+
+/* ==========================================================================
+   Spacing Functions
+========================================================================= */
+@function spacer($key) {
+  @return map-get($spacers, $key);
+}
+
+@function rem($pixels, $base: 16px) {
+  @return $pixels / $base * 1rem;
+}
+
+@function em($pixels, $base: 16px) {
+  @return $pixels / $base * 1em;
+}
+
+/* ==========================================================================
+   Color Functions
+========================================================================== */
+@function tint($color, $percentage) {
+  @return mix(white, $color, $percentage);
+}
+
+@function shade($color, $percentage) {
+  @return mix(black, $color, $percentage);
+}
+
+@function alpha($color, $alpha) {
+  @return rgba($color, $alpha);
+}
+
+/* ==========================================================================
+   Utility Functions
+========================================================================== */
+@function strip-unit($number) {
+  @if type-of($number) == 'number' and not unitless($number) {
+    @return $number / ($number * 0 + 1);
+  }
+
+  @return $number;
+}
+
+@function to-string($value) {
+  @return inspect($value);
+}
+
+@function is-number($value) {
+  @return type-of($value) == 'number';
+}
+
+@function is-string($value) {
+  @return type-of($value) == 'string';
+}
+
+@function is-color($value) {
+  @return type-of($value) == 'color';
+}
+
+@function is-list($value) {
+  @return type-of($value) == 'list';
+}
+
+@function is-map($value) {
+  @return type-of($value) == 'map';
+}
+
+@function is-bool($value) {
+  @return type-of($value) == 'bool';
+}
+
+@function is-null($value) {
+  @return type-of($value) == 'null';
+}

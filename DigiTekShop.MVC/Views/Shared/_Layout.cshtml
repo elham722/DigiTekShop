@@ -1,23 +1,23 @@
 ﻿<!DOCTYPE html>
-<html lang="fa">
-
+<html lang="fa" dir="rtl">
 <head>
-    <partial name="_MetaTags" />
-    <title>DigiTekShop | home </title>
-    <partial name="_LinkTags" />
-
+    @await Html.PartialAsync("_MetaTags")
+   
+    <title>@ViewData["Title"] - DigiTekShop</title>
+    @await Html.PartialAsync("_LinkTags")
+    @RenderSection("Styles", required: false)
 </head>
 <body>
-<div class="page-wrapper">
-    <partial name="_Headers"/>
-        <main class="page-content">
-        @RenderBody()
-    </main>
-        <partial name="_Footer" />
-</div>
-
-
-    <partial name="_ScriptTags" />
-    @await RenderSectionAsync("Scripts", required: false)
+@await Html.PartialAsync("Header/_Header")
+@await Html.PartialAsync("Header/_HeaderResponsive")
+<main class="page-content">
+    @await Html.PartialAsync("Sections/_container.cshtml")
+    @await Html.PartialAsync("Sections/_remodal-remodal-lg.cshtml")
+</main>
+@await Html.PartialAsync("_Footer")
+@RenderSection("Scripts", required: false)
+@await Html.PartialAsync("_ScriptTags")
+    
+@RenderSection("Scripts", required: false)
 </body>
 </html>
