@@ -1,0 +1,21 @@
+﻿<div class="navigation-container">
+    <button class="toggle-navigation"></button>
+
+    <div class="navigation">
+        <div class="navigation-header">
+            <div class="logo-container logo-box">
+                <a href="~/" class="logo">
+                    <img src="/theme-assets/images/logo.svg" width="120" alt="logo">
+                    <span class="logo-text">بررسی، انتخاب و خرید آنلاین</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="navigation-body">
+            @* منوی موبایل را ViewComponent کردیم تا از دسته‌بندی‌ها/لینک‌های داینامیک بیاید *@
+            @await Component.InvokeAsync("MobileCategoryMenu")
+        </div>
+    </div>
+
+    @await Html.PartialAsync("Partials/Header/Responsive/_NavOverlay")
+</div>

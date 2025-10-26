@@ -7,10 +7,14 @@ public sealed class MiniCartViewComponent : ViewComponent
 
     public MiniCartViewComponent(ICartQueryService cart) => _cart = cart;
 
-    public async Task<IViewComponentResult> InvokeAsync()
+    public async Task<IViewComponentResult> InvokeAsync(string? variant = null)
     {
         var vm = await _cart.GetMiniAsync(HttpContext);
-        return View(vm);
+
+        if (variant?.Equals("mobile", StringComparison.OrdinalIgnoreCase) == true)
+            return View("Mobile", vm);   // Views/Shared/Components/MiniCart/Mobile.cshtml
+
+        return View("Default", vm);      // Views/Shared/Components/MiniCart/Default.cshtml
     }
 }
 

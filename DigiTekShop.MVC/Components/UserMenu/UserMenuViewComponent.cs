@@ -9,13 +9,23 @@ public sealed class UserMenuViewComponent : ViewComponent
     public UserMenuViewComponent(ICurrentUserProfileService profile)
         => _profile = profile;
 
-    public async Task<IViewComponentResult> InvokeAsync()
+    public async Task<IViewComponentResult> InvokeAsync(string? variant = null)
     {
-        if (!User.Identity?.IsAuthenticated ?? true)
-            return View("Anonymous");
+        var isAuth = User?.Identity?.IsAuthenticated == true;
 
-        var vm = await _profile.GetAsync(); // نام/شماره/آواتار
-        return View(vm);
+        // انتخاب ویوی موبایل/دسکتاپ بر اساس variant
+        if (!isAuth)
+        {
+            return variant?.Equals("mobile", StringComparison.OrdinalIgnoreCase) == true
+                ? View("MobileAnonymous")
+                : View("Anonymous");
+        }
+
+        var vm = await _profile.GetAsync();
+
+        return variant?.Equals("mobile", StringComparison.OrdinalIgnoreCase) == true
+            ? View("MobileDefault", vm)
+            : View("Default", vm);
     }
 }
 

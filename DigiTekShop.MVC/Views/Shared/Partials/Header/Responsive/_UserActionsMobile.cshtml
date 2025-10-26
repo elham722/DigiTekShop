@@ -1,0 +1,15 @@
+﻿<div class="user-options">
+    @* منوی کاربر: نسخه موبایل *@
+    @await Component.InvokeAsync("UserMenu", new { /* variant = "mobile" (اختیاری) */ })
+
+    @* علاقه‌مندی – فعلاً ثابت *@
+    <div class="user-option">
+        <a href="~/wishlist" class="user-option-btn user-option-btn--account">
+            <i class="ri-heart-3-fill icon"></i>
+            <span class="counter">۲</span>
+        </a>
+    </div>
+
+    @* مینی کارت موبایل (نمای ایكونی) *@
+    @await Component.InvokeAsync("MiniCart", new { /* variant = "mobile" */ })
+</div>

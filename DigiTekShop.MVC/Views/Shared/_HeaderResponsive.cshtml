@@ -1,0 +1,20 @@
+﻿<header class="page-header-responsive d-md-none">
+
+    <div class="page-header-responsive-row mb-3">
+        <div class="d-flex align-items-center">
+            @* دکمه همبرگری + دراور ناوبری *@
+            @await Html.PartialAsync("Partials/Header/Responsive/_NavDrawer")
+
+            @* لوگوی وسط *@
+            @await Html.PartialAsync("Partials/Header/Responsive/_LogoMobile")
+        </div>
+
+        @* اکشن‌های کاربر سمت راست *@
+        @await Html.PartialAsync("Partials/Header/Responsive/_UserActionsMobile")
+    </div>
+
+    <div class="page-header-responsive-row">
+        @await Html.PartialAsync("Partials/Header/Responsive/_SearchMobile")
+    </div>
+
+</header>
