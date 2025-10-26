@@ -570,8 +570,10 @@
 }
 
 .search-container {
-  min-width: 450px;
+  min-width: 400px;
+  max-width: 500px;
   position: relative;
+  flex: 1;
 }
 
 .search-container.w-full {
@@ -581,7 +583,16 @@
 @media (max-width: 992px) {
   .search-container {
     min-width: auto;
+    max-width: none;
     width: 100%;
+    flex: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .search-container {
+    min-width: 200px;
+    max-width: none;
   }
 }
 
