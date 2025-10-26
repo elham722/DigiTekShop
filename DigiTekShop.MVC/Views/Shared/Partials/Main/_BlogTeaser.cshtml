@@ -1,0 +1,27 @@
+﻿<div class="ui-box mb-5">
+    <div class="ui-box-title">از وبلاگ</div>
+    <div class="ui-box-content">
+        <div class="row g-4">
+            @* سه کارت نمونه؛ بعداً داینامیک کن *@
+            @foreach (var p in new[]{
+                          new {Img="01.jpg", Title="راهنمای خرید گوشی 2025", Date="10 مهر 1404"},
+                          new {Img="02.jpg", Title="۷ نکته برای نگهداری لپ‌تاپ", Date="5 مهر 1404"},
+                          new {Img="03.jpg", Title="مقایسه تلویزیون‌های QLED و OLED", Date="28 شهریور 1404"},
+                      })
+            {
+                <div class="col-md-4">
+                    <article class="card h-100 shadow-sm border-0">
+                        <a href="#" class="ratio ratio-16x9">
+                            <img class="object-fit-cover rounded-top" src="./theme-assets/images/blog/@p.Img" alt="@p.Title">
+                        </a>
+                        <div class="card-body">
+                            <div class="text-muted fs-7 mb-2">@p.Date</div>
+                            <h3 class="h6 mb-3"><a href="#" class="text-reset text-decoration-none">@p.Title</a></h3>
+                            <a href="#" class="btn btn-sm btn-outline-primary">ادامه مطلب</a>
+                        </div>
+                    </article>
+                </div>
+            }
+        </div>
+    </div>
+</div>

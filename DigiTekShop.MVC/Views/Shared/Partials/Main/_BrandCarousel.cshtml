@@ -1,0 +1,20 @@
+﻿<div class="ui-box mb-5">
+    <div class="ui-box-title">برندها</div>
+    <div class="ui-box-content">
+        <div class="swiper brands-swiper-slider pb-4">
+            <div class="swiper-wrapper">
+                @foreach (var logo in new[]{ "01.png","02.png","03.png","04.png","05.png","06.png","07.png","08.png" })
+                {
+                    <div class="swiper-slide">
+                        <a class="d-flex align-items-center justify-content-center p-3 border rounded-3 bg-white" href="#">
+                            <img src="./theme-assets/images/brands/@logo" alt="brand" style="max-height:40px">
+                        </a>
+                    </div>
+                }
+            </div>
+            <div class="swiper-pagination"></div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+        </div>
+    </div>
+</div>
