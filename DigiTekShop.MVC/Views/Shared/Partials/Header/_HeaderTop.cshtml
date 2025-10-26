@@ -1,0 +1,21 @@
+﻿<div class="page-header--top">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="page-header--top-right">
+                <div class="notification-container notification-light">
+                    @* تیکر را ViewComponent کردیم *@
+                    @await Component.InvokeAsync("NotificationTicker")
+                </div>
+            </div>
+            <div class="page-header--top-left">
+                @* لینک‌های ساده، Partial ثابت *@
+                <ul class="nav nav-light justify-content-end">
+                    <li class="nav-item"><a class="nav-link" href="#">وبلاگ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">پرسش های متداول</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">تماس با ما</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">درباره ما</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

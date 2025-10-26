@@ -1,0 +1,28 @@
+﻿@model IReadOnlyList<DigiTekShop.MVC.Components.CategoryMenu.CategoryNodeVm>
+
+<div class="vertical-menu">
+    <a href="#" class="vertical-menu-btn">دسته بندی کالاها <i class="ri-apps-fill icon"></i></a>
+    <div class="vertical-menu-items">
+        <ul>
+            @foreach (var cat in Model)
+            {
+                var hasChildren = cat.Children?.Any() == true;
+                <li class="mega-menu-category @(hasChildren ? "show" : "")">
+                    <a href="@(cat.Link ?? "#")">@cat.Title</a>
+                    @if (hasChildren)
+                    {
+                        <ul class="mega-menu">
+                            @foreach (var child in cat.Children!)
+                            {
+                                var childHas = child.Children?.Any() == true;
+                                <li class="@(childHas ? "parent" : "")">
+                                    <a href="@(child.Link ?? "#")">@child.Title</a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+</div>

@@ -1,0 +1,29 @@
+﻿<div class="page-header--middle">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between">
+
+            <div class="d-flex align-items-center flex-grow-1 pe-3">
+                @await Html.PartialAsync("Partials/Header/_Logo")
+
+                @await Html.PartialAsync("Partials/Header/_SearchBox")
+            </div>
+
+            <div class="user-options d-flex align-items-center gap-2">
+                @* منوی کاربر: اگر لاگین نباشه، لینک ورود/ثبت‌نام؛ اگر لاگین باشد، پروفایل/خروج *@
+                @await Component.InvokeAsync("UserMenu")
+
+                @* لیست علاقه‌مندی ساده (ثابت فعلا) *@
+                <div class="user-option">
+                    <a href="#" class="user-option-btn user-option-btn--account">
+                        <i class="ri-heart-3-fill icon"></i>
+                        <span class="counter">۲</span>
+                    </a>
+                </div>
+
+                @* مینی‌کارت داینامیک *@
+                @await Component.InvokeAsync("MiniCart")
+            </div>
+
+        </div>
+    </div>
+</div>

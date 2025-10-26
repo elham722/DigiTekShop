@@ -1,0 +1,13 @@
+﻿<div class="page-header--bottom">
+    <div class="container">
+        <div class="d-flex align-items-center">
+
+            @* منوی عمودی دسته‌بندی به‌صورت ViewComponent *@
+            @await Component.InvokeAsync("CategoryMenu")
+
+            @* ناوبری اصلی ساده *@
+            @await Html.PartialAsync("Partials/Header/_MainNav")
+
+        </div>
+    </div>
+</div>
