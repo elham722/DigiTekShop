@@ -1,0 +1,50 @@
+/* ==========================================================================
+. Modules:Services
+========================================================================== */
+.services {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+      flex-wrap: wrap;
+  -ms-flex-pack: distribute;
+      justify-content: space-around;
+}
+
+.services .service-container {
+  margin-bottom: 20px;
+  padding: 0 20px;
+}
+
+.services .service-container .service {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  color: #212121;
+  text-decoration: none;
+}
+
+.services .service-container .service .service-icon {
+  margin-bottom: 15px;
+}
+
+.services .service-container .service .service-icon img {
+  width: 60px;
+  height: 60px;
+}
+
+.services .service-container .service .service-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+

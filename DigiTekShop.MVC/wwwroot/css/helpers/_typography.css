@@ -1,0 +1,19 @@
+/* ==========================================================================
+. Helpers:Typography
+========================================================================== */
+.fa-num {
+  font-family: iranyekanfanum;
+}
+
+.font-en {
+  font-family: AdobeClean;
+}
+
+.fs-7 {
+  font-size: .75rem !important;
+}
+
+.fw-bolder {
+  font-weight: 800 !important;
+}
+

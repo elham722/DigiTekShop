@@ -1,0 +1,169 @@
+/* ==========================================================================
+. Modules:Header-Responsive
+========================================================================== */
+.page-header-responsive {
+  padding: 10px .75rem;
+  position: relative;
+  z-index: 100;
+}
+
+.page-header-responsive .page-header-responsive-row {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: justify;
+      -ms-flex-pack: justify;
+          justify-content: space-between;
+}
+
+.page-header-responsive .toggle-navigation {
+  border: 0;
+  background-color: transparent;
+  padding: 0;
+  margin-left: 15px;
+  text-align: right;
+}
+
+.page-header-responsive .toggle-navigation::before {
+  content: "\EF3E";
+  font-family: remixicon;
+  font-size: 28px;
+}
+
+.page-header-responsive .logo img {
+  max-width: 150px;
+}
+
+@media (max-width: 480px) {
+  .page-header-responsive .logo img {
+    max-width: 100px;
+  }
+}
+
+.page-header-responsive .navigation {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  bottom: 0;
+  width: 84vw;
+  background-color: #fff;
+  padding-bottom: 60px;
+  overflow-y: auto;
+  z-index: 3;
+  -webkit-transition: all .3s ease-in;
+  transition: all .3s ease-in;
+}
+
+.page-header-responsive .navigation .navigation-body {
+  padding: 10px 15px;
+  position: relative;
+}
+
+.page-header-responsive .navigation .navigation-body ul {
+  list-style: none;
+}
+
+.page-header-responsive .navigation .navigation-body ul a {
+  text-decoration: none;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li a {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  color: #000;
+  font-weight: 500;
+  border-bottom: 1px solid #eee;
+  height: 50px;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li a.toggle-submenu {
+  position: relative;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li a.toggle-submenu::after {
+  content: "\EA64";
+  font-family: remixicon;
+  font-size: 18px;
+  position: absolute;
+  left: 0;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  bottom: 0;
+  width: 84vw;
+  background-color: #fff;
+  -webkit-box-sizing: border-box;
+          box-sizing: border-box;
+  padding: 15px;
+  -webkit-transition: all 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  transition: all 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  z-index: 1;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu .close-submenu {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  background-color: #f5f5f5;
+  padding: 10px;
+  position: relative;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu .close-submenu i {
+  position: absolute;
+  right: 10px;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu li a {
+  line-height: 30px;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu li a.toggle-submenu {
+  position: relative;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu li a.toggle-submenu::after {
+  content: "\EA64";
+  font-family: remixicon;
+  font-size: 18px;
+  position: absolute;
+  left: 0;
+}
+
+.page-header-responsive .navigation .navigation-body .menu li .submenu.toggle {
+  right: 0;
+}
+
+.page-header-responsive .navigation.toggle {
+  right: 0;
+}
+
+.page-header-responsive .navigation-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 2;
+  display: none;
+}
+

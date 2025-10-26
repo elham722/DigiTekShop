@@ -1,0 +1,76 @@
+/* ==========================================================================
+. Components:Btn
+========================================================================== */
+.btn {
+  display: -webkit-inline-box;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  -webkit-box-shadow: unset !important;
+          box-shadow: unset !important;
+}
+
+.btn.btn-link {
+  color: #212121;
+  text-decoration: none;
+}
+
+.btn.btn-link:hover {
+  color: #2962ff;
+}
+
+.btn.btn-light {
+  background-color: #fff;
+  color: #212121;
+}
+
+.btn.btn-outline-light {
+  background-color: #fff;
+  border: 1px solid #efefef;
+  color: #212121;
+}
+
+.btn.btn-primary {
+  background-color: #2962ff;
+  color: #fff;
+}
+
+.btn.btn-outline-primary {
+  border: 1px solid #2962ff;
+  color: #2962ff;
+}
+
+.btn.btn-outline-primary:hover {
+  background-color: #2962ff;
+  color: #fff;
+}
+
+.btn.btn-outline-danger {
+  background-color: #fff;
+  border: 1px solid #dc3545;
+  color: #dc3545;
+}
+
+.btn.btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+.btn.btn-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.btn.btn-block {
+  width: 100%;
+}
+

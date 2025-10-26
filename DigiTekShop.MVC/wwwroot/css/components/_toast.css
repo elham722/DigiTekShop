@@ -1,0 +1,17 @@
+/* ==========================================================================
+. Components:Toast
+========================================================================== */
+.iziToast {
+  border-radius: 10px;
+  -webkit-box-shadow: 0 40px 32px -24px rgba(15, 15, 15, 0.3);
+          box-shadow: 0 40px 32px -24px rgba(15, 15, 15, 0.3);
+}
+
+.iziToast::after {
+  content: unset;
+}
+
+.iziToast.iziToast-rtl {
+  font-family: iranyekan;
+}
+

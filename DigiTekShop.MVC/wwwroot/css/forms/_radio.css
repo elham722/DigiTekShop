@@ -1,0 +1,182 @@
+/* ==========================================================================
+. Forms:Radio
+========================================================================== */
+.custom-radio-circle .custom-radio-circle-input {
+  display: none;
+}
+
+.custom-radio-circle .custom-radio-circle-input:checked + .custom-radio-circle-label .color {
+  -webkit-transform: scale(1.1);
+          transform: scale(1.1);
+}
+
+.custom-radio-circle .custom-radio-circle-input:checked + .custom-radio-circle-label .color::after {
+  content: "\EB7B";
+  position: absolute;
+  font-family: remixicon;
+  font-size: 18px;
+  color: #ccc;
+  border-color: #a499ff;
+}
+
+.custom-radio-circle .custom-radio-circle-label .color {
+  display: -webkit-inline-box;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  -webkit-box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.5);
+          box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  padding: 5px;
+  position: relative;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+}
+
+.custom-radio-box .custom-radio-box-input {
+  display: none;
+}
+
+.custom-radio-box .custom-radio-box-input:checked + .custom-radio-box-label {
+  border-color: #2962ff;
+}
+
+.custom-radio-box .custom-radio-box-input:checked + .custom-radio-box-label::before {
+  color: #666;
+}
+
+.custom-radio-box .custom-radio-box-input:checked + .custom-radio-box-label::after {
+  content: attr(data-placeholder-checked);
+  color: #666;
+}
+
+.custom-radio-box .custom-radio-box-label {
+  display: block;
+  position: relative;
+  padding: 45px 15px 15px;
+  border: 2px solid #efefef;
+  border-radius: 10px;
+}
+
+.custom-radio-box .custom-radio-box-label::before {
+  content: "\F04F";
+  font-family: remixicon;
+  color: #d3d3d3;
+  position: absolute;
+  right: 15px;
+  top: 10px;
+}
+
+.custom-radio-box .custom-radio-box-label::after {
+  content: attr(data-placeholder);
+  color: #d3d3d3;
+  position: absolute;
+  right: 35px;
+  top: 10px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.custom-radio-btn .custom-radio-btn-input {
+  display: none;
+}
+
+.custom-radio-btn .custom-radio-btn-input:checked + .custom-radio-btn-label .label {
+  border-color: #2962ff;
+  color: #2962ff;
+}
+
+.custom-radio-btn .custom-radio-btn-label .label {
+  display: -webkit-inline-box;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  background-color: #fff;
+  border: 2px solid #efefef;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 25px;
+  position: relative;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+}
+
+.custom-radio-outline .custom-radio-outline-input {
+  display: none;
+}
+
+.custom-radio-outline .custom-radio-outline-input:checked + .custom-radio-outline-label .label::before {
+  content: "\F059";
+  color: #2962ff;
+}
+
+.custom-radio-outline .custom-radio-outline-input:checked + .custom-radio-outline-label .label .icon i,
+.custom-radio-outline .custom-radio-outline-input:checked + .custom-radio-outline-label .label .title {
+  color: #2962ff;
+}
+
+.custom-radio-outline .custom-radio-outline-label .label {
+  display: -webkit-inline-box;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 10px 35px 10px 25px;
+  position: relative;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+}
+
+.custom-radio-outline .custom-radio-outline-label .label::before {
+  content: "\F05A";
+  font-family: remixicon;
+  position: absolute;
+  right: 0;
+  font-size: 21px;
+  color: #979797;
+}
+
+.custom-radio-outline .custom-radio-outline-label .label .icon {
+  margin-left: 10px;
+}
+
+.custom-radio-outline .custom-radio-outline-label .label .icon i {
+  font-size: 28px;
+  color: #979797;
+}
+
+.custom-radio-outline .custom-radio-outline-label .label .detail .title,
+.custom-radio-outline .custom-radio-outline-label .label .detail .subtitle {
+  display: block;
+}
+
+.custom-radio-outline .custom-radio-outline-label .label .detail .title {
+  font-size: 16px;
+}
+
+.custom-radio-outline .custom-radio-outline-label .label .detail .subtitle {
+  color: #979797;
+  font-size: 13px;
+}
+

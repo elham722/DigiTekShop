@@ -1,0 +1,60 @@
+/* ==========================================================================
+. Modules:FAQ
+========================================================================== */
+.faq-category a {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  color: #000;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.faq-category .icon {
+  display: -webkit-inline-box;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  width: 100px;
+  height: 100px;
+  border: 2px solid #eee;
+  border-radius: 50%;
+  margin-bottom: 15px;
+}
+
+.faq-category .icon img {
+  width: 70px;
+}
+
+.faq-question-content {
+  border-bottom: 1px solid #000;
+  line-height: 2;
+  padding-bottom: 35px;
+}
+
+.faq-question-content p {
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+
+.faq-question-content a {
+  display: inline-block;
+  padding: 5px 15px;
+  text-decoration: none;
+}
+

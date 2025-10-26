@@ -1,0 +1,57 @@
+/* ==========================================================================
+. Components:Modal
+========================================================================== */
+.remodal-wrapper {
+  direction: rtl;
+  font-family: iranyekan;
+  z-index: 12;
+}
+
+.remodal-wrapper .remodal {
+  border-radius: 7px;
+  -webkit-box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.1);
+          box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  text-align: right;
+}
+
+.remodal-wrapper .remodal.remodal-xs {
+  max-width: 400px;
+}
+
+.remodal-wrapper .remodal.remodal-sm {
+  max-width: 550px;
+}
+
+.remodal-wrapper .remodal.remodal-md {
+  max-width: 750px;
+}
+
+.remodal-wrapper .remodal.remodal-lg {
+  max-width: 850px;
+}
+
+.remodal-wrapper .remodal .remodal-header {
+  margin-bottom: 20px;
+}
+
+.remodal-wrapper .remodal .remodal-header .remodal-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.remodal-wrapper .remodal .remodal-footer {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: end;
+      -ms-flex-pack: end;
+          justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.remodal-overlay {
+  background-color: rgba(0, 0, 0, 0.2);
+  z-index: 11;
+}
+

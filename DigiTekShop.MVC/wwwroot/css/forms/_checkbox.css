@@ -1,0 +1,17 @@
+/* ==========================================================================
+. Forms:Check
+========================================================================== */
+.form-check {
+  min-height: unset;
+}
+
+.form-check-input:focus {
+  -webkit-box-shadow: unset;
+          box-shadow: unset;
+}
+
+.form-check-input:checked {
+  background-color: #2962ff;
+  border-color: #2962ff;
+}
+

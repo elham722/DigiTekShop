@@ -1,0 +1,27 @@
+/* ==========================================================================
+. Components:Breadcrumb
+========================================================================== */
+.breadcrumb .breadcrumb-item::before {
+  display: none;
+}
+
+.breadcrumb .breadcrumb-item a {
+  display: -webkit-inline-box;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  position: relative;
+  color: #212121;
+  text-decoration: none;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+}
+
+.breadcrumb .breadcrumb-item a::after {
+  content: "\EA63";
+  font-family: remixicon;
+}
+
+.breadcrumb .breadcrumb-item a:hover {
+  color: #2962ff;
+}
+
