@@ -40,6 +40,45 @@
   color: var(--surface);
 }
 
+/* ==========================================================================
+   Page Header Middle - کاهش ارتفاع
+========================================================================== */
+.page-header .page-header--middle {
+  padding: 0; /* حذف padding بالا و پایین */
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--line-200);
+}
+
+/* کاهش ارتفاع div با کلاس d-flex */
+.page-header .page-header--middle .d-flex.align-items-center.justify-content-between {
+  min-height: 100px; /* کاهش ارتفاع از حالت پیش‌فرض */
+  height: 100px;
+  padding: 5px 0; /* padding کم */
+}
+
+/* تنظیمات container-fluid */
+.page-header .page-header--middle .container-fluid {
+  padding: 0 15px;
+  height: 100%;
+}
+
+/* تنظیمات responsive برای کاهش ارتفاع */
+@media (max-width: 768px) {
+  .page-header .page-header--middle .d-flex.align-items-center.justify-content-between {
+    min-height: 40px;
+    height: 40px;
+    padding: 3px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header .page-header--middle .d-flex.align-items-center.justify-content-between {
+    min-height: 35px;
+    height: 35px;
+    padding: 2px 0;
+  }
+}
+
 .page-header .page-header--bottom {
   position: relative;
 }
