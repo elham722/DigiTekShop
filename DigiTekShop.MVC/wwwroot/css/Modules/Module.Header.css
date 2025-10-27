@@ -62,6 +62,24 @@
   height: 100%;
 }
 
+/* تنظیمات ساده برای search field در header middle */
+.page-header .page-header--middle .search-field {
+  background-color: white !important; /* فقط تغییر بک‌گراند به سفید */
+}
+
+.page-header .page-header--middle .search-field:focus {
+  background-color: white !important; /* بک‌گراند سفید در حالت focus */
+}
+
+/* تنظیمات search result container در header middle */
+.page-header .page-header--middle .search-result-container {
+  background-color: white !important; /* بک‌گراند سفید برای search result */
+}
+
+.page-header .page-header--middle .search-result-container.show {
+  background-color: white !important; /* بک‌گراند سفید وقتی باز می‌شود */
+}
+
 /* تنظیمات responsive برای کاهش ارتفاع */
 @media (max-width: 768px) {
   .page-header .page-header--middle .d-flex.align-items-center.justify-content-between {
@@ -646,7 +664,7 @@
   position: absolute;
   right: 0;
   left: 0;
-  background-color: var(--surface-alt);
+  background-color: white; /* تغییر بک‌گراند به سفید */
   border: 1px solid var(--ink-200);
   border-radius: 15px;
   -webkit-box-shadow: 0 0 30px rgba(0, 0, 0, 0.05);
