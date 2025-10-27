@@ -80,12 +80,112 @@
   background-color: white !important; /* بک‌گراند سفید وقتی باز می‌شود */
 }
 
+/* زیباتر کردن search container */
+.page-header .page-header--middle .search-container {
+  position: relative;
+  flex-grow: 1;
+  max-width: 600px;
+  margin: 0 20px;
+}
+
+.page-header .page-header--middle .search-form {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* بهبود search field */
+.page-header .page-header--middle .search-field {
+  background-color: white !important;
+  border: 2px solid #e0e0e0;
+  border-radius: 30px;
+  padding: 12px 60px 12px 20px;
+  font-size: 14px;
+  width: 100%;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.page-header .page-header--middle .search-field:focus {
+  outline: none;
+  border-color: #ff6b35; /* رنگ نارنجی برای border */
+  background-color: white !important;
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.15);
+}
+
+/* زیباتر کردن دکمه جستجو */
+.page-header .page-header--middle .search-form .btn-action {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent; /* پس‌زمینه شفاف */
+  border: none;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff6b35; /* رنگ نارنجی برای آیکون */
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+
+
+.page-header .page-header--middle .search-form .btn-action:hover {
+  background: rgba(255, 107, 53, 0.1); /* پس‌زمینه نارنجی روشن در hover */
+  color: #e55a2b; /* رنگ نارنجی تیره‌تر برای آیکون در hover */
+  transform: translateY(-50%) scale(1.05);
+}
+
+.page-header .page-header--middle .search-form .btn-action:hover::before {
+  color: #e55a2b; /* رنگ نارنجی تیره‌تر برای آیکون در hover */
+}
+
+.page-header .page-header--middle .search-form .btn-action:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
 /* تنظیمات responsive برای کاهش ارتفاع */
 @media (max-width: 768px) {
   .page-header .page-header--middle .d-flex.align-items-center.justify-content-between {
     min-height: 40px;
     height: 40px;
     padding: 3px 0;
+  }
+  
+  .page-header .page-header--middle .search-container {
+    margin: 0 10px;
+  }
+  
+  .page-header .page-header--middle .search-field {
+    padding: 10px 50px 10px 15px;
+    font-size: 13px;
+  }
+  
+  .page-header .page-header--middle .search-form .btn-action {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+    color: #ff6b35;
+  }
+  
+  .page-header .page-header--middle .search-form .btn-action::before {
+    font-size: 20px;
+    color: #ff6b35;
+  }
+  
+  .page-header .page-header--middle .search-form .btn-action:hover {
+    background: rgba(255, 107, 53, 0.1);
+    color: #e55a2b;
+  }
+  
+  .page-header .page-header--middle .search-form .btn-action:hover::before {
+    color: #e55a2b;
   }
 }
 
@@ -94,6 +194,36 @@
     min-height: 35px;
     height: 35px;
     padding: 2px 0;
+  }
+  
+  .page-header .page-header--middle .search-container {
+    margin: 0 5px;
+  }
+  
+  .page-header .page-header--middle .search-field {
+    padding: 8px 45px 8px 12px;
+    font-size: 12px;
+  }
+  
+  .page-header .page-header--middle .search-form .btn-action {
+    width: 35px;
+    height: 35px;
+    font-size: 14px;
+    color: #ff6b35;
+  }
+  
+  .page-header .page-header--middle .search-form .btn-action::before {
+    font-size: 18px;
+    color: #ff6b35;
+  }
+  
+  .page-header .page-header--middle .search-form .btn-action:hover {
+    background: rgba(255, 107, 53, 0.1);
+    color: #e55a2b;
+  }
+  
+  .page-header .page-header--middle .search-form .btn-action:hover::before {
+    color: #e55a2b;
   }
 }
 
