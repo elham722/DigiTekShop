@@ -1363,24 +1363,25 @@
 
 .page-header-responsive .search-container .search-field {
   width: 100%;
-  padding: 12px 50px 12px 15px;
-  border: 1px solid #ddd;
+  padding: 12px 50px 12px 15px; /* padding مناسب برای دکمه در سمت راست */
+  border: 2px solid #e0e0e0;
   border-radius: 25px;
   font-size: 14px;
-  background-color: #f8f9fa;
+  background-color: white; /* پس‌زمینه سفید */
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .page-header-responsive .search-container .search-field:focus {
   outline: none;
-  border-color: var(--brand-500);
-  background-color: var(--surface);
-  -webkit-box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.1);
-          box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.1);
+  border-color: #ff6b35; /* border نارنجی در focus */
+  background-color: white;
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.15);
 }
 
 .page-header-responsive .search-container .btn-search {
   position: absolute;
-  left: 5px;
+  right: 5px; /* تغییر از left به right */
   top: 50%;
   -webkit-transform: translateY(-50%);
           transform: translateY(-50%);
@@ -1397,4 +1398,26 @@
   -webkit-box-pack: center;
       -ms-flex-pack: center;
           justify-content: center;
+  background: transparent; /* پس‌زمینه شفاف */
+  border: none;
+  color: #ff6b35; /* رنگ نارنجی */
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+
+/* hover effect */
+.page-header-responsive .search-container .btn-search:hover {
+  background: rgba(255, 107, 53, 0.1); /* پس‌زمینه نارنجی روشن */
+  color: #e55a2b;
+  transform: translateY(-50%) scale(1.05);
+}
+
+.page-header-responsive .search-container .btn-search:hover::before {
+  color: #e55a2b;
+}
+
+/* active effect */
+.page-header-responsive .search-container .btn-search:active {
+  transform: translateY(-50%) scale(0.95);
 }
