@@ -3,45 +3,45 @@
 /* ==========================================================================
    Design Tokens - Color System
 ========================================================================== */
-@import "/css/tokens.css";
+@import "tokens.css";
 
-@import "/css/dependencies.css";
+@import "dependencies.css";
 
 /* ==========================================================================
    Base Styles
 ========================================================================== */
-@import "/css/Base/Font.css";
-@import "/css/Base/Reset.css";
+@import "Base/Font.css";
+@import "Base/Reset.css";
 
 /* ==========================================================================
    Helpers
 ========================================================================== */
-@import "/css/Helper/Helpers.css";
+@import "Helper/Helpers.css";
 
 /* ==========================================================================
    Components
 ========================================================================== */
-@import "/css/Components/Components.css";
+@import "Component/Components.css";
 
 /* ==========================================================================
    Forms
 ========================================================================== */
-@import "/css/Form/Forms.css";
+@import "Form/Forms.css";
 
 /* ==========================================================================
    Modules
 ========================================================================== */
-@import "/css/Modules/Module.Auth.css";
-@import "/css/Modules/Module.Banner.css";
-@import "/css/Modules/Module.Cart.css";
-@import "/css/Modules/Module.Checkout.css";
-@import "/css/Modules/Module.Compare.css";
-@import "/css/Modules/Module.FAQ.css";
-@import "/css/Modules/Module.Footer.css";
-@import "/css/Modules/Module.Global.css";
-@import "/css/Modules/Module.Header.css";
-@import "/css/Modules/Module.Product.css";
-@import "/css/Modules/Module.Profile.css";
-@import "/css/Modules/Module.Services.css";
-@import "/css/Modules/Module.Shop.css";
-@import "/css/Modules/Module.Widget.css";
+@import "Modules/Module.Auth.css";
+@import "Modules/Module.Banner.css";
+@import "Modules/Module.Cart.css";
+@import "Modules/Module.Checkout.css";
+@import "Modules/Module.Compare.css";
+@import "Modules/Module.FAQ.css";
+@import "Modules/Module.Footer.css";
+@import "Modules/Module.Global.css";
+@import "Modules/Module.Header.css";
+@import "Modules/Module.Product.css";
+@import "Modules/Module.Profile.css";
+@import "Modules/Module.Services.css";
+@import "Modules/Module.Shop.css";
+@import "Modules/Module.Widget.css";

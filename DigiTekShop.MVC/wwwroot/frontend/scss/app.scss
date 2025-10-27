@@ -1,0 +1,56 @@
+/**
+ * DigiTekShop - Modern SCSS Entry Point
+ * Imports all styles and provides modern CSS architecture
+ */
+
+// ========================================
+// Base Styles
+// ========================================
+@import 'base/reset';
+@import 'base/typography';
+@import 'base/variables';
+
+// ========================================
+// Layout
+// ========================================
+@import 'layout/header';
+@import 'layout/footer';
+@import 'layout/main';
+
+// ========================================
+// Components
+// ========================================
+@import 'components/buttons';
+@import 'components/forms';
+@import 'components/cards';
+@import 'components/modals';
+@import 'components/notifications';
+
+// ========================================
+// Modules
+// ========================================
+@import 'modules/auth';
+@import 'modules/shop';
+@import 'modules/product';
+@import 'modules/cart';
+@import 'modules/checkout';
+
+// ========================================
+// Utilities
+// ========================================
+@import 'utilities/spacing';
+@import 'utilities/display';
+@import 'utilities/text';
+
+// ========================================
+// Vendor Overrides
+// ========================================
+@import 'vendor/swiper';
+@import 'vendor/choices';
+@import 'vendor/fancybox';
+@import 'vendor/nouislider';
+
+// ========================================
+// RTL Support
+// ========================================
+@import 'rtl/overrides';
