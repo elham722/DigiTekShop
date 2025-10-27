@@ -10,16 +10,18 @@ export function mountHeaderSearch(root = document) {
     const searchForm = searchContainer.querySelector('.search-form');
     const searchField = searchForm?.querySelector('.search-field');
     const btnSearch = searchContainer.querySelector('.btn-search');
+    const btnAction = searchContainer.querySelector('.btn-action'); // دکمه جستجو با کلاس btn-action
     const btnClose = searchContainer.querySelector('.btn-close-search-result');
     const resultsContainer = searchContainer.querySelector('.search-result-container');
 
-    if (!searchField || !btnSearch || !btnClose || !resultsContainer) {
+    if (!searchField || !btnClose || !resultsContainer) {
         console.warn('Header search: Required elements not found');
         return;
     }
 
     const open = () => {
-        btnSearch.classList.add('d-none');
+        if (btnSearch) btnSearch.classList.add('d-none');
+        if (btnAction) btnAction.classList.add('d-none');
         btnClose.classList.remove('d-none');
         resultsContainer.classList.add('show');
         resultsContainer.setAttribute('aria-expanded', 'true');
@@ -30,7 +32,8 @@ export function mountHeaderSearch(root = document) {
 
     const close = () => {
         btnClose.classList.add('d-none');
-        btnSearch.classList.remove('d-none');
+        if (btnSearch) btnSearch.classList.remove('d-none');
+        if (btnAction) btnAction.classList.remove('d-none');
         resultsContainer.classList.remove('show');
         resultsContainer.setAttribute('aria-expanded', 'false');
         
@@ -41,6 +44,22 @@ export function mountHeaderSearch(root = document) {
     // Event listeners
     searchField.addEventListener('click', open);
     searchField.addEventListener('focus', open);
+
+    // اضافه کردن event listener برای دکمه جستجو (btn-search)
+    if (btnSearch) {
+        btnSearch.addEventListener('click', (e) => {
+            e.preventDefault();
+            open();
+        });
+    }
+
+    // اضافه کردن event listener برای دکمه جستجو (btn-action)
+    if (btnAction) {
+        btnAction.addEventListener('click', (e) => {
+            e.preventDefault();
+            open();
+        });
+    }
 
     btnClose.addEventListener('click', (e) => {
         e.preventDefault();
