@@ -1,10 +1,8 @@
-﻿@* orchestration: فقط فراخوانی زیر-بخش‌ها *@
+﻿
 <header class="page-header d-md-block d-none">
 
-    @await Html.PartialAsync("Partials/Header/_Banner")
-
-    @await Html.PartialAsync("Partials/Header/_HeaderMiddle")
-
-    @await Html.PartialAsync("Partials/Header/_HeaderBottom")
+    @await Html.PartialAsync("Header/_PageHeaderMiddle")
+    @await Html.PartialAsync("Header/Page-Header-Bottom")
+    @await Html.PartialAsync("Header/_HeaderResponsive")
 
 </header>
