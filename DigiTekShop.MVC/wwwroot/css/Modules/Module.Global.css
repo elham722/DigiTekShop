@@ -27,7 +27,7 @@
 
 .logo-container.logo-box {
   min-width: 250px;
-  background-color: var(--brand-500);
+  /* background-color: var(--brand-500); */ /* حذف شد - بک‌گراند نارنجی */
   padding: 15px 0;
 }
 
