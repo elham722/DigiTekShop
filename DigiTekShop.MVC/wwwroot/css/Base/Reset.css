@@ -16,7 +16,9 @@ ul {
 }
 
 .container {
-  max-width: 1320px;
+  /* max-width: 1320px; */ /* حذف شد تا container کل عرض را بگیرد */
+  width: 100% !important; /* اطمینان از اینکه container کل عرض را بگیرد */
+  max-width: none !important; /* حذف هرگونه محدودیت عرض */
 }
 
 body {
