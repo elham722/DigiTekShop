@@ -136,6 +136,7 @@
 
 
 
+
 .page-header .page-header--middle .search-form .btn-action:hover {
   background: rgba(255, 107, 53, 0.1); /* پس‌زمینه نارنجی روشن در hover */
   color: #e55a2b; /* رنگ نارنجی تیره‌تر برای آیکون در hover */
@@ -153,29 +154,32 @@
 /* تنظیمات responsive برای کاهش ارتفاع */
 @media (max-width: 768px) {
   .page-header .page-header--middle .d-flex.align-items-center.justify-content-between {
-    min-height: 40px;
-    height: 40px;
-    padding: 3px 0;
+    min-height: 100px; /* همان اندازه 820px */
+    height: 100px;
+    padding: 5px 0; /* همان padding */
   }
   
   .page-header .page-header--middle .search-container {
-    margin: 0 10px;
+    margin: 0 20px; /* همان margin */
   }
   
   .page-header .page-header--middle .search-field {
-    padding: 10px 50px 10px 15px;
-    font-size: 13px;
+    padding: 12px 60px 12px 20px; /* همان padding */
+    font-size: 14px; /* همان font-size */
+    border: 2px solid #e0e0e0;
+    border-radius: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   }
   
   .page-header .page-header--middle .search-form .btn-action {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
+    width: 45px; /* همان اندازه */
+    height: 45px;
+    font-size: 18px;
     color: #ff6b35;
   }
   
   .page-header .page-header--middle .search-form .btn-action::before {
-    font-size: 20px;
+    font-size: 24px; /* همان اندازه */
     color: #ff6b35;
   }
   
