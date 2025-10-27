@@ -19,8 +19,8 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  background-color: #fff;
-  color: #212121;
+  background-color: var(--surface);
+  color: var(--ink-900);
   padding: 10px 20px;
   font-size: 18px;
   z-index: 1;

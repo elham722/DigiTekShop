@@ -13,7 +13,7 @@
     --text-secondary: #666666;
     --text-muted: #999999;
     
-    --bg-primary: #ffffff;
+    --bg-primary: var(--surface);
     --bg-secondary: #f8f9fa;
     
     --border-color: #e0e0e0;
@@ -579,8 +579,8 @@ body.auth-body {
 /* High Contrast Mode */
 @media (prefers-contrast: high) {
     :root {
-        --border-color: #000000;
-        --text-secondary: #000000;
-        --bg-secondary: #ffffff;
+        --border-color: var(--ink-900)000;
+        --text-secondary: var(--ink-900)000;
+        --bg-secondary: var(--surface);
     }
 }

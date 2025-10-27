@@ -2,7 +2,7 @@
 . Module.Widget.css
 ========================================================================== */
 .widget {
-  background-color: #fff;
+  background-color: var(--surface);
   border-radius: 15px;
   padding: 15px;
   overflow: hidden;
@@ -150,7 +150,7 @@
 }
 
 .widget .widget--category-results ul li a:hover {
-  color: #2962ff;
+  color: var(--brand-500);
 }
 
 .widget .widget--category-results ul li.category--arrow-left a::before {
@@ -173,7 +173,7 @@
 .widget .widget--search .form-control {
   font-size: 13px;
   min-height: 40px;
-  border: 1px solid #efefef;
+  border: 1px solid var(--line-200);
   border-radius: 10px;
 }
 
@@ -222,7 +222,7 @@
 }
 
 .widget .widget-socials ul li a:hover {
-  color: #000;
+  color: var(--ink-900);
 }
 
 .filter-range {
@@ -311,7 +311,7 @@
 }
 
 .filter-price .filter-slider .noUi-connect {
-  background-color: #000;
+  background-color: var(--ink-900);
 }
 
 .filter-price .filter-slider .noUi-handle {
@@ -321,7 +321,7 @@
   top: -9px;
   left: 0;
   right: -12px;
-  background-color: #000;
+  background-color: var(--ink-900);
   border: 0;
   -webkit-box-shadow: unset;
           box-shadow: unset;
@@ -357,7 +357,7 @@
           justify-content: center;
   width: 90px;
   height: 90px;
-  border: 1px solid #efefef;
+  border: 1px solid var(--line-200);
   border-radius: 50%;
   margin: 0 auto 15px;
 }
@@ -373,7 +373,7 @@
 }
 
 .seller-info .registrations-date {
-  color: #979797;
+  color: var(--ink-600);
   font-size: 13px;
   font-weight: bold;
 }
@@ -424,7 +424,7 @@
     right: -100%;
     bottom: 0;
     width: 90vw;
-    background-color: #fff;
+    background-color: var(--surface);
     padding: 20px;
     -webkit-transition: all .2s ease-in-out;
     transition: all .2s ease-in-out;

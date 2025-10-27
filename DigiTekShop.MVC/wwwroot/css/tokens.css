@@ -1,0 +1,142 @@
+/* ==========================================================================
+   Design Tokens - Color System
+   Centralized color management for consistent theming
+========================================================================== */
+
+:root {
+  /* Autumn Color Palette */
+  --autumn-navy: #003049;
+  --autumn-crimson: #D62828;
+  --autumn-orange: #F77F00;
+  --autumn-amber: #FCBF49;
+  --autumn-beige: #EAE2B7;
+
+  /* Semantic Color Tokens */
+  --brand-500: var(--autumn-orange);
+  --brand-600: #d86f00;
+  --brand-700: #c55a00;
+  --brand-50: #fff7ed;
+  --brand-100: #ffedd5;
+  
+  --ink-900: #212121;
+  --ink-800: #424242;
+  --ink-700: #616161;
+  --ink-600: #7b7b7b;
+  --ink-500: #9e9e9e;
+  --ink-400: #bdbdbd;
+  --ink-300: #e0e0e0;
+  --ink-200: #eeeeee;
+  --ink-100: #f5f5f5;
+  --ink-50: #fafafa;
+  
+  --line-300: #e0e0e0;
+  --line-200: #efefef;
+  --line-100: #f5f5f5;
+  
+  --surface: #ffffff;
+  --surface-alt: var(--autumn-beige);
+  --surface-elevated: #fafafa;
+  
+  --success-500: #4caf50;
+  --success-600: #43a047;
+  --warning-500: #ff9800;
+  --warning-600: #fb8c00;
+  --error-500: #f44336;
+  --error-600: #e53935;
+  --info-500: #2196f3;
+  --info-600: #1e88e5;
+
+  /* Bootstrap Integration */
+  --bs-primary: var(--brand-500);
+  --bs-primary-rgb: 247, 127, 0;
+  --bs-secondary: var(--ink-600);
+  --bs-success: var(--success-500);
+  --bs-warning: var(--warning-500);
+  --bs-danger: var(--error-500);
+  --bs-info: var(--info-500);
+  --bs-light: var(--ink-100);
+  --bs-dark: var(--ink-900);
+  
+  --bs-link-color: var(--brand-500);
+  --bs-link-hover-color: var(--brand-600);
+  --bs-link-hover-rgb: 216, 112, 0;
+  
+  --bs-body-bg: var(--surface);
+  --bs-body-color: var(--ink-900);
+  --bs-border-color: var(--line-200);
+  --bs-border-color-translucent: rgba(239, 239, 239, 0.175);
+  
+  /* Legacy Color Mappings (for gradual migration) */
+  --legacy-blue: #2962ff;
+  --legacy-dark: #1f1f1f;
+  --legacy-gray-light: #efefef;
+  --legacy-gray: #eee;
+  --legacy-gray-alt: #f6f6f6;
+  --legacy-gray-border: #ccc;
+  --legacy-text-gray: #979797;
+  --legacy-text-gray-alt: #7b7b7b;
+  --legacy-white: #fff;
+  --legacy-bg-light: #f8f8f8;
+  --legacy-bg-alt: #f3f3f3;
+  --legacy-black: #000;
+}
+
+/* Dark Theme Support */
+:root[data-bs-theme="dark"] {
+  --surface: #0f1216;
+  --surface-alt: #141a20;
+  --surface-elevated: #1a1f24;
+  
+  --ink-900: #e6e8ee;
+  --ink-800: #d1d5db;
+  --ink-700: #9ca3af;
+  --ink-600: #aeb4c0;
+  --ink-500: #6b7280;
+  --ink-400: #4b5563;
+  --ink-300: #374151;
+  --ink-200: #2a2f36;
+  --ink-100: #1f2937;
+  --ink-50: #111827;
+  
+  --line-300: #374151;
+  --line-200: #2a2f36;
+  --line-100: #1f2937;
+  
+  --brand-500: #FCBF49;
+  --brand-600: #e6ab33;
+  --brand-700: #d19e2e;
+  
+  --bs-body-bg: var(--surface);
+  --bs-body-color: var(--ink-900);
+  --bs-border-color: var(--line-200);
+  --bs-border-color-translucent: rgba(42, 47, 54, 0.175);
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --brand-500: #e65100;
+    --ink-900: #000000;
+    --ink-600: #424242;
+    --line-200: #000000;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-duration: 0.01ms;
+    --transition-timing: linear;
+  }
+}
+
+/* Print Styles */
+@media print {
+  :root {
+    --brand-500: #000000;
+    --ink-900: #000000;
+    --ink-600: #333333;
+    --line-200: #cccccc;
+    --surface: #ffffff;
+  }
+}

@@ -38,7 +38,7 @@
 .currency {
   font-size: 11px;
   font-weight: 700;
-  color: #7b7b7b;
+  color: var(--ink-600);
 }
 
 .link {
@@ -59,8 +59,8 @@
 }
 
 .ui-box {
-  background-color: #f8f8f8;
-  border: 1px solid #eee;
+  background-color: var(--surface-alt);
+  border: 1px solid var(--ink-200);
   border-radius: 18px;
   padding: 45px 35px;
 }
@@ -91,7 +91,7 @@
 }
 
 .ui-box.ui-box-specials .swiper-pagination .swiper-pagination-bullet-active {
-  background-color: #fff;
+  background-color: var(--surface);
 }
 
 .ui-box .ui-box-title,
@@ -181,7 +181,7 @@
 }
 
 .ui-sticky.ui-sticky-box {
-  background-color: #fff;
+  background-color: var(--surface);
   padding: 10px 0;
 }
 
@@ -214,8 +214,8 @@
 }
 
 .form-element-row.form-element-row-file {
-  background-color: #fff;
-  border: 2px dashed #eee;
+  background-color: var(--surface);
+  border: 2px dashed var(--ink-200);
   border-radius: 10px;
   padding: 25px 15px;
 }
@@ -229,7 +229,7 @@
   position: absolute;
   left: 15px;
   font-size: 21px;
-  color: #7b7b7b;
+  color: var(--ink-600);
 }
 
 .form-element-row.with-btn .btn {

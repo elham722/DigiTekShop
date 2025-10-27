@@ -17,7 +17,7 @@
           justify-content: space-between;
   -ms-flex-wrap: wrap;
       flex-wrap: wrap;
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--line-200);
   padding: 10px 0;
 }
 
@@ -105,9 +105,9 @@
       -ms-flex-pack: center;
           justify-content: center;
   text-decoration: none;
-  background-color: #fff;
+  background-color: var(--surface);
   border-radius: 15px;
-  color: #212121;
+  color: var(--ink-900);
   padding: 20px;
   min-height: 200px;
 }

@@ -22,8 +22,8 @@
   position: -webkit-sticky;
   position: sticky;
   top: 0;
-  background-color: #fff;
-  border-bottom: 6px solid #2962ff;
+  background-color: var(--surface);
+  border-bottom: 6px solid var(--brand-500);
   z-index: 10;
 }
 
@@ -91,7 +91,7 @@
   list-style: none;
   padding: 0;
   margin-bottom: 47px;
-  background-color: #fff;
+  background-color: var(--surface);
   overflow-x: auto;
 }
 

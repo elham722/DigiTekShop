@@ -12,7 +12,7 @@
   -webkit-box-align: center;
       -ms-flex-align: center;
           align-items: center;
-  color: #fff;
+  color: var(--surface);
   text-decoration: none;
 }
 
@@ -27,7 +27,7 @@
 
 .logo-container.logo-box {
   min-width: 250px;
-  background-color: #2962ff;
+  background-color: var(--brand-500);
   padding: 15px 0;
 }
 

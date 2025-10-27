@@ -51,7 +51,7 @@
 }
 
 .checkout-bill .checkout-bill-row .checkout-bill-row-label {
-  color: #979797;
+  color: var(--ink-600);
 }
 
 .checkout-bill .checkout-bill-row.checkout-bill-note {
@@ -78,7 +78,7 @@
   margin: 30px auto 18px;
   list-style: none;
   padding: 0;
-  color: #a0a0a0;
+  color: var(--ink-500);
   -webkit-box-pack: justify;
       -ms-flex-pack: justify;
           justify-content: space-between;
@@ -122,7 +122,7 @@
 
 .checkout-steps li:last-child::before {
   right: -50%;
-  background-color: #ccc !important;
+  background-color: var(--line-300) !important;
 }
 
 .checkout-steps li:last-child span::before {
@@ -138,14 +138,14 @@
   bottom: 0;
   width: 150%;
   height: 3px;
-  background-color: #ccc;
+  background-color: var(--line-300);
 }
 
 .checkout-steps li a {
   display: -webkit-inline-box;
   display: -ms-inline-flexbox;
   display: inline-flex;
-  color: #979797;
+  color: var(--ink-600);
   font-weight: bold;
   text-decoration: none;
   position: relative;
@@ -159,7 +159,7 @@
   border-radius: 100%;
   width: 20px;
   height: 20px;
-  background-color: #d0d0d0;
+  background-color: var(--line-300);
   z-index: 1;
 }
 
@@ -174,15 +174,15 @@
 }
 
 .checkout-steps li.checkout-step-active a {
-  color: #a499ff;
+  color: var(--brand-500);
 }
 
 .checkout-steps li.checkout-step-active a span {
-  background-color: #a499ff;
+  background-color: var(--brand-500);
 }
 
 .checkout-steps li.checkout-step-active::before {
-  background-color: #a499ff !important;
+  background-color: var(--brand-500) !important;
 }
 
 .user-addresses-container .user-address .user-address-recipient,
@@ -215,7 +215,7 @@
   -webkit-box-align: center;
       -ms-flex-align: center;
           align-items: center;
-  color: #62666d;
+  color: var(--ink-600);
 }
 
 .user-addresses-container .user-address .user-contact-items .user-contact-item .icon,
@@ -268,9 +268,9 @@
   width: 100%;
   height: 193px;
   background-color: transparent;
-  border: 2px solid #efefef;
+  border: 2px solid var(--line-200);
   border-radius: 10px;
-  color: #979797;
+  color: var(--ink-600);
   padding: 15px;
 }
 
@@ -280,7 +280,7 @@
 }
 
 .checkout-pack {
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--line-200);
   margin-bottom: 15px;
 }
 
@@ -329,7 +329,7 @@
   display: inline-block;
   height: 4px;
   width: 4px;
-  background-color: #dfdfdf;
+  background-color: var(--line-300);
   border-radius: 50%;
 }
 
@@ -406,7 +406,7 @@
 
 .checkout-time .checkout-time-date {
   font-size: 13px;
-  color: #979797;
+  color: var(--ink-600);
   margin-bottom: 10px;
 }
 
@@ -458,13 +458,13 @@
 }
 
 .coupon-gift--container .divider-container .divider {
-  border-left: 1px dashed #B3B3B3;
+  border-left: 1px dashed var(--line-300);
 }
 
 @media (max-width: 768px) {
   .coupon-gift--container .divider-container .divider {
     width: 100%;
     border-left: 0;
-    border-bottom: 1px dashed #B3B3B3;
+    border-bottom: 1px dashed var(--line-300);
   }
 }

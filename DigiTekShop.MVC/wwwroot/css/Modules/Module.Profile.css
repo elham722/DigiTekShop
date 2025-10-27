@@ -12,7 +12,7 @@
 }
 
 .profile-user-info .profile-detail .user-options {
-  border-bottom: 1px solid #dedede;
+  border-bottom: 1px solid var(--line-300);
   padding: 5px 0;
 }
 
@@ -27,7 +27,7 @@
   bottom: 5px;
   width: 2px;
   height: 100%;
-  background-color: #dedede;
+  background-color: var(--line-300);
 }
 
 .profile-user-info .profile-detail .user-options li {
@@ -49,7 +49,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #dedede;
+  background-color: var(--line-300);
   -webkit-transform: translateY(-50%);
   transform: translateY(-50%);
 }
@@ -76,7 +76,7 @@
 }
 
 .user-order-items .user-order-item {
-  border: 1px solid #efefef;
+  border: 1px solid var(--line-200);
   border-radius: 15px;
   padding: 10px 15px;
   margin-bottom: 15px;
@@ -87,7 +87,7 @@
 }
 
 .user-order-items .user-order-item .user-order-item-header {
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--line-200);
   padding: 10px 15px;
   position: relative;
 }
@@ -114,7 +114,7 @@
   font-family: remixicon;
   margin-left: 15px;
   font-size: 11px;
-  color: #979797;
+  color: var(--ink-600);
 }
 
 .user-order-items .user-order-item .user-order-item-content {
@@ -127,7 +127,7 @@
   display: flex;
   -ms-flex-wrap: wrap;
       flex-wrap: wrap;
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--line-200);
   padding: 15px 0;
   margin-bottom: 15px;
 }
@@ -174,7 +174,7 @@
   display: -webkit-box;
   display: -ms-flexbox;
   display: flex;
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--line-200);
   padding-bottom: 10px;
   margin-bottom: 10px;
 }
@@ -206,7 +206,7 @@
 .product-list .product-list-item .detail .title {
   display: block;
   height: 60px;
-  color: #212121;
+  color: var(--ink-900);
   text-decoration: none;
 }
 
@@ -238,7 +238,7 @@
           justify-content: center;
   width: 50px;
   height: 50px;
-  border: 1px solid #eee;
+  border: 1px solid var(--ink-200);
   border-radius: 50%;
   margin-bottom: 15px;
 }
@@ -261,7 +261,7 @@
 }
 
 .tickets .ticket .date {
-  color: #979797;
+  color: var(--ink-600);
   font-size: 13px;
   font-weight: bold;
   font-style: italic;

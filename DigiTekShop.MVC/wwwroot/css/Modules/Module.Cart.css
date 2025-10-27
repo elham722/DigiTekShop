@@ -13,8 +13,8 @@
   -webkit-box-align: center;
       -ms-flex-align: center;
           align-items: center;
-  background-color: #fff;
-  border-bottom: 1px solid #efefef;
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--line-200);
   padding: 15px;
   margin-bottom: 20px;
 }
@@ -66,7 +66,7 @@
 }
 
 .cart-item .cart-item--detail .cart-item--title {
-  color: #212121;
+  color: var(--ink-900);
   font-size: 16px;
 }
 
@@ -78,7 +78,7 @@
 }
 
 .cart-item .cart-item--detail .cart-item--title a:hover {
-  color: #2962ff;
+  color: var(--brand-500);
 }
 
 .cart-item .cart-item--detail .cart-item--variant {
@@ -129,7 +129,7 @@
 
 .cart-item .cart-item--detail .cart-item--data ul li span {
   font-size: 12px;
-  color: #979797;
+  color: var(--ink-600);
 }
 
 .cart-item .cart-item--detail .cart-item--price--actions {

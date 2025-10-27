@@ -5,8 +5,8 @@
 . Forms:Input
 ========================================================================== */
 .form-control {
-  background-color: #fff;
-  border: 1px solid #eee;
+  background-color: var(--surface);
+  border: 1px solid var(--ink-200);
   border-radius: 10px;
   -webkit-box-shadow: unset !important;
           box-shadow: unset !important;
@@ -15,8 +15,8 @@
 }
 
 .form-control:hover, .form-control:focus {
-  background-color: #fff;
-  border: 1px solid #eee;
+  background-color: var(--surface);
+  border: 1px solid var(--ink-200);
 }
 
 /* ==========================================================================
@@ -36,8 +36,8 @@
 }
 
 .custom-input-file .custom-input-file-input:checked + .custom-input-file-label .label {
-  border-color: #00bfd6;
-  color: #00bfd6;
+  border-color: var(--brand-500);
+  color: var(--brand-500);
 }
 
 .custom-input-file .custom-input-file-label .label {
@@ -50,8 +50,8 @@
   -webkit-box-pack: center;
       -ms-flex-pack: center;
           justify-content: center;
-  background-color: #fff;
-  border: 2px solid #efefef;
+  background-color: var(--surface);
+  border: 2px solid var(--line-200);
   border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
@@ -75,8 +75,8 @@
 }
 
 .form-check-input:checked {
-  background-color: #2962ff;
-  border-color: #2962ff;
+  background-color: var(--brand-500);
+  border-color: var(--brand-500);
 }
 
 /* ==========================================================================
@@ -96,7 +96,7 @@
   position: absolute;
   font-family: remixicon;
   font-size: 18px;
-  color: #ccc;
+  color: var(--line-300);
   border-color: #a499ff;
 }
 
@@ -127,7 +127,7 @@
 }
 
 .custom-radio-box .custom-radio-box-input:checked + .custom-radio-box-label {
-  border-color: #2962ff;
+  border-color: var(--brand-500);
 }
 
 .custom-radio-box .custom-radio-box-input:checked + .custom-radio-box-label::before {
@@ -143,7 +143,7 @@
   display: block;
   position: relative;
   padding: 45px 15px 15px;
-  border: 2px solid #efefef;
+  border: 2px solid var(--line-200);
   border-radius: 10px;
 }
 
@@ -171,8 +171,8 @@
 }
 
 .custom-radio-btn .custom-radio-btn-input:checked + .custom-radio-btn-label .label {
-  border-color: #2962ff;
-  color: #2962ff;
+  border-color: var(--brand-500);
+  color: var(--brand-500);
 }
 
 .custom-radio-btn .custom-radio-btn-label .label {
@@ -185,8 +185,8 @@
   -webkit-box-pack: center;
       -ms-flex-pack: center;
           justify-content: center;
-  background-color: #fff;
-  border: 2px solid #efefef;
+  background-color: var(--surface);
+  border: 2px solid var(--line-200);
   border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
@@ -203,12 +203,12 @@
 
 .custom-radio-outline .custom-radio-outline-input:checked + .custom-radio-outline-label .label::before {
   content: "\F059";
-  color: #2962ff;
+  color: var(--brand-500);
 }
 
 .custom-radio-outline .custom-radio-outline-input:checked + .custom-radio-outline-label .label .icon i,
 .custom-radio-outline .custom-radio-outline-input:checked + .custom-radio-outline-label .label .title {
-  color: #2962ff;
+  color: var(--brand-500);
 }
 
 .custom-radio-outline .custom-radio-outline-label .label {
@@ -235,7 +235,7 @@
   position: absolute;
   right: 0;
   font-size: 21px;
-  color: #979797;
+  color: var(--ink-600);
 }
 
 .custom-radio-outline .custom-radio-outline-label .label .icon {
@@ -244,7 +244,7 @@
 
 .custom-radio-outline .custom-radio-outline-label .label .icon i {
   font-size: 28px;
-  color: #979797;
+  color: var(--ink-600);
 }
 
 .custom-radio-outline .custom-radio-outline-label .label .detail .title,
@@ -257,7 +257,7 @@
 }
 
 .custom-radio-outline .custom-radio-outline-label .label .detail .subtitle {
-  color: #979797;
+  color: var(--ink-600);
   font-size: 13px;
 }
 
@@ -276,7 +276,7 @@
           justify-content: space-between;
   width: 115px;
   height: 50px;
-  border: 1px solid #efefef;
+  border: 1px solid var(--line-200);
   border-radius: 10px;
 }
 
@@ -310,7 +310,7 @@
   width: 32px;
   height: 32px;
   border: 0;
-  color: #000;
+  color: var(--ink-900);
   text-align: center;
   padding: 0;
   outline: none;
@@ -324,8 +324,8 @@
 }
 
 .select2-container .select2-selection {
-  background-color: #fff;
-  border: 1px solid #eee;
+  background-color: var(--surface);
+  border: 1px solid var(--ink-200);
   border-radius: 10px;
   -webkit-box-shadow: unset !important;
           box-shadow: unset !important;
@@ -344,14 +344,14 @@
 }
 
 .select2-dropdown {
-  background-color: #fff;
-  border: 1px solid #eee;
+  background-color: var(--surface);
+  border: 1px solid var(--ink-200);
   font-family: iranyekan;
 }
 
 .select2-dropdown .select2-search__field {
-  background-color: #fff;
-  border: 1px solid #eee !important;
+  background-color: var(--surface);
+  border: 1px solid var(--ink-200) !important;
   border-radius: 5px;
   outline: none;
 }

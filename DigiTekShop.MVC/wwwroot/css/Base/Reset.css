@@ -11,7 +11,7 @@ ul {
 }
 
 .simplebar-track .simplebar-scrollbar::before {
-  background-color: #efefef;
+  background-color: var(--line-200);
   opacity: 1 !important;
 }
 
@@ -20,7 +20,7 @@ ul {
 }
 
 body {
-  background-color: #fff;
+  background-color: var(--surface);
 }
 
 .page-wrapper {
