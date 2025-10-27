@@ -19,6 +19,27 @@
 .logo-container .logo img {
   margin-bottom: 15px;
   max-width: 100%;
+  width: 180px; /* افزایش اندازه لوگو برای نمایش بزرگ */
+  height: auto;
+}
+
+/* تنظیمات responsive برای لوگو */
+@media (max-width: 1200px) {
+  .logo-container .logo img {
+    width: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .logo-container .logo img {
+    width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-container .logo img {
+    width: 100px;
+  }
 }
 
 .logo-container .logo .logo-text {
@@ -26,9 +47,34 @@
 }
 
 .logo-container.logo-box {
-  min-width: 250px;
+  min-width: 280px; /* افزایش min-width برای لوگوی بزرگتر */
   /* background-color: var(--brand-500); */ /* حذف شد - بک‌گراند نارنجی */
-  padding: 15px 0;
+  padding: 20px 0; /* افزایش padding برای فضای بیشتر */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* تنظیمات responsive برای logo-box */
+@media (max-width: 1200px) {
+  .logo-container.logo-box {
+    min-width: 250px;
+    padding: 15px 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .logo-container.logo-box {
+    min-width: 200px;
+    padding: 10px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-container.logo-box {
+    min-width: 150px;
+    padding: 8px 0;
+  }
 }
 
 .map-container {
