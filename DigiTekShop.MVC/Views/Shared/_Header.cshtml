@@ -1,8 +1,9 @@
 ﻿
+<!-- Header for desktop and tablet -->
 <header class="page-header d-md-block d-none">
-
     @await Html.PartialAsync("Header/_PageHeaderMiddle")
     @await Html.PartialAsync("Header/Page-Header-Bottom")
-    @await Html.PartialAsync("Header/_HeaderResponsive")
-
 </header>
+
+<!-- Header for mobile devices -->
+@await Html.PartialAsync("Header/_HeaderResponsive")
