@@ -44,75 +44,103 @@
             </div>
             <div class="user-options">
                 <div class="user-option user-option--account">
-                    <a href="profile.html" class="user-option-btn user-option-btn--account">
-                        <i class="ri-user-3-line icon"></i>
-                        <i class="ri-arrow-down-s-line icon fs-7 text-muted"></i>
-                    </a>
-                    <div class="user-option--dropdown user-option--dropdown-right">
-                        <div class="profile-user-info ui-box">
-                            <div class="profile-detail">
-                                <div class="d-flex align-items-center">
-                                    <div class="profile-avatar me-3">
-                                        <img src="/images/avatar/default.png" alt="avatar">
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <!-- کاربر لاگین شده -->
+                        <a href="profile.html" class="user-option-btn user-option-btn--account">
+                            <i class="ri-user-3-fill icon"></i>
+                            <i class="ri-arrow-down-s-line icon fs-7 text-muted"></i>
+                        </a>
+                        <div class="user-option--dropdown user-option--dropdown-right">
+                            <div class="profile-user-info ui-box">
+                                <div class="profile-detail">
+                                    <div class="d-flex align-items-center">
+                                        <div class="profile-avatar me-3">
+                                            <img src="/images/avatar/default.png" alt="avatar">
+                                        </div>
+                                        <div class="profile-info">
+                                            <a href="#" class="text-decoration-none text-dark fw-bold mb-2">
+                                                جلال
+                                                بهرامی
+                                                راد
+                                            </a>
+                                            <div class="text-muted fs-7 fw-bold">۰۹xxxxxxxxx</div>
+                                        </div>
                                     </div>
-                                    <div class="profile-info">
-                                        <a href="#" class="text-decoration-none text-dark fw-bold mb-2">
-                                            جلال
-                                            بهرامی
-                                            راد
-                                        </a>
-                                        <div class="text-muted fs-7 fw-bold">۰۹xxxxxxxxx</div>
+                                    <div class="user-options">
+                                        <ul>
+                                            <li>
+                                                <span class="label">کیف پول</span>
+                                                <span class="detail">
+                                                    <span class="d-block">
+                                                        ۰ <span class="currency fs-7 fw-bold">تومان</span>
+                                                    </span>
+                                                    <a href="#"
+                                                       class="link border-bottom-0 text-info fs-7 fw-bold">
+                                                        افزایش
+                                                        موجودی <i class="ri-arrow-left-s-line"></i>
+                                                    </a>
+                                                </span>
+                                            </li>
+                                            <li>
+                                                <span class="label">باشگاه مشتریان</span>
+                                                <span class="detail">
+                                                    <span class="d-block">
+                                                        ۰ <span class="score text-muted fs-7">امتیاز</span>
+                                                    </span>
+                                                </span>
+                                            </li>
+                                        </ul>
                                     </div>
                                 </div>
-                                <div class="user-options">
-                                    <ul>
-                                        <li>
-                                            <span class="label">کیف پول</span>
-                                            <span class="detail">
-                                                <span class="d-block">
-                                                    ۰ <span class="currency fs-7 fw-bold">تومان</span>
-                                                </span>
-                                                <a href="#"
-                                                   class="link border-bottom-0 text-info fs-7 fw-bold">
-                                                    افزایش
-                                                    موجودی <i class="ri-arrow-left-s-line"></i>
-                                                </a>
-                                            </span>
-                                        </li>
-                                        <li>
-                                            <span class="label">باشگاه مشتریان</span>
-                                            <span class="detail">
-                                                <span class="d-block">
-                                                    ۰ <span class="score text-muted fs-7">امتیاز</span>
-                                                </span>
-                                            </span>
-                                        </li>
-                                    </ul>
+                                <ul class="nav nav-items-with-icon flex-column">
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#">
+                                            <i class="nav-link-icon ri-file-list-3-line"></i>
+                                            سفارش
+                                            های من
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#">
+                                            <i class="nav-link-icon ri-copper-coin-fill"></i>
+                                            باشگاه مشتریان
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#">
+                                            <i class="nav-link-icon ri-logout-box-r-line"></i>
+                                            خروج
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- کاربر لاگین نشده -->
+                        <a href="#" class="user-option-btn user-option-btn--account">
+                            <i class="ri-user-3-line icon"></i>
+                            <i class="ri-arrow-down-s-line icon fs-7 text-muted"></i>
+                        </a>
+                        <div class="user-option--dropdown user-option--dropdown-right">
+                            <div class="login-register-dropdown ui-box">
+                                <div class="text-center mb-3">
+                                    <h6 class="fw-bold">حساب کاربری</h6>
+                                    <p class="text-muted fs-7">برای ادامه وارد حساب کاربری خود شوید</p>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <a href="/Auth/Login" class="btn btn-primary">
+                                        <i class="ri-login-circle-line me-2"></i>
+                                        ورود / ثبت‌نام
+                                    </a>
+                                </div>
+                                <div class="text-center mt-3">
                                 </div>
                             </div>
-                            <ul class="nav nav-items-with-icon flex-column">
-                                <li class="nav-item">
-                                    <a class="nav-link" href="#">
-                                        <i class="nav-link-icon ri-file-list-3-line"></i>
-                                        سفارش
-                                        های من
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="#">
-                                        <i class="nav-link-icon ri-copper-coin-fill"></i>
-                                        باشگاه مشتریان
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="#">
-                                        <i class="nav-link-icon ri-logout-box-r-line"></i>
-                                        خروج
-                                    </a>
-                                </li>
-                            </ul>
                         </div>
-                    </div>
+                    }
                 </div>
                 <div class="user-option">
                     <a href="#" class="user-option-btn user-option-btn--account">

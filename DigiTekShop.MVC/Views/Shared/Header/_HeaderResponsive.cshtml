@@ -91,9 +91,18 @@
         </div>
         <div class="user-options">
             <div class="user-option">
-                <a href="#" class="user-option-btn user-option-btn--account">
-                    <i class="ri-user-3-line icon"></i>
-                </a>
+                @if (User.Identity.IsAuthenticated)
+                {
+                    <a href="#" class="user-option-btn user-option-btn--account">
+                        <i class="ri-user-3-fill icon"></i>
+                    </a>
+                }
+                else
+                {
+                    <a href="/Auth/Login" class="user-option-btn user-option-btn--account">
+                        <i class="ri-user-3-line icon"></i>
+                    </a>
+                }
             </div>
             <div class="user-option">
                 <a href="#" class="user-option-btn user-option-btn--account">
