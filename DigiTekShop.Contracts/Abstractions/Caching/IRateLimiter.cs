@@ -1,6 +1,8 @@
+using DigiTekShop.Contracts.DTOs.RateLimit;
+
 namespace DigiTekShop.Contracts.Abstractions.Caching;
 
 public interface IRateLimiter
 {
-    Task<bool> ShouldAllowAsync(string key, int limit, TimeSpan window, CancellationToken ct = default);
+    Task<RateLimitDecision> ShouldAllowAsync(string key, int limit, TimeSpan window, CancellationToken ct = default);
 }

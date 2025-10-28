@@ -2,6 +2,7 @@
 using DigiTekShop.Contracts.DTOs.Auth.Logout;
 using DigiTekShop.MVC.Extensions;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 
 namespace DigiTekShop.MVC.Controllers.Auth;
@@ -22,6 +23,7 @@ public sealed class AuthController : Controller
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = NormalizeReturnUrl(returnUrl);
@@ -29,16 +31,15 @@ public sealed class AuthController : Controller
     }
 
     [HttpPost]
+    [AllowAnonymous]
     [ValidateAntiForgeryToken]
     [Consumes("application/json")]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpRequestDto dto, CancellationToken ct)
     {
-        if (!ModelState.IsValid) 
-        {
+        if (!ModelState.IsValid)
             return this.JsonValidationError("لطفاً اطلاعات را صحیح وارد کنید", ModelState);
-        }
 
-        var result = await _api.PostAsync<SendOtpRequestDto, object>(ApiRoutes.Auth.SentOtp, dto, ct);
+        var result = await _api.PostAsync<SendOtpRequestDto, object>(ApiRoutes.Auth.SendOtp, dto, ct);
         if (!result.Success)
         {
             _logger.LogWarning("SendOtp failed: {Status} {Detail}", (int)result.StatusCode, result.Problem?.Detail);
@@ -49,14 +50,13 @@ public sealed class AuthController : Controller
     }
 
     [HttpPost]
+    [AllowAnonymous]
     [ValidateAntiForgeryToken]
     [Consumes("application/json")]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto dto, [FromQuery] string? returnUrl, CancellationToken ct)
     {
-        if (!ModelState.IsValid) 
-        {
+        if (!ModelState.IsValid)
             return this.JsonValidationError("لطفاً اطلاعات را صحیح وارد کنید", ModelState);
-        }
 
         var result = await _api.PostAsync<VerifyOtpRequestDto, LoginResponseDto>(ApiRoutes.Auth.VerifyOtp, dto, ct);
         if (!result.Success || result.Data is null)
@@ -70,17 +70,14 @@ public sealed class AuthController : Controller
         try
         {
             var principal = BuildPrincipalFromLogin(login);
-
             var props = new AuthenticationProperties
             {
                 IsPersistent = true,
                 AllowRefresh = true,
-                ExpiresUtc = login.AccessTokenExpiresAtUtc   
+                ExpiresUtc = login.AccessTokenExpiresAtUtc
             };
-            await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                principal,
-                props);
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, props);
 
             await _tokenStore.UpdateAccessTokenAsync(login.AccessToken, login.AccessTokenExpiresAtUtc, ct);
 
@@ -99,15 +96,14 @@ public sealed class AuthController : Controller
     }
 
     [HttpPost]
+    [Authorize]
     [ValidateAntiForgeryToken]
     [Consumes("application/json")]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest dto, CancellationToken ct)
     {
-        var res = await _api.PostAsync<LogoutRequest>($"{ApiRoutes.Auth.Logout}", dto, ct);
+        var res = await _api.PostAsync<LogoutRequest>(ApiRoutes.Auth.Logout, dto, ct);
         if (!res.Success)
-        {
             _logger.LogWarning("Logout (API) failed: {Status} {Detail}", (int)res.StatusCode, res.Problem?.Detail);
-        }
 
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         HttpContext.Session?.Clear();
@@ -115,6 +111,7 @@ public sealed class AuthController : Controller
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
         var result = await _api.GetAsync<object>(ApiRoutes.Auth.Me, ct);
@@ -126,12 +123,10 @@ public sealed class AuthController : Controller
 
     private ClaimsPrincipal BuildPrincipalFromLogin(LoginResponseDto login)
     {
-        
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, login.UserId.ToString()),
-            new Claim(ClaimTypes.Name, "User"),               
-            new Claim("access_token", login.AccessToken)
+            new Claim(ClaimTypes.Name, "User"),
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

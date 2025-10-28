@@ -1,6 +1,7 @@
 ﻿using StackExchange.Redis;
 using DigiTekShop.Contracts.Abstractions.Caching;
 using Microsoft.Extensions.Logging;
+using DigiTekShop.Contracts.DTOs.RateLimit;
 
 namespace DigiTekShop.Infrastructure.Caching;
 
@@ -10,46 +11,35 @@ public sealed class RedisRateLimiter : IRateLimiter
     private readonly ILogger<RedisRateLimiter> _log;
     private const string Prefix = "dts:rl:";
 
-    private const string SlidingLua = @"
-        redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, ARGV[1] - ARGV[2])
-        redis.call('ZADD', KEYS[1], ARGV[1], ARGV[1])
-        local count = redis.call('ZCARD', KEYS[1])
-        redis.call('PEXPIRE', KEYS[1], ARGV[2])
-        return count
-    ";
+    private const string Script = @"
+local c = redis.call('INCR', KEYS[1])
+if c == 1 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+return c
+";
 
     public RedisRateLimiter(IConnectionMultiplexer mux, ILogger<RedisRateLimiter> log)
     { _mux = mux; _log = log; }
 
-    public async Task<bool> ShouldAllowAsync(string key, int limit, TimeSpan window, CancellationToken ct = default)
+    public async Task<RateLimitDecision> ShouldAllowAsync(string key, int limit, TimeSpan window, CancellationToken ct = default)
     {
-        if (limit <= 0) return false;
-        if (window <= TimeSpan.Zero) return true;
+        if (limit <= 0) return new(false, 0, TimeSpan.Zero);
+        if (window <= TimeSpan.Zero) return new(true, 0, null);
 
         try
         {
             var db = _mux.GetDatabase();
-            var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var windowMs = (long)window.TotalMilliseconds;
+            var count = (long)await db.ScriptEvaluateAsync(Script, new RedisKey[] { $"{Prefix}{key}" },
+                new RedisValue[] { (long)window.TotalMilliseconds });
 
-            var redisKey = (RedisKey)$"{Prefix}{{{key}}}";
-            var result = await db.ScriptEvaluateAsync(
-                SlidingLua,
-                keys: new RedisKey[] { redisKey },
-                values: new RedisValue[] { nowMs, windowMs, limit });
-
-            var count = (long)result;
-            var allowed = count <= limit;
-
-            if (!allowed)
-                _log.LogDebug("Rate limit exceeded: key={Key}, count={Count}, limit={Limit}", key, count, limit);
-
-            return allowed;
+            var ttl = await db.KeyTimeToLiveAsync($"{Prefix}{key}");
+            return new(count <= limit, count, ttl);
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "RateLimiter fail-open for key {Key}", key);
-            return true;
+            _log.LogError(ex, "RateLimiter failed for key {Key}", key);
+            return new(true, 0, null); // fail-open
         }
     }
 }

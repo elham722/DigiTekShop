@@ -24,7 +24,6 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("send-otp")]
     [AllowAnonymous]
-    [EnableRateLimiting("AuthPolicy")]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpRequestDto dto, CancellationToken ct)
     {
         var result = await _sender.Send(new SendOtpCommand(dto), ct);
@@ -33,7 +32,6 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("verify-otp")]
     [AllowAnonymous]
-    [EnableRateLimiting("AuthPolicy")]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto dto, CancellationToken ct)
     {
         var result = await _sender.Send(new VerifyOtpCommand(dto), ct);
@@ -47,7 +45,6 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("refresh")]
     [AllowAnonymous]
-    [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(typeof(ApiResponse<RefreshTokenResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -77,7 +74,6 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("logout")]
     [Authorize]
-    [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct)
@@ -104,7 +100,6 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("logout-all")]
     [Authorize]
-    [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> LogoutAll([FromBody] LogoutAllRequest request, CancellationToken ct)
@@ -133,7 +128,6 @@ public sealed class AuthController : ControllerBase
 
     [HttpGet("me")]
     [Authorize]
-    [EnableRateLimiting("ApiPolicy")]
     [ProducesResponseType(typeof(ApiResponse<MeResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Me(CancellationToken ct)

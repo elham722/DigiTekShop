@@ -14,6 +14,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         public static readonly EventId Verify = new(43002, nameof(VerifyCodeAsync));
         public static readonly EventId CanRe = new(43003, nameof(CanResendCodeAsync));
         public static readonly EventId Persist = new(43004, "PersistVerification");
+        public static readonly EventId RateLim = new(43005, "RateLimit");
     }
 
     private readonly UserManager<User> _users;
@@ -50,8 +51,77 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         if (user is null || user.IsDeleted)
             return Result.Failure(ErrorCodes.Identity.USER_NOT_FOUND);
 
+        // نرمال‌سازی/اعتبارسنجی
         var normalized = Normalization.NormalizePhone(phoneNumber);
-        return await SendCoreAsync(user, normalized, ct);
+        if (!IsPhoneAllowed(normalized))
+            return Result.Failure(ErrorCodes.Common.VALIDATION_FAILED);
+
+        // اگر RequireUniquePhoneNumbers فعاله، باید با شماره‌ی کاربر match باشد
+        if (_opts.Security.RequireUniquePhoneNumbers)
+        {
+            var userPhoneNorm = string.IsNullOrWhiteSpace(user.PhoneNumber) ? null : Normalization.NormalizePhone(user.PhoneNumber);
+            if (userPhoneNorm is null || !string.Equals(userPhoneNorm, normalized, StringComparison.Ordinal))
+                return Result.Failure(ErrorCodes.Common.VALIDATION_FAILED, "Phone number does not match the registered number.");
+        }
+
+        // اگر از قبل تأیید شده، موفق برگردون
+        if (!_opts.RequirePhoneConfirmation || user.PhoneNumberConfirmed)
+            return Result.Success();
+
+        // Rate limit (per user)
+        var rlKey = $"phone_ver:{user.Id}";
+        var decision = await _rateLimiter.ShouldAllowAsync(rlKey, _opts.Security.MaxRequestsPerHour, TimeSpan.FromHours(1), ct);
+        if (!decision.Allowed)
+        {
+            _log.LogWarning(Events.RateLim, "Phone verify rate limited. user={UserId}, retryAfter={Retry}s",
+                user.Id, decision.Ttl?.TotalSeconds);
+            return Result.Failure(ErrorCodes.Common.RATE_LIMIT_EXCEEDED, "Too many verification requests. Please try again later.");
+        }
+
+        // Resend cooldown
+        if (_opts.AllowResendCode && !await CanResendCodeAsync(user.Id, ct))
+        {
+            var msg = Humanize(_opts.ResendCooldown);
+            return Result.Failure(ErrorCodes.Common.OPERATION_FAILED, $"Please wait {msg} before requesting another code.");
+        }
+
+        // ساخت/آپدیت کد
+        var now = _time.UtcNow;
+        var expires = now.Add(_opts.CodeValidity);
+        var code = GenerateNumericCode(_opts.CodeLength);
+        var hash = BCrypt.Net.BCrypt.HashPassword(code);
+
+        // Upsert آخرین PhoneVerification (درجا)
+        var last = await _db.PhoneVerifications
+            .Where(p => p.UserId == user.Id)
+            .OrderByDescending(p => p.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+
+        if (last is null)
+        {
+            var pv = PhoneVerification.CreateForUser(user.Id, hash, now, expires, normalized);
+            _db.PhoneVerifications.Add(pv);
+        }
+        else
+        {
+            last.ResetCode(hash, now, expires, normalized);
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        // ارسال SMS (اگر بعداً Outbox/Worker داری، اینجا می‌تونی DomainEvent بلند کنی)
+        var templateName = _opts.Template?.OtpTemplateName ?? "default_otp";
+        var send = await _sender.SendCodeAsync(normalized, code, templateName);
+        if (send.IsFailure)
+        {
+            _log.LogWarning(Events.Send, "SMS send failed. user={UserId}, phone={Phone}",
+                user.Id, SensitiveDataMasker.MaskPhone(normalized));
+            return Result.Failure(ErrorCodes.Common.OPERATION_FAILED, "Failed to send verification SMS.");
+        }
+
+        _log.LogInformation(Events.Send, "Verification code sent. user={UserId}, phone={Phone}",
+            user.Id, SensitiveDataMasker.MaskPhone(normalized));
+        return Result.Success();
     }
 
     public async Task<Result> VerifyCodeAsync(string userId, string code, CancellationToken ct = default)
@@ -63,86 +133,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         if (user is null || user.IsDeleted)
             return Result.Failure(ErrorCodes.Identity.USER_NOT_FOUND);
 
-        return await VerifyCoreAsync(user, code, ct);
-    }
-
-    public async Task<bool> CanResendCodeAsync(Guid userId, CancellationToken ct = default)
-    {
-        if (userId == Guid.Empty) return true;
-
-        var last = await _db.PhoneVerifications
-            .AsNoTracking()
-            .Where(p => p.UserId == userId)
-            .OrderByDescending(p => p.CreatedAtUtc)
-            .Select(p => p.CreatedAtUtc)
-            .FirstOrDefaultAsync(ct);
-
-        return last == default || _time.UtcNow >= last.Add(_opts.ResendCooldown);
-    }
-
-    #region Core
-
-    private async Task<Result> SendCoreAsync(User user, string phoneNumber, CancellationToken ct)
-    {
-        if (!_opts.RequirePhoneConfirmation || user.PhoneNumberConfirmed)
-            return Result.Success();
-
-        if (!IsPhoneAllowed(phoneNumber))
-            return Result.Failure(ErrorCodes.Common.VALIDATION_FAILED);
-
-        if (_opts.Security.RequireUniquePhoneNumbers)
-        {
-            var userPhoneNorm = string.IsNullOrWhiteSpace(user.PhoneNumber) ? null : Normalization.NormalizePhone(user.PhoneNumber);
-            if (userPhoneNorm is null || !string.Equals(userPhoneNorm, phoneNumber, StringComparison.Ordinal))
-                return Result.Failure(ErrorCodes.Common.VALIDATION_FAILED, "Phone number does not match the registered number.");
-        }
-
-        
-        var rlKey = $"phone_ver:{user.Id}";
-        var allowed = await _rateLimiter.ShouldAllowAsync(
-            rlKey,
-            _opts.Security.MaxRequestsPerHour,
-            TimeSpan.FromHours(1),
-            ct);
-        if (!allowed)
-        {
-            _log.LogWarning(Events.Send, "Rate limit exceeded. user={UserId}", user.Id);
-            return Result.Failure(ErrorCodes.Common.OPERATION_FAILED, "Too many verification requests. Please try again later.");
-        }
-
-        
-        if (_opts.AllowResendCode && !await CanResendCodeAsync(user.Id, ct))
-        {
-            var msg = Humanize(_opts.ResendCooldown);
-            return Result.Failure(ErrorCodes.Common.OPERATION_FAILED, $"Please wait {msg} before requesting another code.");
-        }
-
-       
-        var code = GenerateNumericCode(_opts.CodeLength);
-        var hash = BCrypt.Net.BCrypt.HashPassword(code);
-        var now = _time.UtcNow;
-        var expires = now.Add(_opts.CodeValidity);
-
-        
-        await UpsertVerificationAsync(user.Id, hash, expires, phoneNumber, now, ct);
-
-        
-        var templateName = _opts.Template?.OtpTemplateName ?? "default_otp";
-        var send = await _sender.SendCodeAsync(phoneNumber, code, templateName);
-        if (send.IsFailure)
-        {
-            _log.LogWarning(Events.Send, "SMS send failed. user={UserId}, phone={Phone}",
-                user.Id, SensitiveDataMasker.MaskPhone(phoneNumber));
-            return Result.Failure(ErrorCodes.Common.OPERATION_FAILED, "Failed to send verification SMS.");
-        }
-
-        _log.LogInformation(Events.Send, "Verification code sent. user={UserId}, phone={Phone}",
-            user.Id, SensitiveDataMasker.MaskPhone(phoneNumber));
-        return Result.Success();
-    }
-
-    private async Task<Result> VerifyCoreAsync(User user, string enteredCode, CancellationToken ct)
-    {
+        // آخرین رکورد معتبر را بگیر
         var pv = await _db.PhoneVerifications
             .Where(p => p.UserId == user.Id)
             .OrderByDescending(p => p.CreatedAtUtc)
@@ -159,7 +150,18 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         if (pv.Attempts >= _opts.MaxAttempts)
             return Result.Failure(ErrorCodes.Common.INTERNAL_ERROR, "Too many attempts.");
 
-        var ok = BCrypt.Net.BCrypt.Verify(enteredCode, pv.CodeHash);
+        // مقایسه‌ی امن
+        var ok = false;
+        try
+        {
+            ok = BCrypt.Net.BCrypt.Verify(code, pv.CodeHash);
+        }
+        finally
+        {
+            // anti-enumeration: تأخیر کوچک ثابت
+            await Task.Delay(150, ct);
+        }
+
         if (!ok)
         {
             pv.TryIncrementAttempts(_opts.MaxAttempts);
@@ -167,7 +169,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
             return Result.Failure(ErrorCodes.Common.OPERATION_FAILED, "Invalid code.");
         }
 
-        
+        // موفق: تأیید و به‌روزرسانی
         pv.MarkAsVerified(now);
 
         if (!string.IsNullOrWhiteSpace(pv.PhoneNumber) &&
@@ -193,47 +195,21 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         return Result.Success();
     }
 
-    #endregion
-
-    #region Persistence
-
-    private async Task UpsertVerificationAsync(
-        Guid userId,
-        string hash,
-        DateTime expiresUtc,
-        string? phoneNumber,
-        DateTime createdAtUtc,
-        CancellationToken ct)
+    public async Task<bool> CanResendCodeAsync(Guid userId, CancellationToken ct = default)
     {
-        try
-        {
-            var last = await _db.PhoneVerifications
-                .Where(p => p.UserId == userId)
-                .OrderByDescending(p => p.CreatedAtUtc)
-                .FirstOrDefaultAsync(ct);
+        if (userId == Guid.Empty) return true;
 
-            if (last is null)
-            {
-                var pv = PhoneVerification.CreateForUser(userId, hash, createdAtUtc, expiresUtc, phoneNumber);
-                _db.PhoneVerifications.Add(pv);
-            }
-            else
-            {
-                last.ResetCode(hash, createdAtUtc, expiresUtc, phoneNumber);
-            }
+        var last = await _db.PhoneVerifications
+            .AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .OrderByDescending(p => p.CreatedAtUtc)
+            .Select(p => p.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
 
-            await _db.SaveChangesAsync(ct);
-        }
-        catch (Exception ex)
-        {
-            _log.LogError(Events.Persist, ex, "Persist verification failed. user={UserId}", userId);
-            throw;
-        }
+        return last == default || _time.UtcNow >= last.Add(_opts.ResendCooldown);
     }
 
-    #endregion
-
-    #region Validation & Utils
+    // ----------------- Utils -----------------
 
     private bool IsPhoneAllowed(string phone)
     {
@@ -244,6 +220,7 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         if (!string.IsNullOrWhiteSpace(pattern))
             return Regex.IsMatch(p, pattern);
 
+        // fallback عمومی
         return Regex.IsMatch(p, @"^\+?\d{8,15}$");
     }
 
@@ -262,6 +239,4 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         => span.TotalMinutes >= 1
             ? $"{span.TotalMinutes:N0} minutes"
             : $"{span.TotalSeconds:N0} seconds";
-
-    #endregion
 }

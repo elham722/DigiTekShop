@@ -1,6 +1,4 @@
-﻿
-using DigiTekShop.MVC.DependencyInjection;
-using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using DigiTekShop.MVC.DependencyInjection;
 using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +32,7 @@ builder.Services.AddAuthorization();
 
 
 builder.Services.AddDigiTekShopApiClient(builder.Configuration, builder.Environment);
+
 
 builder.Services.AddLogging(logging =>
 {

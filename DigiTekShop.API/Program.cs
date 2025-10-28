@@ -1,4 +1,5 @@
 ﻿using DigiTekShop.API.Extensions.Telemetry;
+using DigiTekShop.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,76 +70,7 @@ builder.Services.AddControllers(o =>
 builder.Services.AddApiKeyAuth(builder.Configuration);
 builder.Services.Configure<IdempotencyOptions>(builder.Configuration.GetSection("Idempotency"));
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-    {
-        var userId = httpContext.User.Identity?.Name;
-        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        return RateLimitPartition.GetFixedWindowLimiter(userId ?? ip,
-            _ => new FixedWindowRateLimiterOptions
-            {
-                AutoReplenishment = true,
-                PermitLimit = 100,
-                Window = TimeSpan.FromMinutes(1)
-            });
-    });
-
-    options.AddFixedWindowLimiter("AuthPolicy", o =>
-    {
-        o.PermitLimit = 5;
-        o.Window = TimeSpan.FromMinutes(1);
-        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        o.QueueLimit = 2;
-    });
-
-    options.AddFixedWindowLimiter("ApiPolicy", o =>
-    {
-        o.PermitLimit = 50;
-        o.Window = TimeSpan.FromMinutes(1);
-        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        o.QueueLimit = 5;
-    });
-
-    options.AddFixedWindowLimiter("WebhooksPolicy", o =>
-    {
-        o.Window = TimeSpan.FromMinutes(1);
-        o.PermitLimit = 10;
-        o.QueueLimit = 0;
-    });
-
-    options.AddFixedWindowLimiter("EmailConfirmPolicy", o =>
-    {
-        o.PermitLimit = 3;
-        o.Window = TimeSpan.FromMinutes(5);
-        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        o.QueueLimit = 1;
-    });
-
-    static ValueTask OnRateLimitRejected(OnRejectedContext context, CancellationToken token)
-    {
-        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-
-        double? retryAfterSec = null;
-        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
-        {
-            context.HttpContext.Response.Headers.RetryAfter = retryAfter.TotalSeconds.ToString();
-            retryAfterSec = retryAfter.TotalSeconds;
-        }
-
-        var payload = new
-        {
-            error = "Too many requests. Please try again later.",
-            code = "RATE_LIMIT_EXCEEDED",
-            retryAfter = retryAfterSec
-        };
-
-        return new ValueTask(context.HttpContext.Response.WriteAsJsonAsync(payload, token));
-    }
-
-    options.OnRejected = OnRateLimitRejected;
-
-});
+// Rate limiting is now handled by RedisRateLimitMiddleware
 
 #endregion
 
@@ -315,17 +247,14 @@ app.UseRouting();
 app.UseCors(app.Environment.IsProduction() ? "Production" : "Development");
 
 
-app.UseRateLimiter();
-
-
 if (builder.Configuration.GetValue<bool>("ApiKey:Enabled"))
     app.UseApiKeyAuth();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseMiddleware<RedisRateLimitMiddleware>();
 
-app.UseIdempotency();
 
 
 app.UseResponseCompression();
