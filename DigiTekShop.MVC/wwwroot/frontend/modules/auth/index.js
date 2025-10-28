@@ -202,13 +202,52 @@ export class AuthManager {
         const phoneValue = this.phoneInput?.value || '';
         const isValid = /^09\d{9}$/.test(phoneValue);
         
-        if (isValid) {
+        if (isValid && !loginBtn.classList.contains('rate-limited')) {
             loginBtn.classList.remove('invalid-phone');
             loginBtn.disabled = false;
         } else {
             loginBtn.classList.add('invalid-phone');
             loginBtn.disabled = true;
         }
+    }
+
+    disableButtonForMinutes(minutes) {
+        const loginBtn = this.phoneForm?.querySelector('.login-btn');
+        if (!loginBtn) return;
+        
+        // غیرفعال کردن دکمه
+        loginBtn.classList.add('rate-limited');
+        loginBtn.disabled = true;
+        
+        // نمایش تایمر
+        const originalText = loginBtn.querySelector('.btn-text');
+        if (originalText) {
+            const countdown = minutes * 60; // تبدیل به ثانیه
+            this.startRateLimitCountdown(originalText, countdown);
+        }
+        
+        // فعال کردن دکمه بعد از مدت مشخص
+        setTimeout(() => {
+            loginBtn.classList.remove('rate-limited');
+            this.updateButtonState();
+        }, minutes * 60 * 1000);
+    }
+
+    startRateLimitCountdown(element, seconds) {
+        const updateCountdown = () => {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            element.textContent = `صبر کنید (${minutes}:${remainingSeconds.toString().padStart(2, '0')})`;
+            
+            if (seconds > 0) {
+                seconds--;
+                setTimeout(updateCountdown, 1000);
+            } else {
+                element.textContent = 'ورود';
+            }
+        };
+        
+        updateCountdown();
     }
 
     validatePhone(showToast = false) {
@@ -241,7 +280,22 @@ export class AuthManager {
         document.querySelectorAll('.auth-step').forEach(s => s.classList.remove('active'));
         document.getElementById(name + 'Step')?.classList.add('active');
         this.currentStep = name;
-        if (name === 'otp') this.otpInputs[0]?.focus();
+        
+        // Update title and subtitle when switching to OTP step
+        if (name === 'otp') {
+            const title = document.querySelector('.login-title');
+            const subtitle = document.querySelector('.login-subtitle');
+            
+            if (title) title.textContent = 'تایید شماره موبایل';
+            if (subtitle) subtitle.style.display = 'none'; // Hide the subtitle
+            this.otpInputs[0]?.focus();
+        } else if (name === 'phone') {
+            const title = document.querySelector('.login-title');
+            const subtitle = document.querySelector('.login-subtitle');
+            
+            if (title) title.textContent = 'ورود به سایت';
+            if (subtitle) subtitle.style.display = 'block'; // Show the subtitle again
+        }
     }
 
     startTimer(sec = 60) {
@@ -364,13 +418,19 @@ export class AuthManager {
                 this.hideLoading();
                 console.log('Response not OK or fail data:', res.status, data);
                 
-                // اگر ریت‌لیمیت است پیام مناسب بده
+                // اگر ریت‌لیمیت است پیام مناسب بده و دکمه را غیرفعال کن
                 const errorCode = data?.errorCode || data?.extensions?.errorCode;
-                const msg = (res.status === 429 || errorCode === 'RATE_LIMIT_EXCEEDED')
-                    ? 'خیلی سریع درخواست دادید؛ چند دقیقه‌ی دیگر دوباره تلاش کنید.'
-                    : this.extractMessage(data, 'ارسال کد ناموفق بود');
-
-                this.toast(msg, 'warning');
+                const isRateLimit = (res.status === 429 || errorCode === 'RATE_LIMIT_EXCEEDED');
+                
+                if (isRateLimit) {
+                    // غیرفعال کردن دکمه برای 2 دقیقه
+                    this.disableButtonForMinutes(2);
+                    this.toast('خیلی سریع درخواست دادید؛ 2 دقیقه صبر کنید و دوباره تلاش کنید.', 'warning');
+                } else {
+                    const msg = this.extractMessage(data, 'ارسال کد ناموفق بود');
+                    this.toast(msg, 'warning');
+                }
+                
                 return; // ❗️ به مرحله‌ی OTP نرو
             }
 
