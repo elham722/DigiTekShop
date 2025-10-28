@@ -431,6 +431,10 @@
   margin-left: 25px;
 }
 
+.user-options .user-option .user-option-btn {
+  position: relative;
+}
+
 @media (max-width: 768px) {
   .user-options .user-option {
     margin-left: 15px;
@@ -522,16 +526,22 @@
 
 /* Counter Badge Enhancements */
 .user-options .user-option .counter {
+  position: absolute;
+  top: -8px;
+  right: -8px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-weight: 700;
   font-size: 11px;
-  min-width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 8px;
+  z-index: 10;
+  box-sizing: border-box;
 }
 
 /* Account Counter - Blue */
@@ -1251,6 +1261,10 @@
 }
 
 .page-header-responsive .user-option .user-option-btn {
+  position: relative;
+}
+
+.page-header-responsive .user-option .user-option-btn {
   display: -webkit-inline-box;
   display: -ms-inline-flexbox;
   display: inline-flex;
@@ -1321,18 +1335,23 @@
 
 .page-header-responsive .user-option .user-option-btn .counter {
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: -8px;
+  right: -8px;
   background-color: var(--brand-500);
   color: var(--surface);
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
   border-radius: 50%;
   font-size: 11px;
-  text-align: center;
-  line-height: 18px;
   font-weight: bold;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 /* Mobile Counter Colors */
