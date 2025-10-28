@@ -289,42 +289,32 @@ body.auth-body {
     background-clip: text;
 }
 
-/* OTP Input */
-.otp-input-container {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    margin-bottom: 20px;
-}
-
-.otp-input {
-    width: 45px;
-    height: 45px;
+/* OTP Single Input */
+.otp-single-input {
+    width: 100%;
+    height: 50px;
     border: 2px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 12px;
     text-align: center;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     font-weight: 600;
+    letter-spacing: 0.5em;
     color: var(--text-primary);
     background: var(--bg-primary);
     transition: all 0.3s ease;
+    margin-bottom: 20px;
 }
 
-.otp-input:focus {
+.otp-single-input:focus {
     border-color: var(--primary-dark);
     outline: none;
-    transform: scale(1.05);
+    transform: scale(1.02);
+    box-shadow: 0 0 0 3px rgba(0, 48, 73, 0.1);
 }
 
-.otp-input:not(:placeholder-shown) {
+.otp-single-input:not(:placeholder-shown) {
     border-color: var(--primary-dark);
     background: rgba(0, 48, 73, 0.05);
-}
-
-.otp-input:focus:hover {
-    border-color: var(--primary-dark);
-    outline: none;
-    transform: scale(1.05);
 }
 
 /* Resend Section */
@@ -555,14 +545,10 @@ body.auth-body {
         font-size: 1.3rem;
     }
     
-    .otp-input-container {
-        gap: 8px;
-    }
-    
-    .otp-input {
-        width: 40px;
-        height: 40px;
-        font-size: 1.1rem;
+    .otp-single-input {
+        height: 45px;
+        font-size: 1.2rem;
+        letter-spacing: 0.3em;
     }
     
     .phone-input {

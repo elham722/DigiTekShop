@@ -8,33 +8,6 @@
     text-align: right;
 }
 
-/* OTP Inputs - LTR for numbers */
-.otp-input {
-    direction: ltr !important;
-    text-align: center !important;
-    unicode-bidi: bidi-override !important;
-}
-
-.otp-input-container {
-    direction: ltr !important;
-    unicode-bidi: bidi-override !important;
-}
-
-/* Ensure OTP inputs are always LTR */
-.otp-input[type="text"],
-.otp-input[type="number"] {
-    direction: ltr !important;
-    text-align: center !important;
-    unicode-bidi: bidi-override !important;
-}
-
-/* Force LTR for OTP inputs in RTL pages */
-[dir="rtl"] .otp-input,
-[dir="rtl"] .otp-input-container {
-    direction: ltr !important;
-    text-align: center !important;
-    unicode-bidi: bidi-override !important;
-}
 
 .swal2-title {
     font-family: 'Vazir', 'Tahoma', sans-serif;

@@ -58,6 +58,7 @@ export class AuthManager {
         this.phoneForm = document.getElementById('phoneForm');
         this.otpForm = document.getElementById('otpForm');
         this.phoneInput = document.getElementById('phoneNumber');
+        this.otpInput = document.getElementById('otpCode');
         this.displayPhone = document.getElementById('displayPhone');
         this.resendBtn = document.getElementById('resendBtn');
         this.countdownText = document.getElementById('countdownText');
@@ -106,94 +107,18 @@ export class AuthManager {
     }
 
     setupOtpInputs() {
-        this.otpInputs = Array.from(document.querySelectorAll('.otp-input'));
-        this.otpContainer = document.querySelector('.otp-input-container');
-        
-        // اطمینان از اینکه همه فیلدها خالی هستند
-        this.otpInputs.forEach(input => input.value = '');
-
-        // اگر کاربر روی کانتینر کلیک کرد، روی اولین خانه‌ی خالی فوکوس کن
-        if (this.otpContainer) {
-            this.otpContainer.addEventListener('click', (e) => {
-                // اگر روی خود input کلیک شده، کاری نکن
-                if (e.target.classList.contains('otp-input')) return;
-                
-                const firstEmpty = this.otpInputs.find(i => !i.value);
-                if (firstEmpty) {
-                    firstEmpty.focus();
-                } else {
-                    // اگر همه فیلدها پر هستند، روی آخرین فیلد فوکوس کن
-                    this.otpInputs[this.otpInputs.length - 1].focus();
-                }
+        // اطمینان از اینکه فیلد خالی است
+        if (this.otpInput) {
+            this.otpInput.value = '';
+            
+            // فقط عدد قبول کن
+            this.otpInput.addEventListener('input', (e) => {
+                const raw = normalizeDigits(e.target.value);
+                e.target.value = raw.replace(/[^\d]/g, '').slice(0, 6);
             });
         }
-
-        this.otpInputs.forEach((el, idx) => {
-            el.addEventListener('input', (e) => {
-                const raw = normalizeDigits(e.target.value);
-                
-                if (raw.length > 1) {
-                    // پاک کردن همه فیلدها از موقعیت فعلی به بعد
-                    for (let i = idx; i < this.otpInputs.length; i++) {
-                        this.otpInputs[i].value = '';
-                    }
-                    // پر کردن از موقعیت فعلی (چپ به راست)
-                    for (let i = 0; i < raw.length && (idx + i) < this.otpInputs.length; i++) {
-                        this.otpInputs[idx + i].value = raw[i];
-                    }
-                    // فوکوس روی اولین فیلد خالی
-                    const firstEmpty = this.otpInputs.find(i => !i.value);
-                    if (firstEmpty) {
-                        firstEmpty.focus();
-                    } else {
-                        this.otpInputs[this.otpInputs.length - 1].focus();
-                    }
-                } else {
-                    e.target.value = raw.replace(/[^\d]/g, '').slice(0, 1);
-                    if (e.target.value && idx < this.otpInputs.length - 1) {
-                        this.otpInputs[idx + 1].focus();
-                    }
-                }
-                this.updateHiddenOtp();
-            });
-
-            el.addEventListener('keydown', (e) => {
-                if (e.key === 'Backspace') {
-                    if (!e.target.value && idx > 0) {
-                        this.otpInputs[idx - 1].focus();
-                    } else if (e.target.value) {
-                        e.target.value = '';
-                        this.updateHiddenOtp();
-                    }
-                }
-            });
-
-            el.addEventListener('paste', (e) => {
-                e.preventDefault();
-                const s = normalizeDigits(e.clipboardData.getData('text') || '').replace(/[^\d]/g, '').slice(0, 6);
-                // پاک کردن همه فیلدها
-                this.otpInputs.forEach(input => input.value = '');
-                // پر کردن از اول (چپ به راست)
-                for (let i = 0; i < s.length && i < this.otpInputs.length; i++) {
-                    this.otpInputs[i].value = s[i];
-                }
-                this.updateHiddenOtp();
-                // فوکوس روی اولین فیلد خالی یا آخرین فیلد پر شده
-                const firstEmpty = this.otpInputs.find(input => !input.value);
-                if (firstEmpty) {
-                    firstEmpty.focus();
-                } else {
-                    this.otpInputs[this.otpInputs.length - 1].focus();
-                }
-            });
-        });
     }
 
-    updateHiddenOtp() {
-        const code = this.otpInputs.map(i => i.value || '').join('');
-        const hidden = document.getElementById('otpCode');
-        if (hidden) hidden.value = code;
-    }
 
     updateButtonState() {
         const loginBtn = this.phoneForm?.querySelector('.login-btn');
@@ -288,7 +213,7 @@ export class AuthManager {
             
             if (title) title.textContent = 'تایید شماره موبایل';
             if (subtitle) subtitle.style.display = 'none'; // Hide the subtitle
-            this.otpInputs[0]?.focus();
+            this.otpInput?.focus();
         } else if (name === 'phone') {
             const title = document.querySelector('.login-title');
             const subtitle = document.querySelector('.login-subtitle');
@@ -459,9 +384,7 @@ export class AuthManager {
             return;
         }
 
-        const hidden = document.getElementById('otpCode');
-        const rawCode = hidden ? hidden.value : this.otpInputs.map(i => i.value || '').join('');
-        const code = normalizeDigits(rawCode).replace(/[^\d]/g, '');
+        const code = this.otpInput?.value || '';
         if (code.length !== 6) { 
             this.toast('کد ۶ رقمی را کامل کنید', 'warning'); 
             return; 
@@ -505,9 +428,8 @@ export class AuthManager {
             if (!res.ok || this.isFailData(data)) {
                 this.hideLoading();
                 this.toast(this.extractMessage(data, 'کد اشتباه یا منقضی است'), 'error');
-                this.otpInputs.forEach(i => i.value = '');
-                this.updateHiddenOtp();
-                this.otpInputs[0]?.focus();
+                if (this.otpInput) this.otpInput.value = '';
+                this.otpInput?.focus();
                 return;
             }
 
@@ -535,9 +457,9 @@ export class AuthManager {
 function goBackToPhone() {
     if (window.authManager) {
         window.authManager.showStep('phone');
-        window.authManager.otpInputs.forEach(i => i.value = '');
-        const hidden = document.getElementById('otpCode');
-        if (hidden) hidden.value = '';
+        if (window.authManager.otpInput) {
+            window.authManager.otpInput.value = '';
+        }
     }
 }
 
