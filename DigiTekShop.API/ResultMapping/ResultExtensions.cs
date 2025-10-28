@@ -93,7 +93,7 @@ public static class ResultToActionResultExtensions
 
 
         pd.Extensions["traceId"] = traceId;
-        pd.Extensions["errorCode"] = errorCode;
+        pd.Extensions["code"] = errorCode;
         pd.Extensions["timestamp"] = DateTimeOffset.UtcNow;
 
         if (errors is not null)
