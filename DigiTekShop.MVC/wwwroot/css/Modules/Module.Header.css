@@ -456,6 +456,118 @@
 
 .user-options .user-option .user-option-btn .icon {
   font-size: 21px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================
+   User Options - Hover Effects & Colors
+   ======================================== */
+
+/* Account Button - Blue Theme */
+.user-options .user-option--account .user-option-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.user-options .user-option--account .user-option-btn:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.15));
+  color: #3b82f6;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.user-options .user-option--account .user-option-btn:hover .icon {
+  transform: scale(1.1);
+  color: #2563eb;
+}
+
+/* Wishlist Button - Red Theme */
+.user-options .user-option:not(.user-option--account):not(.user-option--cart) .user-option-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.user-options .user-option:not(.user-option--account):not(.user-option--cart) .user-option-btn:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.15));
+  color: #ef4444;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.user-options .user-option:not(.user-option--account):not(.user-option--cart) .user-option-btn:hover .icon {
+  transform: scale(1.1);
+  color: #dc2626;
+}
+
+/* Cart Button - Green Theme */
+.user-options .user-option--cart .user-option-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.user-options .user-option--cart .user-option-btn:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(22, 163, 74, 0.15));
+  color: #22c55e;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
+.user-options .user-option--cart .user-option-btn:hover .icon {
+  transform: scale(1.1);
+  color: #16a34a;
+}
+
+/* Counter Badge Enhancements */
+.user-options .user-option .counter {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 700;
+  font-size: 11px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+/* Account Counter - Blue */
+.user-options .user-option--account .counter {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.user-options .user-option--account:hover .counter {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Wishlist Counter - Red */
+.user-options .user-option:not(.user-option--account):not(.user-option--cart) .counter {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.user-options .user-option:not(.user-option--account):not(.user-option--cart):hover .counter {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Cart Counter - Green */
+.user-options .user-option--cart .counter {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.user-options .user-option--cart:hover .counter {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
 }
 
 .user-options .user-option .user-option-btn .user-item-text {
@@ -1150,21 +1262,59 @@
           justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: 12px;
   color: var(--ink-900);
   text-decoration: none;
   background-color: #f8f9fa;
-  -webkit-transition: all 0.2s ease;
-  transition: all 0.2s ease;
+  -webkit-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-header-responsive .user-option .user-option-btn:hover {
   background-color: #e9ecef;
   color: var(--brand-500);
+  transform: scale(1.05);
 }
 
 .page-header-responsive .user-option .user-option-btn .icon {
   font-size: 18px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile Account Button - Blue Theme */
+.page-header-responsive .user-option:first-child .user-option-btn:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.15));
+  color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.page-header-responsive .user-option:first-child .user-option-btn:hover .icon {
+  transform: scale(1.1);
+  color: #2563eb;
+}
+
+/* Mobile Wishlist Button - Red Theme */
+.page-header-responsive .user-option:nth-child(2) .user-option-btn:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.15));
+  color: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.page-header-responsive .user-option:nth-child(2) .user-option-btn:hover .icon {
+  transform: scale(1.1);
+  color: #dc2626;
+}
+
+/* Mobile Cart Button - Green Theme */
+.page-header-responsive .user-option:last-child .user-option-btn:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(22, 163, 74, 0.15));
+  color: #22c55e;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
+.page-header-responsive .user-option:last-child .user-option-btn:hover .icon {
+  transform: scale(1.1);
+  color: #16a34a;
 }
 
 .page-header-responsive .user-option .user-option-btn .counter {
@@ -1180,6 +1330,38 @@
   text-align: center;
   line-height: 18px;
   font-weight: bold;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile Counter Colors */
+.page-header-responsive .user-option:first-child .counter {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.page-header-responsive .user-option:first-child:hover .counter {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.page-header-responsive .user-option:nth-child(2) .counter {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.page-header-responsive .user-option:nth-child(2):hover .counter {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.page-header-responsive .user-option:last-child .counter {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.page-header-responsive .user-option:last-child:hover .counter {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
 }
 
 .page-header-responsive .toggle-navigation {
