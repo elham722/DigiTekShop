@@ -50,6 +50,7 @@ export class AuthManager {
         this.cacheElements();
         this.bindEvents();
         this.setupOtpInputs();
+        this.updateButtonState(); // Set initial button state
         this.phoneInput?.focus();
     }
 
@@ -83,6 +84,8 @@ export class AuthManager {
             if (/^09\d{9}$/.test(e.target.value)) {
                 e.target.classList.remove('is-invalid');
             }
+            // به‌روزرسانی وضعیت دکمه
+            this.updateButtonState();
         });
 
         // جلوگیری از submit ناخواسته با Enter روی فیلد شماره
@@ -190,6 +193,22 @@ export class AuthManager {
         const code = this.otpInputs.map(i => i.value || '').join('');
         const hidden = document.getElementById('otpCode');
         if (hidden) hidden.value = code;
+    }
+
+    updateButtonState() {
+        const loginBtn = this.phoneForm?.querySelector('.login-btn');
+        if (!loginBtn) return;
+        
+        const phoneValue = this.phoneInput?.value || '';
+        const isValid = /^09\d{9}$/.test(phoneValue);
+        
+        if (isValid) {
+            loginBtn.classList.remove('invalid-phone');
+            loginBtn.disabled = false;
+        } else {
+            loginBtn.classList.add('invalid-phone');
+            loginBtn.disabled = true;
+        }
     }
 
     validatePhone(showToast = false) {

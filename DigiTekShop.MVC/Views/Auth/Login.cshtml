@@ -128,5 +128,14 @@
         </div>
     </div>
 
+    <!-- Auth Script -->
+    <script type="module">
+        import { AuthManager } from '/frontend/modules/auth/index.js';
+        
+        // Initialize AuthManager when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            window.authManager = new AuthManager();
+        });
+    </script>
 </body>
 </html>

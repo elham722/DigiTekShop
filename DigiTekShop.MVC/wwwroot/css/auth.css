@@ -212,6 +212,22 @@ body.auth-body {
     transform: none;
 }
 
+/* Button disabled state for invalid phone */
+.login-btn.invalid-phone {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.login-btn.invalid-phone:hover {
+    background: #f3f4f6;
+    color: #9ca3af;
+    transform: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 .btn-spinner {
     display: flex;
     align-items: center;
