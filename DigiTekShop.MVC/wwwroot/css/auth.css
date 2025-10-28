@@ -37,7 +37,7 @@
 
 body.auth-body {
     font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, var(--primary-light) 0%, #f0f0f0 100%);
+    background: transparent;
     min-height: 100vh;
     margin: 0;
     padding: 0;
@@ -49,28 +49,22 @@ body.auth-body {
 /* Login Container */
 .login-container {
     width: 100%;
-    max-width: 400px;
+    max-width: 500px;
     padding: 20px;
 }
 
 .login-card {
-    background: var(--bg-primary);
+    background: transparent;
     border-radius: 20px;
-    padding: 40px 30px;
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--border-color);
+    padding: 50px 40px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     position: relative;
     overflow: hidden;
 }
 
 .login-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary-orange), var(--primary-red), var(--primary-yellow));
+    display: none;
 }
 
 /* Logo Section */
@@ -496,7 +490,7 @@ body.auth-body {
 /* Responsive Design */
 @media (max-width: 768px) {
     body.auth-body {
-        background: var(--bg-primary);
+        background: transparent;
         padding: 0;
     }
     
@@ -506,14 +500,15 @@ body.auth-body {
     }
     
     .login-card {
-        padding: 40px 30px;
+        padding: 50px 40px;
         border-radius: 0;
-        box-shadow: none;
-        border: none;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        border: 1px solid rgba(0, 0, 0, 0.08);
         min-height: 100vh;
         display: flex;
         flex-direction: column;
         justify-content: center;
+        background: transparent;
     }
     
     .login-card::before {
@@ -523,7 +518,7 @@ body.auth-body {
 
 @media (max-width: 480px) {
     .login-card {
-        padding: 30px 20px;
+        padding: 40px 30px;
     }
     
     .logo-placeholder {
