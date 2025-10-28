@@ -643,6 +643,11 @@
   position: relative;
 }
 
+/* اضافه کردن padding به محتوای dropdown */
+.user-options .user-option .user-option--dropdown .ui-box > * {
+  padding: 20px;
+}
+
 .user-options .user-option .user-option--dropdown .ui-box::before {
   content: '';
   position: absolute;
@@ -1663,15 +1668,16 @@
    Login/Register Dropdown
    ======================================== */
 .login-register-dropdown {
-  padding: 20px 24px 24px;
-  min-width: 280px;
+  padding: 0;
+  min-width: 300px;
   background: white;
+  border-radius: 16px;
 }
 
 .login-register-dropdown h6 {
-  color: var(--ink-900);
-  margin-bottom: 8px;
-  font-size: 16px;
+  color: #1f2937;
+  margin-bottom: 12px;
+  font-size: 18px;
   font-weight: 700;
   text-align: center;
 }
@@ -1687,18 +1693,18 @@
 .login-register-dropdown .btn-primary {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
   border: none;
-  border-radius: 10px;
-  padding: 12px 20px;
+  border-radius: 12px;
+  padding: 14px 24px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
-  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  margin-bottom: 20px;
 }
 
 .login-register-dropdown .btn-primary:hover {
