@@ -452,10 +452,13 @@
   -webkit-box-align: center;
       -ms-flex-align: center;
           align-items: center;
-  border-radius: 10px;
+  border-radius: 12px;
   color: var(--ink-900);
   position: relative;
   text-decoration: none;
+  background-color: #f8f9fa;
+  padding: 8px 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .user-options .user-option .user-option-btn .icon {
@@ -469,9 +472,7 @@
 
 /* Account Button - Blue Theme */
 .user-options .user-option--account .user-option-btn {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 12px;
-  padding: 8px 12px;
+  /* Inherits padding and border-radius from parent */
 }
 
 .user-options .user-option--account .user-option-btn:hover {
@@ -488,9 +489,7 @@
 
 /* Wishlist Button - Red Theme */
 .user-options .user-option:not(.user-option--account):not(.user-option--cart) .user-option-btn {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 12px;
-  padding: 8px 12px;
+  /* Inherits padding and border-radius from parent */
 }
 
 .user-options .user-option:not(.user-option--account):not(.user-option--cart) .user-option-btn:hover {
@@ -507,9 +506,7 @@
 
 /* Cart Button - Green Theme */
 .user-options .user-option--cart .user-option-btn {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 12px;
-  padding: 8px 12px;
+  /* Inherits padding and border-radius from parent */
 }
 
 .user-options .user-option--cart .user-option-btn:hover {
