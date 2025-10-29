@@ -100,6 +100,16 @@ public sealed class RedisRateLimitMiddleware
             pd.Extensions["limit"] = decision.Limit;
             pd.Extensions["window"] = Math.Max(1, (int)decision.Window.TotalSeconds);
             pd.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+            
+            // Add Rate Limit headers
+            retryAfter = Math.Max(0, (int)Math.Ceiling((decision.ResetAt - DateTimeOffset.UtcNow).TotalSeconds));
+            context.Response.Headers["Retry-After"] = retryAfter.ToString();
+            context.Response.Headers["X-RateLimit-Policy"] = cfg.Policy;
+            context.Response.Headers["X-RateLimit-Limit"] = decision.Limit.ToString();
+            context.Response.Headers["X-RateLimit-Remaining"] = remaining.ToString();
+            context.Response.Headers["X-RateLimit-Window"] = Math.Max(1, (int)decision.Window.TotalSeconds).ToString();
+            context.Response.Headers["X-RateLimit-Reset"] = decision.ResetAt.ToUnixTimeSeconds().ToString();
+            context.Response.Headers["X-RateLimit-Scope"] = "user";
 
             _logger.LogWarning("429 RateLimit policy={Policy} key={Key} path={Path} limit={Limit} remaining={Remaining}",
                 cfg.Policy, cfg.Key, context.Request.Path, decision.Limit, remaining);

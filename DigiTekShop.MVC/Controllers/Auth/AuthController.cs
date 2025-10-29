@@ -48,12 +48,23 @@ public sealed class AuthController : Controller
             // Handle 429 Rate Limiting specially
             if (result.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                var retryAfter = result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true 
-                    ? ra?.ToString() 
-                    : "30";
+                // Try to get retryAfter from headers or fallback to 30
+                var retryAfter = "30";
+                if (result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true)
+                {
+                    retryAfter = ra?.ToString() ?? "30";
+                }
+                else if (result.Problem?.Extensions?.TryGetValue("limit", out var limit) == true)
+                {
+                    // Fallback: use window seconds if available
+                    if (result.Problem.Extensions.TryGetValue("window", out var window))
+                    {
+                        retryAfter = window?.ToString() ?? "30";
+                    }
+                }
                 
                 return this.JsonError($"درخواست زیاد بود. لطفاً {retryAfter} ثانیه صبر کنید و دوباره تلاش کنید.", 
-                    new { retryAfter = int.Parse(retryAfter ?? "30") });
+                    new { retryAfter = int.Parse(retryAfter) });
             }
             
             return this.JsonError("خطا در ارسال کد. لطفاً دوباره تلاش کنید");
@@ -79,12 +90,23 @@ public sealed class AuthController : Controller
             // Handle 429 Rate Limiting specially
             if (result.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                var retryAfter = result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true 
-                    ? ra?.ToString() 
-                    : "30";
+                // Try to get retryAfter from headers or fallback to 30
+                var retryAfter = "30";
+                if (result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true)
+                {
+                    retryAfter = ra?.ToString() ?? "30";
+                }
+                else if (result.Problem?.Extensions?.TryGetValue("limit", out var limit) == true)
+                {
+                    // Fallback: use window seconds if available
+                    if (result.Problem.Extensions.TryGetValue("window", out var window))
+                    {
+                        retryAfter = window?.ToString() ?? "30";
+                    }
+                }
                 
                 return this.JsonError($"درخواست زیاد بود. لطفاً {retryAfter} ثانیه صبر کنید و دوباره تلاش کنید.", 
-                    new { retryAfter = int.Parse(retryAfter ?? "30") });
+                    new { retryAfter = int.Parse(retryAfter) });
             }
             
             return this.JsonError("کد تأیید اشتباه است. لطفاً دوباره تلاش کنید");

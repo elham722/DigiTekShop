@@ -83,8 +83,9 @@ public static class ResultToActionResultExtensions
         http.Response.Headers["X-RateLimit-Remaining"] = remaining.ToString();
         http.Response.Headers["X-RateLimit-Window"] = windowSeconds.ToString();
         http.Response.Headers["X-RateLimit-Reset"] = resetUnix.ToString();
+        http.Response.Headers["X-RateLimit-Scope"] = "user";
 
-        var retryAfter = Math.Max(0, (int)(DateTimeOffset.FromUnixTimeSeconds(resetUnix) - DateTimeOffset.UtcNow).TotalSeconds);
+        var retryAfter = Math.Max(0, (int)Math.Ceiling((DateTimeOffset.FromUnixTimeSeconds(resetUnix) - DateTimeOffset.UtcNow).TotalSeconds));
         http.Response.Headers["Retry-After"] = retryAfter.ToString();
 
         http.Response.Headers["Cache-Control"] = "no-store, max-age=0";
