@@ -70,13 +70,13 @@ public static class ResultToActionResultExtensions
     private static void MaybeSetRateLimitHeaders(HttpContext http, IReadOnlyDictionary<string, object?>? meta)
     {
         if (meta is null) return;
-        if (!meta.TryGetValue(Limit, out var limitObj)) return;
+        if (!meta.TryGetValue(RateLimitMetaKeys.Limit, out var limitObj)) return;
 
         int limit = Convert.ToInt32(limitObj);
-        int remaining = meta.TryGetValue(Remaining, out var remObj) ? Convert.ToInt32(remObj) : 0;
-        int windowSeconds = meta.TryGetValue(WindowSeconds, out var winObj) ? Convert.ToInt32(winObj) : 0;
-        long resetUnix = meta.TryGetValue(ResetAtUnix, out var rstObj) ? Convert.ToInt64(rstObj) : 0;
-        string policy = meta.TryGetValue(Policy, out var polObj) ? polObj?.ToString() ?? "default" : "default";
+        int remaining = meta.TryGetValue(RateLimitMetaKeys.Remaining, out var remObj) ? Convert.ToInt32(remObj) : 0;
+        int windowSeconds = meta.TryGetValue(RateLimitMetaKeys.WindowSeconds, out var winObj) ? Convert.ToInt32(winObj) : 0;
+        long resetUnix = meta.TryGetValue(RateLimitMetaKeys.ResetAtUnix, out var rstObj) ? Convert.ToInt64(rstObj) : 0;
+        string policy = meta.TryGetValue(RateLimitMetaKeys.Policy, out var polObj) ? polObj?.ToString() ?? "default" : "default";
 
         http.Response.Headers["X-RateLimit-Policy"] = policy;
         http.Response.Headers["X-RateLimit-Limit"] = limit.ToString();

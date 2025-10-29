@@ -68,7 +68,9 @@ public sealed class OtpAuthService : IAuthService
         var rlKey = $"otp:send:{phone}:{ipKey}";
         var d = await _rateLimiter.ShouldAllowAsync(rlKey, Math.Max(1, _phoneOpts.MaxSendPerWindow), win, ct);
         if (!d.Allowed)
-            return Result.Failure(ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
+            return Result.Failure(
+                ErrorCodes.Otp.OTP_SEND_RATE_LIMITED,                // error message (detail در Dev)
+                ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)                // errorCode — خیلی مهم
                 .WithRateLimit(d, policy: "OtpSendPolicy", key: rlKey, reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
 
         // 3) Optional strict counters
@@ -83,7 +85,9 @@ public sealed class OtpAuthService : IAuthService
                 ResetAt: DateTimeOffset.UtcNow.AddHours(1),
                 Ttl: null);
             
-            return Result.Failure(ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
+            return Result.Failure(
+                ErrorCodes.Otp.OTP_SEND_RATE_LIMITED,
+                ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
                 .WithRateLimit(fakeDecision, "OtpSendPolicy", $"otp:hour:{phone}", ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
         }
 
@@ -113,7 +117,9 @@ public sealed class OtpAuthService : IAuthService
             {
                 // تا زمان انقضای کد قبلی اجازه‌ی ارسال مجدد نده
                 var fakeDecision = BuildCooldownRateLimitDecision(lastPv.ExpiresAtUtc, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
-                return Result.Failure(ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
+                return Result.Failure(
+                    ErrorCodes.Otp.OTP_SEND_RATE_LIMITED,
+                    ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
                     .WithRateLimit(fakeDecision, "OtpSendPolicy", "cooldown", ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
             }
             if (_phoneOpts.AllowResendCode)
@@ -122,7 +128,9 @@ public sealed class OtpAuthService : IAuthService
                 if (DateTime.UtcNow < nextAllowed)
                 {
                     var fakeDecision = BuildCooldownRateLimitDecision(nextAllowed, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
-                    return Result.Failure(ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
+                    return Result.Failure(
+                        ErrorCodes.Otp.OTP_SEND_RATE_LIMITED,
+                        ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
                         .WithRateLimit(fakeDecision, "OtpSendPolicy", "cooldown", ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
                 }
             }
@@ -241,7 +249,9 @@ public sealed class OtpAuthService : IAuthService
         {
             // 429 به‌جای 400 برای UX بهتر
             var fakeDecision = BuildCooldownRateLimitDecision(pv.ExpiresAtUtc, policy: "OtpVerifyPolicy", reason: ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
-            return Result<LoginResponseDto>.Failure(ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED)
+            return Result<LoginResponseDto>.Failure(
+                ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED,
+                ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED)
                 .WithRateLimit(fakeDecision, "OtpVerifyPolicy", "cooldown", ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
         }
 
@@ -253,7 +263,9 @@ public sealed class OtpAuthService : IAuthService
             var key = $"otp:verify:{pv.Id:N}";
             var d = await _rateLimiter.ShouldAllowAsync(key, _phoneOpts.MaxVerifyPerWindow, win, ct);
             if (!d.Allowed)
-                return Result<LoginResponseDto>.Failure(ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED)
+                return Result<LoginResponseDto>.Failure(
+                    ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED,
+                    ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED)
                     .WithRateLimit(d, "OtpVerifyPolicy", key, ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
         }
 
