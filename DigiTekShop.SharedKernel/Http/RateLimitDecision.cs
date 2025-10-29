@@ -1,4 +1,4 @@
-﻿namespace DigiTekShop.Contracts.DTOs.RateLimit;
+namespace DigiTekShop.SharedKernel.Http;
 
 public readonly record struct RateLimitDecision(
     bool Allowed,       

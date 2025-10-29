@@ -1,4 +1,4 @@
-﻿using DigiTekShop.Contracts.DTOs.RateLimit;
+﻿using DigiTekShop.SharedKernel.Http;
 using static DigiTekShop.SharedKernel.Http.RateLimitMetaKeys;
 
 namespace DigiTekShop.SharedKernel.Results;

@@ -1,4 +1,4 @@
-using DigiTekShop.Contracts.DTOs.RateLimit;
+using DigiTekShop.SharedKernel.Http;
 
 namespace DigiTekShop.Contracts.Abstractions.Caching;
 

@@ -156,8 +156,8 @@ builder.Services.AddHealthChecks().AddCheck<SmtpHealthCheck>("smtp_config");
 
 #region Error Handling
 
-builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 #endregion
 

@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using DigiTekShop.Identity.Events.PhoneVerification;
 using DigiTekShop.SharedKernel.Exceptions.Common;
+using DigiTekShop.SharedKernel.Http;
 
 namespace DigiTekShop.Identity.Services.OtpAuth;
 
@@ -73,10 +74,18 @@ public sealed class OtpAuthService : IAuthService
         // 3) Optional strict counters
         var tight = await EnforceCountersAsync(phone, ipKey, _phoneOpts.Security, ct);
         if (tight.IsFailure)
-            throw RateLimitedException.FromRaw(
-                count: 0, limit: _phoneOpts.Security.MaxRequestsPerHour,
-                window: TimeSpan.FromHours(1), resetAt: DateTimeOffset.UtcNow.AddHours(1),
-                policy: "OtpSendPolicy", key: $"otp:hour:{phone}", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
+        {
+            var fakeDecision = new RateLimitDecision(
+                Allowed: false,
+                Count: 1,
+                Limit: _phoneOpts.Security.MaxRequestsPerHour,
+                Window: TimeSpan.FromHours(1),
+                ResetAt: DateTimeOffset.UtcNow.AddHours(1),
+                Ttl: null);
+            
+            return Result.Failure(ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
+                .WithRateLimit(fakeDecision, "OtpSendPolicy", $"otp:hour:{phone}", ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
+        }
 
         // 4) Find/Create user
         var user = await _db.Users
@@ -103,13 +112,19 @@ public sealed class OtpAuthService : IAuthService
             if (!_phoneOpts.AllowResendCode && lastPv.ExpiresAtUtc > DateTime.UtcNow)
             {
                 // تا زمان انقضای کد قبلی اجازه‌ی ارسال مجدد نده
-                throw BuildCooldownRateLimit(lastPv.ExpiresAtUtc, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
+                var fakeDecision = BuildCooldownRateLimitDecision(lastPv.ExpiresAtUtc, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
+                return Result.Failure(ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
+                    .WithRateLimit(fakeDecision, "OtpSendPolicy", "cooldown", ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
             }
             if (_phoneOpts.AllowResendCode)
             {
                 var nextAllowed = lastPv.CreatedAtUtc.Add(_phoneOpts.ResendCooldown);
                 if (DateTime.UtcNow < nextAllowed)
-                    throw BuildCooldownRateLimit(nextAllowed, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
+                {
+                    var fakeDecision = BuildCooldownRateLimitDecision(nextAllowed, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
+                    return Result.Failure(ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
+                        .WithRateLimit(fakeDecision, "OtpSendPolicy", "cooldown", ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
+                }
             }
         }
 
@@ -225,7 +240,9 @@ public sealed class OtpAuthService : IAuthService
         if (!pv.IsValid(DateTime.UtcNow, _phoneOpts.MaxAttempts))
         {
             // 429 به‌جای 400 برای UX بهتر
-            throw BuildCooldownRateLimit(pv.ExpiresAtUtc, policy: "OtpVerifyPolicy", reason: ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
+            var fakeDecision = BuildCooldownRateLimitDecision(pv.ExpiresAtUtc, policy: "OtpVerifyPolicy", reason: ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
+            return Result<LoginResponseDto>.Failure(ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED)
+                .WithRateLimit(fakeDecision, "OtpVerifyPolicy", "cooldown", ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
         }
 
         // (اختیاری) ریت‌لیمیت شبکه‌ای برای Verify (مستقل از attempts)
@@ -236,7 +253,8 @@ public sealed class OtpAuthService : IAuthService
             var key = $"otp:verify:{pv.Id:N}";
             var d = await _rateLimiter.ShouldAllowAsync(key, _phoneOpts.MaxVerifyPerWindow, win, ct);
             if (!d.Allowed)
-                throw d.ToException(policy: "OtpVerifyPolicy", key: key, reason: ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
+                return Result<LoginResponseDto>.Failure(ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED)
+                    .WithRateLimit(d, "OtpVerifyPolicy", key, ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
         }
 
         // Verify code (constant-time)
@@ -341,6 +359,24 @@ public sealed class OtpAuthService : IAuthService
             policy: policy,
             key: "cooldown",
             reason: reason
+        );
+    }
+
+    private static RateLimitDecision BuildCooldownRateLimitDecision(DateTime expiresAtUtc, string policy, string reason)
+    {
+        var expUtc = DateTime.SpecifyKind(expiresAtUtc, DateTimeKind.Utc);
+        var nowUtc = DateTime.UtcNow;
+
+        var window = expUtc > nowUtc ? (expUtc - nowUtc) : TimeSpan.FromSeconds(1);
+        var resetAt = new DateTimeOffset(expUtc, TimeSpan.Zero); 
+
+        return new RateLimitDecision(
+            Allowed: false,
+            Count: 1,
+            Limit: 1,
+            Window: window,
+            ResetAt: resetAt,
+            Ttl: null
         );
     }
 

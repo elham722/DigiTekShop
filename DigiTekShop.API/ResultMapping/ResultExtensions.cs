@@ -1,6 +1,8 @@
 ﻿#nullable enable
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
+using DigiTekShop.SharedKernel.Http;
+using static DigiTekShop.SharedKernel.Http.RateLimitMetaKeys;
 using System.Diagnostics;
 using HeaderNames = DigiTekShop.API.Common.Http.HeaderNames;
 
@@ -19,6 +21,9 @@ public static class ResultToActionResultExtensions
             var traceId = GetTraceId(c.HttpContext);
             var payload = result.Value;
 
+            // Set Rate Limit headers if present
+            MaybeSetRateLimitHeaders(c.HttpContext, result.Metadata);
+
             if (createdLocationFactory is not null && payload is not null)
             {
                 var location = createdLocationFactory(payload);
@@ -29,6 +34,9 @@ public static class ResultToActionResultExtensions
             return c.StatusCode(okStatus, new ApiResponse<T?>(payload, TraceId: traceId, Timestamp: DateTimeOffset.UtcNow));
         }
 
+        // Set Rate Limit headers if present (for failures)
+        MaybeSetRateLimitHeaders(c.HttpContext, result.Metadata);
+
         var info = ErrorCatalog.Resolve(result.ErrorCode);
         var pd = BuildProblemDetails(c.HttpContext!, info.HttpStatus, info.Code, info.DefaultMessage, result.Errors);
         return c.StatusCode(info.HttpStatus, pd).WithProblemContentType();
@@ -36,7 +44,15 @@ public static class ResultToActionResultExtensions
 
     public static IActionResult ToActionResult(this ControllerBase c, Result result, int okStatus = StatusCodes.Status204NoContent)
     {
-        if (result.IsSuccess) return c.StatusCode(okStatus);
+        if (result.IsSuccess) 
+        {
+            // Set Rate Limit headers if present
+            MaybeSetRateLimitHeaders(c.HttpContext, result.Metadata);
+            return c.StatusCode(okStatus);
+        }
+
+        // Set Rate Limit headers if present (for failures)
+        MaybeSetRateLimitHeaders(c.HttpContext, result.Metadata);
 
         var info = ErrorCatalog.Resolve(result.ErrorCode);
         var pd = BuildProblemDetails(c.HttpContext!, info.HttpStatus, info.Code, info.DefaultMessage, result.Errors);
@@ -50,6 +66,29 @@ public static class ResultToActionResultExtensions
         ?? (http.Items.TryGetValue(HeaderNames.CorrelationId, out var cid) && cid is string s && !string.IsNullOrWhiteSpace(s) ? s : null)
         ?? http.TraceIdentifier
         ?? Guid.NewGuid().ToString();
+
+    private static void MaybeSetRateLimitHeaders(HttpContext http, IReadOnlyDictionary<string, object?>? meta)
+    {
+        if (meta is null) return;
+        if (!meta.TryGetValue(Limit, out var limitObj)) return;
+
+        int limit = Convert.ToInt32(limitObj);
+        int remaining = meta.TryGetValue(Remaining, out var remObj) ? Convert.ToInt32(remObj) : 0;
+        int windowSeconds = meta.TryGetValue(WindowSeconds, out var winObj) ? Convert.ToInt32(winObj) : 0;
+        long resetUnix = meta.TryGetValue(ResetAtUnix, out var rstObj) ? Convert.ToInt64(rstObj) : 0;
+        string policy = meta.TryGetValue(Policy, out var polObj) ? polObj?.ToString() ?? "default" : "default";
+
+        http.Response.Headers["X-RateLimit-Policy"] = policy;
+        http.Response.Headers["X-RateLimit-Limit"] = limit.ToString();
+        http.Response.Headers["X-RateLimit-Remaining"] = remaining.ToString();
+        http.Response.Headers["X-RateLimit-Window"] = windowSeconds.ToString();
+        http.Response.Headers["X-RateLimit-Reset"] = resetUnix.ToString();
+
+        var retryAfter = Math.Max(0, (int)(DateTimeOffset.FromUnixTimeSeconds(resetUnix) - DateTimeOffset.UtcNow).TotalSeconds);
+        http.Response.Headers["Retry-After"] = retryAfter.ToString();
+
+        http.Response.Headers["Cache-Control"] = "no-store, max-age=0";
+    }
 
     private static Microsoft.AspNetCore.Mvc.ProblemDetails BuildProblemDetails(
         HttpContext http, int status, string errorCode, string defaultMessage, IEnumerable<string>? errors)

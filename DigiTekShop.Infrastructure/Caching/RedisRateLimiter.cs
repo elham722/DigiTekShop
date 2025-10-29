@@ -1,7 +1,7 @@
 ﻿namespace DigiTekShop.Infrastructure.Caching;
 
 using DigiTekShop.Contracts.Abstractions.Caching;
-using DigiTekShop.Contracts.DTOs.RateLimit;
+using DigiTekShop.SharedKernel.Http;
 using StackExchange.Redis;
 
 public sealed class RedisRateLimiter : IRateLimiter
