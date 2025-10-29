@@ -10,14 +10,19 @@ public class Result
     public IReadOnlyList<string> Errors { get; }
     public string? ErrorCode { get; }
     public DateTimeOffset Timestamp { get; }
+    public IReadOnlyDictionary<string, object?>? Metadata { get; }
 
-    protected Result(bool isSuccess, IEnumerable<string>? errors, string? errorCode = null)
+    protected Result(
+        bool isSuccess,
+        IEnumerable<string>? errors,
+        string? errorCode = null,
+        IReadOnlyDictionary<string, object?>? metadata = null)
     {
         IsSuccess = isSuccess;
 
         var list = (errors ?? Array.Empty<string>())
-                   .Where(e => !string.IsNullOrWhiteSpace(e))
-                   .ToArray();
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .ToArray();
 
         if (!isSuccess && list.Length == 0)
             throw new ArgumentException("Failure result must contain at least one error.", nameof(errors));
@@ -25,14 +30,17 @@ public class Result
         Errors = list.ToImmutableArray();
         ErrorCode = errorCode;
         Timestamp = DateTimeOffset.UtcNow;
+        Metadata = metadata;
     }
 
     public void Deconstruct(out bool ok, out IReadOnlyList<string> errors)
     { ok = IsSuccess; errors = Errors; }
 
-    public static Result Success() => new(true, Array.Empty<string>());
-    public static Result Failure(string error, string? errorCode = null) => new(false, new[] { error }, errorCode);
-    public static Result Failure(IEnumerable<string> errors, string? errorCode = null) => new(false, errors, errorCode);
+    public static Result Success() => new(true, Array.Empty<string>(), null, null);
+    public static Result Failure(string error, string? errorCode = null)
+        => new(false, new[] { error }, errorCode, null);
+    public static Result Failure(IEnumerable<string> errors, string? errorCode = null)
+        => new(false, errors, errorCode, null);
 
     public static Result FromException(Exception ex, string? errorCode = null)
         => Failure(ex.Message, errorCode ?? ex.GetType().Name);
@@ -43,7 +51,27 @@ public class Result
     public static implicit operator Result(string error) => Failure(error);
     public static implicit operator Result(List<string> errors) => Failure(errors);
 
-   
+    public Result WithMeta(string key, object? value)
+    {
+        var dict = (Metadata as ImmutableDictionary<string, object?>)
+                   ?? ImmutableDictionary<string, object?>.Empty;
+
+        var updated = value is null ? dict.Remove(key) : dict.SetItem(key, value);
+        return new Result(IsSuccess, Errors, ErrorCode, updated);
+    }
+
+    public bool TryGetMeta<T>(string key, out T? value)
+    {
+        value = default;
+        if (Metadata is null) return false;
+        if (Metadata.TryGetValue(key, out var obj) && obj is T t)
+        {
+            value = t;
+            return true;
+        }
+        return false;
+    }
+
     public Result<TOut> Map<TOut>(Func<TOut> mapper)
         => IsSuccess ? Result<TOut>.Success(mapper()) : Result<TOut>.Failure(Errors, ErrorCode);
 

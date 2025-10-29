@@ -1,7 +1,8 @@
-﻿using DigiTekShop.API.Common.Http;
+﻿#nullable enable
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Results;
 using System.Diagnostics;
+using HeaderNames = DigiTekShop.API.Common.Http.HeaderNames;
 
 namespace DigiTekShop.API.ResultMapping;
 
@@ -11,8 +12,7 @@ public static class ResultToActionResultExtensions
         this ControllerBase c,
         Result<T> result,
         int okStatus = StatusCodes.Status200OK,
-        Func<T, string?>? createdLocationFactory = null 
-    )
+        Func<T, string?>? createdLocationFactory = null)
     {
         if (result.IsSuccess)
         {
@@ -34,7 +34,6 @@ public static class ResultToActionResultExtensions
         return c.StatusCode(info.HttpStatus, pd).WithProblemContentType();
     }
 
-
     public static IActionResult ToActionResult(this ControllerBase c, Result result, int okStatus = StatusCodes.Status204NoContent)
     {
         if (result.IsSuccess) return c.StatusCode(okStatus);
@@ -47,10 +46,10 @@ public static class ResultToActionResultExtensions
     #region Helpers
 
     private static string GetTraceId(HttpContext http) =>
-       Activity.Current?.Id
-       ?? (http.Items.TryGetValue(HeaderNames.CorrelationId, out var cid) && cid is string s && !string.IsNullOrWhiteSpace(s) ? s : null)
-       ?? http.TraceIdentifier
-       ?? Guid.NewGuid().ToString();
+        Activity.Current?.Id
+        ?? (http.Items.TryGetValue(HeaderNames.CorrelationId, out var cid) && cid is string s && !string.IsNullOrWhiteSpace(s) ? s : null)
+        ?? http.TraceIdentifier
+        ?? Guid.NewGuid().ToString();
 
     private static Microsoft.AspNetCore.Mvc.ProblemDetails BuildProblemDetails(
         HttpContext http, int status, string errorCode, string defaultMessage, IEnumerable<string>? errors)
@@ -58,7 +57,6 @@ public static class ResultToActionResultExtensions
         var env = http.RequestServices.GetRequiredService<IWebHostEnvironment>();
         var path = http.Request.Path.HasValue ? http.Request.Path.Value : null;
         var traceId = GetTraceId(http);
-
 
         var title = status switch
         {
@@ -68,12 +66,11 @@ public static class ResultToActionResultExtensions
             StatusCodes.Status404NotFound => "The requested resource was not found.",
             StatusCodes.Status409Conflict => "A conflict occurred.",
             StatusCodes.Status422UnprocessableEntity => "The request could not be processed.",
+            StatusCodes.Status429TooManyRequests => "Too Many Requests", 
             _ => "An error occurred."
         };
 
-
         var detail = defaultMessage;
-
 
         if (env.IsDevelopment() && errors is not null)
         {
@@ -90,7 +87,6 @@ public static class ResultToActionResultExtensions
             Detail = detail,
             Instance = path
         };
-
 
         pd.Extensions["traceId"] = traceId;
         pd.Extensions["code"] = errorCode;
@@ -127,9 +123,5 @@ public static class ResultToActionResultExtensions
         return result;
     }
 
-
     #endregion
-
-
-
 }

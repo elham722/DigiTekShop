@@ -1,11 +1,12 @@
-﻿using System.Diagnostics;
-using DigiTekShop.API.Common.Http;
+﻿#nullable enable
 using DigiTekShop.SharedKernel.Errors;
 using DigiTekShop.SharedKernel.Exceptions.Common;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Diagnostics;
+using HeaderNames = DigiTekShop.API.Common.Http.HeaderNames;
 
 namespace DigiTekShop.API.ErrorHandling;
 
@@ -36,10 +37,30 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
         else
             _logger.LogError(ex, "Unhandled exception (traceId={TraceId})", traceId);
 
-       
+        // --- DomainException: با پوشش هدرهای RateLimit ---
         if (ex is DomainException dex)
         {
             var info = ErrorCatalog.Resolve(dex.Code) ?? ErrorCatalog.Resolve(ErrorCodes.Common.INTERNAL_ERROR)!;
+
+            if (IsRateLimitCode(dex.Code) && dex.Metadata is { Count: > 0 })
+            {
+                int limit = TryGet<int>(dex.Metadata, RateLimitedException.Meta.Limit);
+                int remaining = Math.Max(0, TryGet<int>(dex.Metadata, RateLimitedException.Meta.Remaining));
+                int windowSecs = Math.Max(1, TryGet<int>(dex.Metadata, RateLimitedException.Meta.WindowSeconds));
+                long resetUnix = TryGet<long>(dex.Metadata, RateLimitedException.Meta.ResetAtUnix);
+                var policy = TryGet<string>(dex.Metadata, RateLimitedException.Meta.Policy) ?? "default";
+
+                http.Response.Headers["X-RateLimit-Policy"] = policy;
+                http.Response.Headers["X-RateLimit-Limit"] = limit.ToString();
+                http.Response.Headers["X-RateLimit-Remaining"] = remaining.ToString();
+                http.Response.Headers["X-RateLimit-Reset"] = resetUnix.ToString();
+                http.Response.Headers["X-RateLimit-Window"] = windowSecs.ToString();
+
+                var retryAfter = Math.Max(0, (int)(DateTimeOffset.FromUnixTimeSeconds(resetUnix) - DateTimeOffset.UtcNow).TotalSeconds);
+                http.Response.Headers["Retry-After"] = retryAfter.ToString();
+                http.Response.Headers["Cache-Control"] = "no-store, max-age=0";
+            }
+
             var extras = new Dictionary<string, object?>
             {
                 ["traceId"] = traceId,
@@ -56,11 +77,16 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
                 extras["meta"] = dex.Metadata;
 
             var detail = _env.IsDevelopment() ? (dex.Message ?? info.DefaultMessage) : info.DefaultMessage;
-            await WriteAsync(http, info.HttpStatus, info.Title ?? info.Code, detail, extras, ct);
+
+            var title = info.Title ?? (info.HttpStatus == StatusCodes.Status429TooManyRequests
+                ? "Too Many Requests"
+                : info.Code);
+
+            await WriteAsync(http, info.HttpStatus, title, detail, extras, ct);
             return true;
         }
 
-        
+        // --- FluentValidation ---
         if (ex is ValidationException vex)
         {
             var info = ErrorCatalog.Resolve(ErrorCodes.Common.VALIDATION_FAILED)!;
@@ -80,7 +106,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             return true;
         }
 
-      
+        // --- Concurrency ---
         if (ex is DbUpdateConcurrencyException)
         {
             var info = ErrorCatalog.Resolve(ErrorCodes.Common.CONCURRENCY_CONFLICT)!;
@@ -90,7 +116,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             return true;
         }
 
-       
+        // --- JWT ---
         if (ex is SecurityTokenExpiredException)
         {
             http.Response.Headers["WWW-Authenticate"] =
@@ -111,7 +137,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             return true;
         }
 
-        
+        // --- سایر موارد ---
         if (ex is UnauthorizedAccessException)
         {
             var info = ErrorCatalog.Resolve(ErrorCodes.Common.FORBIDDEN) ?? new ErrorInfo("FORBIDDEN", 403, "Forbidden");
@@ -139,24 +165,21 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             return true;
         }
 
-        
         if (ex is OperationCanceledException)
         {
             var extras = new Dictionary<string, object?> { ["traceId"] = traceId, ["code"] = "REQUEST_CANCELED" };
             if (http.RequestAborted.IsCancellationRequested)
             {
-                
                 await WriteAsync(http, 499, "Client Closed Request",
                     _env.IsDevelopment() ? "Client cancelled the request." : "Request was cancelled.", extras, ct);
                 return true;
             }
-            
             await WriteAsync(http, 408, "Request Timeout",
                 _env.IsDevelopment() ? "Request was canceled by the server." : "Request timed out.", extras, ct);
             return true;
         }
 
-        
+        // --- Fallback 500 ---
         {
             var info = ErrorCatalog.Resolve(ErrorCodes.Common.INTERNAL_ERROR)!;
             var extras = new Dictionary<string, object?> { ["traceId"] = traceId, ["code"] = info.Code };
@@ -177,16 +200,14 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
         http.Response.StatusCode = status;
         http.Response.ContentType = "application/problem+json";
 
-        
-        string codeId;
-        if (extras != null && extras.TryGetValue("code", out var codeObj) && codeObj is not null)
-            codeId = codeObj.ToString()!;
-        else
-            codeId = status.ToString();
+        var codeId =
+            (extras != null && extras.TryGetValue("code", out var codeObj) && codeObj is not null)
+                ? codeObj.ToString()!
+                : status.ToString();
 
         var pd = new Microsoft.AspNetCore.Mvc.ProblemDetails
         {
-            Type = $"urn:problem:{codeId}",
+            Type = $"urn:problem:{codeId.ToLowerInvariant()}",
             Title = title,
             Status = status,
             Detail = detail,
@@ -202,5 +223,23 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
         await http.Response.WriteAsJsonAsync(pd, ct);
     }
 
+    private static bool IsRateLimitCode(string? code)
+        => string.Equals(code, ErrorCodes.Common.RATE_LIMIT_EXCEEDED, StringComparison.Ordinal)
+        || string.Equals(code, ErrorCodes.Otp.OTP_SEND_RATE_LIMITED, StringComparison.Ordinal)
+        || string.Equals(code, ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED, StringComparison.Ordinal);
 
+    // ✅ امضای متد اصلاح شد تا با IReadOnlyDictionary سازگار باشد
+    private static T TryGet<T>(IReadOnlyDictionary<string, object?> meta, string key)
+    {
+        if (meta.TryGetValue(key, out var v))
+        {
+            if (v is T t) return t;
+            try
+            {
+                if (v is not null) return (T)Convert.ChangeType(v, typeof(T));
+            }
+            catch { /* ignore */ }
+        }
+        return default!;
+    }
 }

@@ -1,5 +1,7 @@
-using DigiTekShop.Application.Auth.LoginOrRegister.Commands;
+﻿using DigiTekShop.Application.Auth.LoginOrRegister.Commands;
 using DigiTekShop.Contracts.DTOs.Auth.LoginOrRegister;
+using DigiTekShop.API.ResultMapping;                     // ToActionResult
+using Microsoft.AspNetCore.Mvc;
 
 namespace DigiTekShop.API.Controllers.Auth.V1;
 
@@ -24,20 +26,41 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("send-otp")]
     [AllowAnonymous]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // جلوگیری از کش‌شدن پاسخ
+    [ProducesResponseType(typeof(ApiResponse<object?>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpRequestDto dto, CancellationToken ct)
     {
+        using var scope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["cid"] = HttpContext.TraceIdentifier,
+            ["path"] = HttpContext.Request.Path.Value
+        });
+
         var result = await _sender.Send(new SendOtpCommand(dto), ct);
         return this.ToActionResult(result);
     }
 
     [HttpPost("verify-otp")]
     [AllowAnonymous]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponseDto?>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto dto, CancellationToken ct)
     {
+        using var scope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["cid"] = HttpContext.TraceIdentifier,
+            ["path"] = HttpContext.Request.Path.Value
+        });
+
         var result = await _sender.Send(new VerifyOtpCommand(dto), ct);
         return this.ToActionResult(result);
     }
-
 
     #endregion
 
@@ -48,23 +71,18 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<RefreshTokenResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)] // چون ریت‌لیمیت Refresh داریم
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken ct)
     {
         using var scope = _logger.BeginScope(new Dictionary<string, object?>
         {
-            ["cid"] = HttpContext.TraceIdentifier
+            ["cid"] = HttpContext.TraceIdentifier,
+            ["path"] = HttpContext.Request.Path.Value
         });
 
         _logger.LogInformation("Token refresh attempt");
-
         var result = await _sender.Send(new RefreshTokenCommand(request), ct);
-
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("Token refresh success");
-        }
-
+        if (result.IsSuccess) _logger.LogInformation("Token refresh success");
         return this.ToActionResult(result);
     }
 
@@ -76,21 +94,19 @@ public sealed class AuthController : ControllerBase
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)] // در صورت اعمال سیاست کلی
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct)
     {
         using var scope = _logger.BeginScope(new Dictionary<string, object?>
         {
             ["cid"] = HttpContext.TraceIdentifier,
-            ["userId"] = request.UserId
+            ["userId"] = request.UserId,
+            ["path"] = HttpContext.Request.Path.Value
         });
+
         _logger.LogInformation("Logout attempt");
         var result = await _sender.Send(new LogoutCommand(request), ct);
-        
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("Logout success");
-        }
-        
+        if (result.IsSuccess) _logger.LogInformation("Logout success");
         return this.ToActionResult(result);
     }
 
@@ -102,23 +118,19 @@ public sealed class AuthController : ControllerBase
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> LogoutAll([FromBody] LogoutAllRequest request, CancellationToken ct)
     {
         using var scope = _logger.BeginScope(new Dictionary<string, object?>
         {
             ["cid"] = HttpContext.TraceIdentifier,
-            ["userId"] = request.UserId
+            ["userId"] = request.UserId,
+            ["path"] = HttpContext.Request.Path.Value
         });
 
         _logger.LogInformation("Logout all sessions attempt");
-
         var result = await _sender.Send(new LogoutAllCommand(request), ct);
-        
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("Logout all sessions success");
-        }
-        
+        if (result.IsSuccess) _logger.LogInformation("Logout all sessions success");
         return this.ToActionResult(result);
     }
 

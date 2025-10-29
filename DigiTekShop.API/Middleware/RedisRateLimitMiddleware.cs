@@ -1,11 +1,13 @@
-﻿using System.Net;
+﻿#nullable enable
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using DigiTekShop.Contracts.Abstractions.Caching;
 using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.Contracts.Options.Phone;
-using DigiTekShop.Contracts.Abstractions.Caching;
 using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
 
 namespace DigiTekShop.API.Middleware;
 
@@ -33,43 +35,76 @@ public sealed class RedisRateLimitMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // --- bypass ---
-        var m = context.Request.Method;
-        if (HttpMethods.IsOptions(m) || HttpMethods.IsHead(m))
+        // --- Bypass های بدون معنی برای ریت‌لیمیت ---
+        var method = context.Request.Method;
+        if (HttpMethods.IsOptions(method) || HttpMethods.IsHead(method))
         { await _next(context); return; }
 
-        var p = context.Request.Path.Value?.ToLowerInvariant() ?? "";
-        if (p.StartsWith("/swagger") || p.StartsWith("/health") || p.StartsWith("/favicon"))
+        var pathLower = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+        if (pathLower.StartsWith("/swagger") || pathLower.StartsWith("/health") || pathLower.StartsWith("/favicon"))
         { await _next(context); return; }
 
+        // پالیسی مناسب را پیدا کن
         var cfg = await GetRateLimitConfigAsync(context);
         if (cfg is null)
         { await _next(context); return; }
 
-        var key = cfg.Key;
-        var decision = await _rateLimiter.ShouldAllowAsync(key, cfg.Limit, cfg.Window, context.RequestAborted);
+        // تصمیم ریت‌لیمیت
+        var decision = await _rateLimiter.ShouldAllowAsync(cfg.Key, cfg.Limit, cfg.Window, context.RequestAborted);
 
-        // headers
+        // از خودِ decision بخوانیم تا منسجم بماند
+        var remaining = Math.Max(0, decision.Limit - (int)decision.Count);
+
+        // هدرهای استاندارد (همیشه ست شوند)
         context.Response.Headers["X-RateLimit-Policy"] = cfg.Policy;
-        context.Response.Headers["X-RateLimit-Limit"] = cfg.Limit.ToString();
-        context.Response.Headers["X-RateLimit-Window"] = ((int)cfg.Window.TotalSeconds).ToString();
-        context.Response.Headers["X-RateLimit-Remaining"] = Math.Max(0, cfg.Limit - (int)decision.Count).ToString();
-        if (decision.Ttl is { } ttl)
-            context.Response.Headers["Retry-After"] = Math.Max(0, (int)ttl.TotalSeconds).ToString();
+        context.Response.Headers["X-RateLimit-Limit"] = decision.Limit.ToString();
+        context.Response.Headers["X-RateLimit-Remaining"] = remaining.ToString();
+        context.Response.Headers["X-RateLimit-Reset"] = decision.ResetAt.ToUnixTimeSeconds().ToString();
+        context.Response.Headers["X-RateLimit-Window"] = Math.Max(1, (int)decision.Window.TotalSeconds).ToString();
 
         if (!decision.Allowed)
         {
-            context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-            context.Response.ContentType = "application/json";
-            _logger.LogWarning("429 RateLimit policy={Policy} key={Key} path={Path}", cfg.Policy, key, context.Request.Path);
-            await context.Response.WriteAsync(JsonSerializer.Serialize(new
+            // فقط در بلاک: Retry-After
+            var retryAfter = Math.Max(0, (int)(decision.ResetAt - DateTimeOffset.UtcNow).TotalSeconds);
+            context.Response.Headers["Retry-After"] = retryAfter.ToString();
+
+            // Cache-Control: no-store برای جلوگیری از مشکلات Back/Forward
+            context.Response.Headers["Cache-Control"] = "no-store, max-age=0";
+
+            // code/type معنادار بر اساس policy
+            var errorCode =
+                cfg.Policy == "OtpSendPolicy" ? "OTP_SEND_RATE_LIMITED" :
+                cfg.Policy == "OtpVerifyPolicy" ? "OTP_VERIFY_RATE_LIMITED" :
+                "RATE_LIMIT_EXCEEDED";
+
+            var type = errorCode switch
             {
-                error = "RATE_LIMIT_EXCEEDED",
-                policy = cfg.Policy,
-                limit = cfg.Limit,
-                window = (int)cfg.Window.TotalSeconds,
-                retryAfter = decision.Ttl.HasValue ? Math.Max(0, (int)decision.Ttl.Value.TotalSeconds) : (int?)null
-            }));
+                "OTP_SEND_RATE_LIMITED" => "urn:problem:otp_send_rate_limited",
+                "OTP_VERIFY_RATE_LIMITED" => "urn:problem:otp_verify_rate_limited",
+                _ => "urn:problem:rate_limit_exceeded"
+            };
+
+            // ProblemDetails استاندارد
+            context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            context.Response.ContentType = "application/problem+json";
+            var pd = new Microsoft.AspNetCore.Mvc.ProblemDetails
+            {
+                Type = type,
+                Title = "Too Many Requests",
+                Status = StatusCodes.Status429TooManyRequests,
+                Detail = "You have exceeded the allowed number of requests.",
+                Instance = context.Request.Path
+            };
+            pd.Extensions["code"] = errorCode;
+            pd.Extensions["policy"] = cfg.Policy;
+            pd.Extensions["limit"] = decision.Limit;
+            pd.Extensions["window"] = Math.Max(1, (int)decision.Window.TotalSeconds);
+            pd.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+
+            _logger.LogWarning("429 RateLimit policy={Policy} key={Key} path={Path} limit={Limit} remaining={Remaining}",
+                cfg.Policy, cfg.Key, context.Request.Path, decision.Limit, remaining);
+
+            await context.Response.WriteAsJsonAsync(pd, context.RequestAborted);
             return;
         }
 
@@ -81,23 +116,34 @@ public sealed class RedisRateLimitMiddleware
         var path = ctx.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
         var method = ctx.Request.Method.ToUpperInvariant();
 
-        // Refresh Token
+        // Refresh Token (POST /auth/refresh)
         if (path.Contains("/auth/refresh") && method == "POST")
         {
             var key = BuildKey(ctx, "RefreshPolicy");
             return new("RefreshPolicy", 10, TimeSpan.FromMinutes(5), key);
         }
 
-        // OTP (send/verify) ← از PhoneVerificationOptions
-        if ((path.Contains("/auth/send-otp") || path.Contains("/auth/verify-otp")) && method == "POST")
+        // OTP Send (POST /auth/send-otp) - کلید مبتنی بر phone
+        if (path.Contains("/auth/send-otp") && method == "POST")
         {
-            var key = await BuildOtpKeyAsync(ctx, "OtpPolicy"); // شامل phone اگر شد
+            var key = await BuildOtpSendKeyAsync(ctx, "OtpSendPolicy");
             var limit = Math.Max(1, _phoneOpts.MaxSendPerWindow);
             var win = TimeSpan.FromSeconds(Math.Max(5, _phoneOpts.WindowSeconds));
-            return new("OtpPolicy", limit, win, key);
+            return new("OtpSendPolicy", limit, win, key);
         }
 
-        // سایر Auth POSTها ← از LoginFlowOptions.RateLimit
+        // OTP Verify (POST /auth/verify-otp) - کلید مبتنی بر flowId
+        if (path.Contains("/auth/verify-otp") && method == "POST")
+        {
+            var flowId = await TryReadJsonStringAsync(ctx, "flowId");
+            var baseKey = BuildKey(ctx, "OtpVerifyPolicy");
+            var key = string.IsNullOrWhiteSpace(flowId) ? baseKey : $"{baseKey}:flow:{flowId}";
+            var limit = Math.Max(1, _phoneOpts.MaxVerifyPerWindow);         // ← باید در Options باشد
+            var win = TimeSpan.FromSeconds(Math.Max(5, _phoneOpts.VerifyWindowSeconds)); // ← باید در Options باشد
+            return new("OtpVerifyPolicy", limit, win, key);
+        }
+
+        // سایر Auth POST ها - از LoginFlowOptions.RateLimit
         if (path.Contains("/auth/") && method == "POST")
         {
             var key = BuildKey(ctx, "AuthPolicy");
@@ -116,7 +162,7 @@ public sealed class RedisRateLimitMiddleware
         return null;
     }
 
-    // Key for general/Auth: uid if auth; else ip+device+ua
+    // کلید عمومی/Auth: اگر لاگین است uid، وگرنه ip+device(+ua برای AuthPolicy)
     private static string BuildKey(HttpContext ctx, string policy)
     {
         var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -126,23 +172,46 @@ public sealed class RedisRateLimitMiddleware
         if (ctx.User?.Identity?.IsAuthenticated == true)
         {
             var uid = ctx.User.Identity?.Name ?? "unknown";
-            if (policy is "AuthPolicy") // کماکان گرانول‌تر برای حملات لاگین
+            if (policy is "AuthPolicy")
                 return $"{policy}:uid:{uid}:ip:{ip}:dev:{dev}";
             return $"{policy}:uid:{uid}";
         }
 
-        var uaHash = Sha256(ctx.Request.Headers.UserAgent.ToString());
+        var ua = ctx.Request.Headers[HeaderNames.UserAgent].ToString();
+        var uaHash = Sha256(ua);
+
         if (policy is "AuthPolicy")
             return $"{policy}:ip:{ip}:dev:{dev}:ua:{uaHash}";
+
         return $"{policy}:ip:{ip}";
     }
 
-    // Key for OTP: include normalized phone if present (without consuming body)
-    private static async Task<string> BuildOtpKeyAsync(HttpContext ctx, string policy)
+    // کلید Send-OTP: تلاش برای خواندن phone از JSON body و normalize
+    private static async Task<string> BuildOtpSendKeyAsync(HttpContext ctx, string policy)
     {
         var baseKey = BuildKey(ctx, policy);
+        try
+        {
+            var phone = await TryReadJsonStringAsync(ctx, "phone");
+            var normalized = NormalizePhone(phone ?? "");
+            if (!string.IsNullOrWhiteSpace(normalized))
+                return $"{baseKey}:phone:{normalized}";
+        }
+        catch { /* ignore */ }
+        return baseKey;
+    }
 
-        // سعی می‌کنیم phone را از JSON body بخوانیم (safe)
+    private static string NormalizePhone(string phone)
+    {
+        var digits = new string((phone ?? string.Empty).Where(char.IsDigit).ToArray());
+        if (string.IsNullOrEmpty(digits)) return string.Empty;
+        if (digits.StartsWith("0")) digits = "98" + digits[1..];
+        if (!digits.StartsWith("98")) digits = "98" + digits; // محافظه‌کارانه
+        return "+" + digits;
+    }
+
+    private static async Task<string?> TryReadJsonStringAsync(HttpContext ctx, string prop)
+    {
         try
         {
             ctx.Request.EnableBuffering();
@@ -153,27 +222,12 @@ public sealed class RedisRateLimitMiddleware
             if (!string.IsNullOrWhiteSpace(body))
             {
                 using var doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("phone", out var phoneEl))
-                {
-                    var raw = phoneEl.GetString() ?? "";
-                    var normalized = NormalizePhone(raw);
-                    if (!string.IsNullOrWhiteSpace(normalized))
-                        return $"{baseKey}:phone:{normalized}";
-                }
+                if (doc.RootElement.TryGetProperty(prop, out var el))
+                    return el.GetString();
             }
         }
         catch { /* ignore */ }
-
-        return baseKey;
-    }
-
-    private static string NormalizePhone(string phone)
-    {
-        // نمونه‌ی ساده: حذف فاصله/خط تیره و جایگزینی 09… به +98…
-        var p = new string(phone.Where(char.IsDigit).ToArray());
-        if (p.StartsWith("0")) p = "98" + p[1..];
-        if (!p.StartsWith("98")) p = "98" + p; // محافظه‌کارانه
-        return "+" + p;
+        return null;
     }
 
     private static string Sha256(string s)

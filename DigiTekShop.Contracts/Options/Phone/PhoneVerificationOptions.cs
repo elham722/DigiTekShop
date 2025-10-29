@@ -17,5 +17,7 @@ public sealed class PhoneVerificationOptions
     public int TrustDeviceDays { get; set; } = 30;
 
     public int MaxSendPerWindow { get; set; } = 5;
-    public int WindowSeconds { get; set; } = 300; 
+    public int WindowSeconds { get; set; } = 60;
+    public int MaxVerifyPerWindow { get; set; } = 6;         
+    public int VerifyWindowSeconds { get; set; } = 900;
 }

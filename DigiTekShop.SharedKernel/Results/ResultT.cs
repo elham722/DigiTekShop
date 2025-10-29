@@ -5,16 +5,15 @@ public sealed class Result<T> : Result
 {
     public T? Value { get; }
 
-    private Result(T? value) : base(true, Array.Empty<string>())
-        => Value = value;
+    private Result(T? value, IReadOnlyDictionary<string, object?>? meta = null)
+        : base(true, Array.Empty<string>(), null, meta) => Value = value;
 
-    private Result(IEnumerable<string> errors, string? errorCode = null)
-        : base(false, errors, errorCode) => Value = default;
+    private Result(IEnumerable<string> errors, string? errorCode = null, IReadOnlyDictionary<string, object?>? meta = null)
+        : base(false, errors, errorCode, meta) => Value = default;
 
     public void Deconstruct(out bool ok, out T? value, out IReadOnlyList<string> errors)
     { ok = IsSuccess; value = Value; errors = Errors; }
 
-    
     public static Result<T> Success(T value)
     {
         if (value is null)
@@ -24,11 +23,28 @@ public sealed class Result<T> : Result
 
     public static Result<T> SuccessAllowNull(T? value) => new(value);
 
-    public static new Result<T> Failure(string error, string? errorCode = null) => new(new[] { error }, errorCode);
-    public static new Result<T> Failure(IEnumerable<string> errors, string? errorCode = null) => new(errors, errorCode);
+    public static new Result<T> Failure(string error, string? errorCode = null)
+        => new(new[] { error }, errorCode);
+
+    public static new Result<T> Failure(IEnumerable<string> errors, string? errorCode = null)
+        => new(errors, errorCode);
 
     public static Result<T> FromException(Exception ex, string? errorCode = null)
         => Failure(ex.Message, errorCode ?? ex.GetType().Name);
+
+    public Result<T> WithMeta(string key, object? value)
+    {
+        var baseMeta = Metadata?.ToDictionary(kv => kv.Key, kv => kv.Value)
+                       ?? new Dictionary<string, object?>(StringComparer.Ordinal);
+        if (value is null) baseMeta.Remove(key); else baseMeta[key] = value;
+        var im = System.Collections.Immutable.ImmutableDictionary.CreateRange(baseMeta);
+        return IsSuccess
+            ? new Result<T>(Value, im)
+            : new Result<T>(Errors, ErrorCode, im);
+    }
+
+    public bool TryGetMeta<TMeta>(string key, out TMeta? value)
+        => base.TryGetMeta(key, out value);
 
     public static Result<T> Try(Func<T> func, string? errorCode = null)
     {

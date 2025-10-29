@@ -54,6 +54,16 @@ public static class ErrorCatalog
         [Identity.DEVICE_EXISTS] = new(Identity.DEVICE_EXISTS, (int)HttpStatusCode.Conflict, "Device already exists."),
         [Identity.DEVICE_INACTIVE] = new(Identity.DEVICE_INACTIVE, (int)HttpStatusCode.Locked, "Device inactive."),
         [Identity.DEVICE_NOT_TRUSTED] = new(Identity.DEVICE_NOT_TRUSTED, (int)HttpStatusCode.Forbidden, "Device is not trusted."),
+
+        
+        [Otp.OTP_SEND_RATE_LIMITED] = new(Otp.OTP_SEND_RATE_LIMITED, (int)HttpStatusCode.TooManyRequests, "Too many OTP send requests.", "Too Many Requests"),
+        [Otp.OTP_VERIFY_RATE_LIMITED] = new(Otp.OTP_VERIFY_RATE_LIMITED, (int)HttpStatusCode.TooManyRequests, "Too many OTP verification attempts.", "Too Many Requests"),
+
+        [Otp.OTP_INVALID] = new(Otp.OTP_INVALID, (int)HttpStatusCode.UnprocessableEntity, "The verification code is incorrect.", "Unprocessable Entity"),
+        [Otp.OTP_EXPIRED] = new(Otp.OTP_EXPIRED, (int)HttpStatusCode.UnprocessableEntity, "The verification code has expired.", "Unprocessable Entity"),
+        [Otp.OTP_ALREADY_VERIFIED] = new(Otp.OTP_ALREADY_VERIFIED, (int)HttpStatusCode.Conflict, "The verification code was already used.", "Conflict"),
+        [Otp.OTP_NOT_REQUESTED] = new(Otp.OTP_NOT_REQUESTED, (int)HttpStatusCode.UnprocessableEntity, "No active OTP session for this request.", "Unprocessable Entity"),
+
     };
 
     public static ErrorInfo Resolve(string? code)

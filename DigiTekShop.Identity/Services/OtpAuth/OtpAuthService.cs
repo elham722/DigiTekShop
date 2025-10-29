@@ -1,4 +1,6 @@
-﻿using DigiTekShop.Identity.Events.PhoneVerification;
+﻿#nullable enable
+using DigiTekShop.Identity.Events.PhoneVerification;
+using DigiTekShop.SharedKernel.Exceptions.Common;
 
 namespace DigiTekShop.Identity.Services.OtpAuth;
 
@@ -45,66 +47,41 @@ public sealed class OtpAuthService : IAuthService
         _log = log;
     }
 
+    // --------------------------------------------------------------------
+    // Send OTP
+    // --------------------------------------------------------------------
     public async Task<Result> SendOtpAsync(SendOtpRequestDto dto, CancellationToken ct)
     {
         var ip = _client.IpAddress ?? "n/a";
         var ua = _client.UserAgent ?? "n/a";
         var deviceId = _client.DeviceId ?? "unknown";
 
-        // Normalize & validate phone
+        // 1) Normalize & validate
         var phone = Normalization.NormalizePhoneIranE164(dto.Phone);
-        if (string.IsNullOrWhiteSpace(phone))
+        if (string.IsNullOrWhiteSpace(phone) || !Regex.IsMatch(phone, _phoneOpts.Security.AllowedPhonePattern))
             return Result.Failure(ErrorCodes.Common.VALIDATION_FAILED);
 
-        if (!Regex.IsMatch(phone, _phoneOpts.Security.AllowedPhonePattern))
-            return Result.Failure(ErrorCodes.Common.VALIDATION_FAILED);
-
-        // Rate-limit (phone + ip windowed)
+        // 2) Rate-limit (phone + ip windowed) → throw RateLimitedException تا Handler هدرها را ست کند
         var ipKey = Hashing.Sha256Base64Url(ip);
-        var win = TimeSpan.FromSeconds(_phoneOpts.WindowSeconds);
+        var win = TimeSpan.FromSeconds(Math.Max(5, _phoneOpts.WindowSeconds));
         var rlKey = $"otp:send:{phone}:{ipKey}";
-        var d = await _rateLimiter.ShouldAllowAsync(rlKey, _phoneOpts.MaxSendPerWindow, win, ct);
+        var d = await _rateLimiter.ShouldAllowAsync(rlKey, Math.Max(1, _phoneOpts.MaxSendPerWindow), win, ct);
         if (!d.Allowed)
-            return Result.Failure(ErrorCodes.Common.RATE_LIMIT_EXCEEDED);
+            return Result.Failure(ErrorCodes.Otp.OTP_SEND_RATE_LIMITED)
+                .WithRateLimit(d, policy: "OtpSendPolicy", key: rlKey, reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
 
-        // Optional strict counters (hour/day/month/ip)
+        // 3) Optional strict counters
         var tight = await EnforceCountersAsync(phone, ipKey, _phoneOpts.Security, ct);
-        if (tight.IsFailure) return tight;
+        if (tight.IsFailure)
+            throw RateLimitedException.FromRaw(
+                count: 0, limit: _phoneOpts.Security.MaxRequestsPerHour,
+                window: TimeSpan.FromHours(1), resetAt: DateTimeOffset.UtcNow.AddHours(1),
+                policy: "OtpSendPolicy", key: $"otp:hour:{phone}", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
 
-        // Find user (ignore soft delete)
+        // 4) Find/Create user
         var user = await _db.Users
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.NormalizedPhoneNumber == phone && !u.IsDeleted, ct);
-
-        // Resend cooldown: find last unverified (by user or phone)
-        PhoneVerification? lastPv = null;
-        if (user is not null)
-        {
-            lastPv = await _db.PhoneVerifications
-                .OrderByDescending(x => x.CreatedAtUtc)
-                .FirstOrDefaultAsync(x => x.UserId == user.Id && !x.IsVerified, ct);
-        }
-        if (lastPv is null)
-        {
-            lastPv = await _db.PhoneVerifications
-                .OrderByDescending(x => x.CreatedAtUtc)
-                .FirstOrDefaultAsync(x => x.PhoneNumber == phone && !x.IsVerified, ct);
-        }
-
-        if (lastPv is not null)
-        {
-            if (!_phoneOpts.AllowResendCode)
-            {
-                if (lastPv.ExpiresAtUtc > DateTime.UtcNow)
-                    return Result.Failure(ErrorCodes.Common.RATE_LIMIT_EXCEEDED);
-            }
-            else
-            {
-                var nextAllowed = lastPv.CreatedAtUtc.Add(_phoneOpts.ResendCooldown);
-                if (DateTime.UtcNow < nextAllowed)
-                    return Result.Failure(ErrorCodes.Common.RATE_LIMIT_EXCEEDED);
-            }
-        }
 
         if (user is null)
         {
@@ -119,15 +96,30 @@ public sealed class OtpAuthService : IAuthService
             }
         }
 
-        // Generate code + hash + protect
+        // 5) Resend cooldown
+        var lastPv = await FindLastActiveUnverifiedPVAsync(user.Id, phone, ct);
+        if (lastPv is not null)
+        {
+            if (!_phoneOpts.AllowResendCode && lastPv.ExpiresAtUtc > DateTime.UtcNow)
+            {
+                // تا زمان انقضای کد قبلی اجازه‌ی ارسال مجدد نده
+                throw BuildCooldownRateLimit(lastPv.ExpiresAtUtc, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
+            }
+            if (_phoneOpts.AllowResendCode)
+            {
+                var nextAllowed = lastPv.CreatedAtUtc.Add(_phoneOpts.ResendCooldown);
+                if (DateTime.UtcNow < nextAllowed)
+                    throw BuildCooldownRateLimit(nextAllowed, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
+            }
+        }
+
+        // 6) Generate/Upsert PV
         var code = GenerateNumericCode(_phoneOpts.CodeLength);
         var codeHash = HashOtp(code, _phoneOpts.CodeHashSecret);
-        var protectedCode = _crypto.Encrypt(code, DigiTekShop.SharedKernel.Enums.Security.CryptoPurpose.TotpSecret);
-
+        var protectedCode = _crypto.Encrypt(code, SharedKernel.Enums.Security.CryptoPurpose.TotpSecret);
         var now = DateTime.UtcNow;
         var expires = now.Add(_phoneOpts.CodeValidity);
 
-        // Upsert latest active PhoneVerification
         var pv = await _db.PhoneVerifications
             .OrderByDescending(x => x.CreatedAtUtc)
             .FirstOrDefaultAsync(x => x.UserId == user.Id && !x.IsVerified && x.ExpiresAtUtc > now, ct);
@@ -165,16 +157,18 @@ public sealed class OtpAuthService : IAuthService
             );
         }
 
-        // ⚠️ خیلی مهم: Raise قبل از SaveChanges باشد تا Interceptor Outbox پیام را بنویسد
+        // 7) Raise domain event (Outbox)
         _sink.Raise(new PhoneVerificationIssuedDomainEvent(
             user.Id, phone, pv.Id, DateTimeOffset.UtcNow, _corr.GetCorrelationId()));
 
         await _db.SaveChangesAsync(ct);
-
         await RecordAttempt(user.Id, LoginStatus.OtpSent, dto.Phone, ip, ua, ct);
         return Result.Success();
     }
 
+    // --------------------------------------------------------------------
+    // Verify OTP
+    // --------------------------------------------------------------------
     public async Task<Result<LoginResponseDto>> VerifyOtpAsync(VerifyOtpRequestDto dto, CancellationToken ct)
     {
         var ip = _client.IpAddress ?? "n/a";
@@ -210,58 +204,55 @@ public sealed class OtpAuthService : IAuthService
             return Result<LoginResponseDto>.Failure(ErrorCodes.Identity.INVALID_CREDENTIALS);
         }
 
-        // Latest active OTP by UserId
+        // آخرین PV فعال
         var pv = await _db.PhoneVerifications
             .OrderByDescending(x => x.CreatedAtUtc)
-            .FirstOrDefaultAsync(x => x.UserId == user.Id && !x.IsVerified && x.ExpiresAtUtc > DateTime.UtcNow, ct);
+            .FirstOrDefaultAsync(x => x.UserId == user.Id && !x.IsVerified && x.ExpiresAtUtc > DateTime.UtcNow, ct)
+            ?? await _db.PhoneVerifications
+                 .OrderByDescending(x => x.CreatedAtUtc)
+                 .FirstOrDefaultAsync(x => x.PhoneNumber == phone && !x.IsVerified && x.ExpiresAtUtc > DateTime.UtcNow, ct);
 
-        _log.LogInformation("[VerifyOTP] user={UserId}, normalizedPhone={Phone}", user.Id, phone);
-
-        // fallback by PhoneNumber (مثل SendOtp)
-        if (pv is null)
-        {
-            _log.LogWarning("[VerifyOTP] No active PV found for user={UserId} or phone={Phone}", user.Id, phone);
-            pv = await _db.PhoneVerifications
-                .OrderByDescending(x => x.CreatedAtUtc)
-                .FirstOrDefaultAsync(x => x.PhoneNumber == phone && !x.IsVerified && x.ExpiresAtUtc > DateTime.UtcNow, ct);
-        }
-
-        // ⬇️ نال‌چک قبل از استفاده
         if (pv is null)
         {
             await RecordAttempt(user.Id, LoginStatus.Failed, dto.Phone, ip, ua, ct);
-            return Result<LoginResponseDto>.Failure(ErrorCodes.Identity.INVALID_CREDENTIALS);
+            return Result<LoginResponseDto>.Failure(ErrorCodes.Otp.OTP_EXPIRED);
         }
 
-        _log.LogInformation("[VerifyOTP] PV found: id={PV}, expires={ExpUtc:o}, attempts={Att}/{Max}",
+        _log.LogInformation("[VerifyOTP] PV id={PV}, expires={Exp:o}, attempts={Att}/{Max}",
             pv.Id, pv.ExpiresAtUtc, pv.Attempts, _phoneOpts.MaxAttempts);
 
+        // محدودیت تلاش (business-level)
         if (!pv.IsValid(DateTime.UtcNow, _phoneOpts.MaxAttempts))
         {
-            await RecordAttempt(user.Id, LoginStatus.Failed, dto.Phone, ip, ua, ct);
-            return Result<LoginResponseDto>.Failure(ErrorCodes.Common.RATE_LIMIT_EXCEEDED);
+            // 429 به‌جای 400 برای UX بهتر
+            throw BuildCooldownRateLimit(pv.ExpiresAtUtc, policy: "OtpVerifyPolicy", reason: ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
+        }
+
+        // (اختیاری) ریت‌لیمیت شبکه‌ای برای Verify (مستقل از attempts)
+        // اگر گزینه‌ای برایش داری، فعال کن:
+        if (_phoneOpts.MaxVerifyPerWindow > 0)
+        {
+            var win = TimeSpan.FromSeconds(Math.Max(5, _phoneOpts.VerifyWindowSeconds));
+            var key = $"otp:verify:{pv.Id:N}";
+            var d = await _rateLimiter.ShouldAllowAsync(key, _phoneOpts.MaxVerifyPerWindow, win, ct);
+            if (!d.Allowed)
+                throw d.ToException(policy: "OtpVerifyPolicy", key: key, reason: ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
         }
 
         // Verify code (constant-time)
         var codeHash = HashOtp(dto.Code, _phoneOpts.CodeHashSecret);
-        _log.LogInformation("[VerifyOTP] comparing hashes: len(input)={InLen}, len(stored)={StLen}",
-            codeHash?.Length ?? 0, pv.CodeHash?.Length ?? 0);
-
         if (string.IsNullOrEmpty(pv.CodeHash) || !FixedTimeEquals(codeHash, pv.CodeHash))
         {
             pv.TryIncrementAttempts(_phoneOpts.MaxAttempts);
             await _db.SaveChangesAsync(ct);
             await UniformDelayAsync(ct);
             await RecordAttempt(user.Id, LoginStatus.Failed, dto.Phone, ip, ua, ct);
-            return Result<LoginResponseDto>.Failure(ErrorCodes.Identity.INVALID_CREDENTIALS);
+            return Result<LoginResponseDto>.Failure(ErrorCodes.Otp.OTP_INVALID);
         }
 
         // (اختیاری) enforce device binding
         // if (!string.Equals(pv.DeviceId, deviceId, StringComparison.Ordinal))
-        // {
-        //     await RecordAttempt(user.Id, LoginStatus.Failed, dto.Phone, ip, ua, ct);
         //     return Result<LoginResponseDto>.Failure(ErrorCodes.Common.VALIDATION_FAILED);
-        // }
 
         var now = DateTime.UtcNow;
         pv.MarkAsVerified(now);
@@ -287,14 +278,11 @@ public sealed class OtpAuthService : IAuthService
             ));
         }
 
-        // Raise قبل از SaveChanges (Outbox)
         await _db.SaveChangesAsync(ct);
 
         await _devices.UpsertAsync(user.Id, deviceId, ua, ip, ct);
         if (_phoneOpts.TrustDeviceDays > 0)
-        {
             await _devices.TrustAsync(user.Id, deviceId, TimeSpan.FromDays(_phoneOpts.TrustDeviceDays), ct);
-        }
 
         var issued = await _tokens.IssueAsync(user.Id, ct);
         if (issued.IsFailure)
@@ -315,11 +303,47 @@ public sealed class OtpAuthService : IAuthService
             RefreshToken = v.RefreshToken,
             RefreshTokenExpiresAtUtc = default
         };
-
         return Result<LoginResponseDto>.Success(resp);
     }
 
-    // ----------------- Helpers -----------------
+    // --------------------------------------------------------------------
+    // Helpers
+    // --------------------------------------------------------------------
+    private async Task<PhoneVerification?> FindLastActiveUnverifiedPVAsync(Guid userId, string phone, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var pv = await _db.PhoneVerifications
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstOrDefaultAsync(x => x.UserId == userId && !x.IsVerified && x.ExpiresAtUtc > now, ct);
+
+        if (pv is not null) return pv;
+
+        pv = await _db.PhoneVerifications
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstOrDefaultAsync(x => x.PhoneNumber == phone && !x.IsVerified && x.ExpiresAtUtc > now, ct);
+
+        return pv;
+    }
+
+    private static RateLimitedException BuildCooldownRateLimit(DateTime expiresAtUtc, string policy, string reason)
+    {
+        var expUtc = DateTime.SpecifyKind(expiresAtUtc, DateTimeKind.Utc);
+        var nowUtc = DateTime.UtcNow;
+
+        var window = expUtc > nowUtc ? (expUtc - nowUtc) : TimeSpan.FromSeconds(1);
+        var resetAt = new DateTimeOffset(expUtc, TimeSpan.Zero); 
+
+        return RateLimitedException.FromRaw(
+            count: 0,
+            limit: 1,
+            window: window,
+            resetAt: resetAt,
+            policy: policy,
+            key: "cooldown",
+            reason: reason
+        );
+    }
+
 
     private async Task<Result> EnforceCountersAsync(string phone, string ipKey, PhoneSecurityOptions sec, CancellationToken ct)
     {
@@ -338,26 +362,19 @@ public sealed class OtpAuthService : IAuthService
                 if (!hourIp.Allowed)
                     return Result.Failure(ErrorCodes.Common.RATE_LIMIT_EXCEEDED);
             }
-
             return Result.Success();
         }
         catch
         {
-            // fail-open: UX خراب نشه (لاگ سرور داشته باش)
+            // fail-open (Log کن)
             return Result.Success();
         }
     }
 
     private async Task RecordAttempt(Guid? userId, LoginStatus status, string? login, string ip, string ua, CancellationToken ct)
     {
-        try
-        {
-            await _attempts.RecordLoginAttemptAsync(userId, status, ip, ua, login, ct);
-        }
-        catch
-        {
-            // no-op
-        }
+        try { await _attempts.RecordLoginAttemptAsync(userId, status, ip, ua, login, ct); }
+        catch { /* no-op */ }
     }
 
     private static string GenerateNumericCode(int len)
@@ -386,8 +403,8 @@ public sealed class OtpAuthService : IAuthService
 
     private static bool FixedTimeEquals(string a, string b)
     {
-        var ba = System.Text.Encoding.UTF8.GetBytes(a);
-        var bb = System.Text.Encoding.UTF8.GetBytes(b);
+        var ba = Encoding.UTF8.GetBytes(a);
+        var bb = Encoding.UTF8.GetBytes(b);
         return ba.Length == bb.Length && CryptographicOperations.FixedTimeEquals(ba, bb);
     }
 
