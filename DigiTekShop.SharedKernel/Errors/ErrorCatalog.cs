@@ -56,8 +56,8 @@ public static class ErrorCatalog
         [Identity.DEVICE_NOT_TRUSTED] = new(Identity.DEVICE_NOT_TRUSTED, (int)HttpStatusCode.Forbidden, "Device is not trusted."),
 
         
-        [Otp.OTP_SEND_RATE_LIMITED] = new(Otp.OTP_SEND_RATE_LIMITED, (int)HttpStatusCode.TooManyRequests, "Too many OTP send requests.", "Too Many Requests"),
-        [Otp.OTP_VERIFY_RATE_LIMITED] = new(Otp.OTP_VERIFY_RATE_LIMITED, (int)HttpStatusCode.TooManyRequests, "Too many OTP verification attempts.", "Too Many Requests"),
+        [Otp.OTP_SEND_RATE_LIMITED] = new(Otp.OTP_SEND_RATE_LIMITED, (int)HttpStatusCode.TooManyRequests, "ارسال کد تأیید بیش از حد مجاز", "Too Many Requests"),
+        [Otp.OTP_VERIFY_RATE_LIMITED] = new(Otp.OTP_VERIFY_RATE_LIMITED, (int)HttpStatusCode.TooManyRequests, "تلاش برای تأیید کد بیش از حد مجاز", "Too Many Requests"),
 
         [Otp.OTP_INVALID] = new(Otp.OTP_INVALID, (int)HttpStatusCode.UnprocessableEntity, "The verification code is incorrect.", "Unprocessable Entity"),
         [Otp.OTP_EXPIRED] = new(Otp.OTP_EXPIRED, (int)HttpStatusCode.UnprocessableEntity, "The verification code has expired.", "Unprocessable Entity"),

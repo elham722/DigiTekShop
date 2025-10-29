@@ -51,7 +51,20 @@ public class SmsIrSmsSender : IPhoneSender
         var json = JsonSerializer.Serialize(payload);
 
         if (_opt.LogRequestBody)
-            _log.LogInformation("[SmsIr] POST {Path} body={Body}", path, json);
+        {
+            // Mask OTP code for security
+            var maskedPayload = new
+            {
+                mobile,
+                templateId,
+                parameters = new[]
+                {
+                    new { name = _opt.TemplateParamName, value = "****" }
+                }
+            };
+            var maskedJson = JsonSerializer.Serialize(maskedPayload);
+            _log.LogInformation("[SmsIr] POST {Path} body={Body}", path, maskedJson);
+        }
 
         using var req = new HttpRequestMessage(HttpMethod.Post, path)
         {

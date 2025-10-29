@@ -3,6 +3,7 @@ using DigiTekShop.Contracts.DTOs.Auth.Logout;
 using DigiTekShop.MVC.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using System.Net;
 using System.Security.Claims;
 
 namespace DigiTekShop.MVC.Controllers.Auth;
@@ -43,6 +44,18 @@ public sealed class AuthController : Controller
         if (!result.Success)
         {
             _logger.LogWarning("SendOtp failed: {Status} {Detail}", (int)result.StatusCode, result.Problem?.Detail);
+            
+            // Handle 429 Rate Limiting specially
+            if (result.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                var retryAfter = result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true 
+                    ? ra?.ToString() 
+                    : "30";
+                
+                return this.JsonError($"درخواست زیاد بود. لطفاً {retryAfter} ثانیه صبر کنید و دوباره تلاش کنید.", 
+                    new { retryAfter = int.Parse(retryAfter ?? "30") });
+            }
+            
             return this.JsonError("خطا در ارسال کد. لطفاً دوباره تلاش کنید");
         }
 
@@ -62,6 +75,18 @@ public sealed class AuthController : Controller
         if (!result.Success || result.Data is null)
         {
             _logger.LogWarning("VerifyOtp failed: {Status} {Detail}", (int)result.StatusCode, result.Problem?.Detail);
+            
+            // Handle 429 Rate Limiting specially
+            if (result.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                var retryAfter = result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true 
+                    ? ra?.ToString() 
+                    : "30";
+                
+                return this.JsonError($"درخواست زیاد بود. لطفاً {retryAfter} ثانیه صبر کنید و دوباره تلاش کنید.", 
+                    new { retryAfter = int.Parse(retryAfter ?? "30") });
+            }
+            
             return this.JsonError("کد تأیید اشتباه است. لطفاً دوباره تلاش کنید");
         }
 
