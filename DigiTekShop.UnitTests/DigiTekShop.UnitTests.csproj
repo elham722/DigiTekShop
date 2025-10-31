@@ -28,4 +28,10 @@
     <ProjectReference Include="..\DigiTekShop.SharedKernel\DigiTekShop.SharedKernel.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="ErrorHandling\" />
+    <Folder Include="Common\" />
+    <Folder Include="RateLimiting\" />
+  </ItemGroup>
+
 </Project>
