@@ -344,13 +344,22 @@ export class AuthManager {
                 console.log('Response not OK or fail data:', res.status, data);
                 
                 // اگر ریت‌لیمیت است پیام مناسب بده و دکمه را غیرفعال کن
-                const errorCode = data?.errorCode || data?.extensions?.errorCode;
-                const isRateLimit = (res.status === 429 || errorCode === 'RATE_LIMIT_EXCEEDED');
+                const errorCode = data?.errorCode || data?.extensions?.errorCode || data?.code;
+                const retryAfterFromData = data?.retryAfter || data?.data?.retryAfter;
+                const isRateLimit = (res.status === 429 || 
+                    errorCode === 'RATE_LIMIT_EXCEEDED' || 
+                    errorCode === 'OTP_SEND_RATE_LIMITED' || 
+                    errorCode === 'OTP_VERIFY_RATE_LIMITED' ||
+                    retryAfterFromData !== undefined);
                 
                 if (isRateLimit) {
-                    // غیرفعال کردن دکمه برای 2 دقیقه
-                    this.disableButtonForMinutes(2);
-                    this.toast('خیلی سریع درخواست دادید؛ 2 دقیقه صبر کنید و دوباره تلاش کنید.', 'warning');
+                    // دریافت retryAfter از response یا استفاده از 2 دقیقه پیش‌فرض
+                    const retryAfter = retryAfterFromData || 120; // 2 دقیقه پیش‌فرض
+                    const minutes = Math.ceil(retryAfter / 60);
+                    
+                    // غیرفعال کردن دکمه برای مدت مشخص
+                    this.disableButtonForMinutes(minutes);
+                    this.toast(`خیلی سریع درخواست دادید؛ ${minutes} دقیقه صبر کنید و دوباره تلاش کنید.`, 'warning');
                 } else {
                     const msg = this.extractMessage(data, 'ارسال کد ناموفق بود');
                     this.toast(msg, 'warning');
@@ -427,9 +436,29 @@ export class AuthManager {
             // بررسی هم HTTP status و هم response body
             if (!res.ok || this.isFailData(data)) {
                 this.hideLoading();
-                this.toast(this.extractMessage(data, 'کد اشتباه یا منقضی است'), 'error');
-                if (this.otpInput) this.otpInput.value = '';
-                this.otpInput?.focus();
+                
+                // اگر ریت‌لیمیت است پیام مناسب بده و دکمه را غیرفعال کن
+                const errorCode = data?.errorCode || data?.extensions?.errorCode || data?.code;
+                const retryAfterFromData = data?.retryAfter || data?.data?.retryAfter;
+                const isRateLimit = (res.status === 429 || 
+                    errorCode === 'RATE_LIMIT_EXCEEDED' || 
+                    errorCode === 'OTP_SEND_RATE_LIMITED' || 
+                    errorCode === 'OTP_VERIFY_RATE_LIMITED' ||
+                    retryAfterFromData !== undefined);
+                
+                if (isRateLimit) {
+                    // دریافت retryAfter از response یا استفاده از 2 دقیقه پیش‌فرض
+                    const retryAfter = retryAfterFromData || 120; // 2 دقیقه پیش‌فرض
+                    const minutes = Math.ceil(retryAfter / 60);
+                    
+                    // غیرفعال کردن دکمه برای مدت مشخص
+                    this.disableButtonForMinutes(minutes);
+                    this.toast(`خیلی سریع درخواست دادید؛ ${minutes} دقیقه صبر کنید و دوباره تلاش کنید.`, 'warning');
+                } else {
+                    this.toast(this.extractMessage(data, 'کد اشتباه یا منقضی است'), 'error');
+                    if (this.otpInput) this.otpInput.value = '';
+                    this.otpInput?.focus();
+                }
                 return;
             }
 

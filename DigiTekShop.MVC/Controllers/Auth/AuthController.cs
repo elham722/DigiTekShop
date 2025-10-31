@@ -63,6 +63,8 @@ public sealed class AuthController : Controller
                     }
                 }
                 
+                // Return 429 status code
+                Response.StatusCode = 429;
                 return this.JsonError($"درخواست زیاد بود. لطفاً {retryAfter} ثانیه صبر کنید و دوباره تلاش کنید.", 
                     new { retryAfter = int.Parse(retryAfter) });
             }
@@ -105,6 +107,8 @@ public sealed class AuthController : Controller
                     }
                 }
                 
+                // Return 429 status code
+                Response.StatusCode = 429;
                 return this.JsonError($"درخواست زیاد بود. لطفاً {retryAfter} ثانیه صبر کنید و دوباره تلاش کنید.", 
                     new { retryAfter = int.Parse(retryAfter) });
             }
