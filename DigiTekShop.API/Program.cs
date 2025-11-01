@@ -235,7 +235,9 @@ app.UseIdempotency();
 
 if (app.Environment.IsProduction())
     app.UseHsts();
-app.UseHttpsRedirection();
+
+if (!app.Environment.IsEnvironment("Testing"))
+    app.UseHttpsRedirection();
 
 
 app.UseSecurityHeaders();

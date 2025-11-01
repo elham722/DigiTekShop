@@ -6,6 +6,7 @@ using System.Text.Json;
 using DigiTekShop.Contracts.Abstractions.Caching;
 using DigiTekShop.Contracts.Options.Auth;
 using DigiTekShop.Contracts.Options.Phone;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 
@@ -64,12 +65,12 @@ public sealed class RedisRateLimitMiddleware
 
         if (!decision.Allowed)
         {
-            // فقط در بلاک: Retry-After
-            var retryAfter = Math.Max(0, (int)(decision.ResetAt - DateTimeOffset.UtcNow).TotalSeconds);
+            // محاسبه Retry-After (فقط یکبار)
+            var retryAfter = Math.Max(0, (int)Math.Ceiling((decision.ResetAt - DateTimeOffset.UtcNow).TotalSeconds));
             context.Response.Headers["Retry-After"] = retryAfter.ToString();
 
             // Cache-Control: no-store برای جلوگیری از مشکلات Back/Forward
-            context.Response.Headers["Cache-Control"] = "no-store, max-age=0";
+            context.Response.Headers["Cache-Control"] = "no-store, must-revalidate, no-cache";
 
             // code/type معنادار بر اساس policy
             var errorCode =
@@ -92,7 +93,7 @@ public sealed class RedisRateLimitMiddleware
                 Type = type,
                 Title = "Too Many Requests",
                 Status = StatusCodes.Status429TooManyRequests,
-                Detail = "You have exceeded the allowed number of requests.",
+                Detail = $"You have exceeded the allowed number of requests. Try again in {retryAfter} seconds.",
                 Instance = context.Request.Path
             };
             pd.Extensions["code"] = errorCode;
@@ -100,19 +101,9 @@ public sealed class RedisRateLimitMiddleware
             pd.Extensions["limit"] = decision.Limit;
             pd.Extensions["window"] = Math.Max(1, (int)decision.Window.TotalSeconds);
             pd.Extensions["timestamp"] = DateTimeOffset.UtcNow;
-            
-            // Add Rate Limit headers
-            retryAfter = Math.Max(0, (int)Math.Ceiling((decision.ResetAt - DateTimeOffset.UtcNow).TotalSeconds));
-            context.Response.Headers["Retry-After"] = retryAfter.ToString();
-            context.Response.Headers["X-RateLimit-Policy"] = cfg.Policy;
-            context.Response.Headers["X-RateLimit-Limit"] = decision.Limit.ToString();
-            context.Response.Headers["X-RateLimit-Remaining"] = remaining.ToString();
-            context.Response.Headers["X-RateLimit-Window"] = Math.Max(1, (int)decision.Window.TotalSeconds).ToString();
-            context.Response.Headers["X-RateLimit-Reset"] = decision.ResetAt.ToUnixTimeSeconds().ToString();
-            context.Response.Headers["X-RateLimit-Scope"] = "user";
 
-            _logger.LogWarning("429 RateLimit policy={Policy} key={Key} path={Path} limit={Limit} remaining={Remaining}",
-                cfg.Policy, cfg.Key, context.Request.Path, decision.Limit, remaining);
+            _logger.LogWarning("429 RateLimit policy={Policy} key={Key} path={Path} limit={Limit} remaining={Remaining} retryAfter={RetryAfter}",
+                cfg.Policy, cfg.Key, context.Request.Path, decision.Limit, remaining, retryAfter);
 
             await context.Response.WriteAsJsonAsync(pd, context.RequestAborted);
             return;
@@ -166,7 +157,13 @@ public sealed class RedisRateLimitMiddleware
         if (path.StartsWith("/api/"))
         {
             var key = BuildKey(ctx, "ApiPolicy");
-            return new("ApiPolicy", 50, TimeSpan.FromMinutes(1), key);
+            // خواندن از کانفیگ (با مقادیر پیش‌فرض برای تست)
+            var limit = ctx.RequestServices.GetRequiredService<IConfiguration>()
+                .GetValue<int>("RateLimit:Limit", 10);
+            var windowSec = ctx.RequestServices.GetRequiredService<IConfiguration>()
+                .GetValue<int>("RateLimit:WindowSeconds", 60);
+            var window = TimeSpan.FromSeconds(windowSec);
+            return new("ApiPolicy", limit, window, key);
         }
 
         return null;
