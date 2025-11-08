@@ -2,8 +2,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: digitekshop-redis
-    entrypoint: ["/bin/sh", "-lc"]
-    command: exec redis-server /usr/local/etc/redis/redis.conf --requirepass "$$REDIS_PASS"
+    command: >
+      sh -c "exec redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASS\""
     env_file:
       - .env
     volumes:
@@ -14,11 +14,11 @@ services:
       - "6379:6379"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "/usr/local/etc/redis/healthcheck.sh"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASS\" PING | grep -q PONG || exit 1"]
       interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks: [backend]
     logging:
       driver: json-file
