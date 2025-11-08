@@ -1,0 +1,7 @@
+# Ignore environment files with sensitive data
+.env
+
+# Ignore data directories (if using bind mounts instead of volumes)
+redis/data/
+rabbitmq/data/
+

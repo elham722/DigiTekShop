@@ -2,12 +2,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: digitekshop-redis
-    entrypoint: ["/bin/sh","-lc"]
-    command: >
-      exec redis-server /usr/local/etc/redis/redis.conf
-      --requirepass "$REDIS_PASS"
+    entrypoint: ["/bin/sh", "-lc"]
+    command: exec redis-server /usr/local/etc/redis/redis.conf --requirepass "$$REDIS_PASS"
     env_file:
-      - ./env.example
+      - .env
     volumes:
       - ./redis/conf/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - ./redis/healthcheck.sh:/usr/local/etc/redis/healthcheck.sh:ro
@@ -32,7 +30,7 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: digitekshop-rabbitmq
     env_file:
-      - ./env.example
+      - .env
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     ports:
