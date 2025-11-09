@@ -371,6 +371,7 @@ docker-volumes/
 appsettings.*.json
 !appsettings.json
 !appsettings.Development.json
+!appsettings.Local.example.json
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
@@ -379,6 +380,10 @@ FodyWeavers.xsd
 
 # Ignore environment files with sensitive data
 .env
+
+# Ignore secrets backup files
+secrets.backup.json
+*.secrets.json
 
 # Ignore data directories (if using bind mounts instead of volumes)
 redis/data/
