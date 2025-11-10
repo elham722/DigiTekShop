@@ -1,10 +1,19 @@
 ﻿using DigiTekShop.SharedKernel.Enums.Outbox;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace DigiTekShop.Identity.Configurations;
 
 public sealed class IdentityOutboxMessageConfiguration : IEntityTypeConfiguration<IdentityOutboxMessage>
 {
+    // Field length constants
+    private const int MaxTypeLength = 512;
+    private const int MaxMessageKeyLength = 256;
+    private const int MaxCorrelationIdLength = 128;
+    private const int MaxCausationIdLength = 128;
+    private const int MaxLockedByLength = 128;
+    private const int MaxErrorLength = 1024;
+
     public void Configure(EntityTypeBuilder<IdentityOutboxMessage> b)
     {
         b.ToTable("IdentityOutboxMessages");
@@ -15,59 +24,91 @@ public sealed class IdentityOutboxMessageConfiguration : IEntityTypeConfiguratio
             .ValueGeneratedNever();
 
         b.Property(x => x.OccurredAtUtc)
-            .IsRequired()
-            .HasDefaultValueSql("GETUTCDATE()");
+            .HasDefaultValueSql("SYSUTCDATETIME()")
+            .IsRequired();
 
         b.Property(x => x.Type)
-            .HasMaxLength(512)      
+            .HasMaxLength(MaxTypeLength)
             .IsUnicode(false)
             .IsRequired();
 
         b.Property(x => x.Payload)
-            .HasColumnType("nvarchar(max)") 
+            .HasColumnType("nvarchar(max)")
             .IsRequired();
+
+        b.Property(x => x.MessageKey)
+            .HasMaxLength(MaxMessageKeyLength)
+            .IsUnicode(false)
+            .IsRequired(false);
 
         b.Property(x => x.CorrelationId)
-            .HasMaxLength(100)
-            .IsUnicode(false);
+            .HasMaxLength(MaxCorrelationIdLength)
+            .IsUnicode(false)
+            .IsRequired(false);
 
         b.Property(x => x.CausationId)
-            .HasMaxLength(100)
-            .IsUnicode(false);
+            .HasMaxLength(MaxCausationIdLength)
+            .IsUnicode(false)
+            .IsRequired(false);
 
-        b.Property(x => x.ProcessedAtUtc);
+        b.Property(x => x.ProcessedAtUtc)
+            .IsRequired(false);
 
         b.Property(x => x.Attempts)
-            .HasDefaultValue(0);
-
-        
-        var statusConverter = new EnumToStringConverter<OutboxStatus>();
-        b.Property(x => x.Status)
-            .HasConversion(statusConverter)
-            .HasMaxLength(20)
-            .HasDefaultValue(OutboxStatus.Pending)
+            .HasDefaultValue(0)
             .IsRequired();
 
-        b.Property(x => x.LockedUntilUtc);
-        b.Property(x => x.LockedBy).HasMaxLength(64).IsUnicode(false);
-        b.Property(x => x.NextRetryUtc);
+        // Check constraint: Attempts must be non-negative
+        b.ToTable(t => t.HasCheckConstraint("CK_Outbox_Attempts_NonNegative", "[Attempts] >= 0"));
 
+        b.Property(x => x.Status)
+            .HasConversion<int>()
+            .HasDefaultValue((int)OutboxStatus.Pending)
+            .IsRequired();
 
         b.Property(x => x.Error)
-            .HasColumnType("nvarchar(max)");
+            .HasMaxLength(MaxErrorLength)
+            .IsRequired(false);
 
-        b.HasIndex(x => new { x.Status, x.OccurredAtUtc })
-            .HasDatabaseName("IX_Outbox_Status_OccurredAtUtc");
+        b.Property(x => x.LockedUntilUtc)
+            .IsRequired(false);
 
-        b.HasIndex(x => x.CorrelationId)
-            .HasDatabaseName("IX_Outbox_CorrelationId");
+        b.Property(x => x.LockedBy)
+            .HasMaxLength(MaxLockedByLength)
+            .IsUnicode(false)
+            .IsRequired(false);
 
-        
+        b.Property(x => x.NextRetryUtc)
+            .IsRequired(false);
+
+        // Configure indexes - optimized for outbox processing
+        // Single column indexes
+        b.HasIndex(x => x.OccurredAtUtc)
+            .HasDatabaseName("IX_Outbox_OccurredAtUtc");
+
+        // Composite indexes for common queries (most important first)
+        // For picking pending messages: Status + NextRetry + OccurredAt
         b.HasIndex(x => new { x.Status, x.NextRetryUtc, x.OccurredAtUtc })
             .HasDatabaseName("IX_Outbox_Status_NextRetry_OccurredAt");
 
-        
+        // For filtering pending/failed messages by time
+        b.HasIndex(x => new { x.Status, x.OccurredAtUtc })
+            .HasDatabaseName("IX_Outbox_Status_OccurredAtUtc");
+
+        // For idempotency check: MessageKey (unique if not null)
+        b.HasIndex(x => x.MessageKey)
+            .HasDatabaseName("IX_Outbox_MessageKey")
+            .IsUnique()
+            .HasFilter("[MessageKey] IS NOT NULL");
+
+        // For correlation tracking
+        b.HasIndex(x => x.CorrelationId)
+            .HasDatabaseName("IX_Outbox_CorrelationId")
+            .HasFilter("[CorrelationId] IS NOT NULL");
+
+        // For lock management
         b.HasIndex(x => x.LockedUntilUtc)
-            .HasDatabaseName("IX_Outbox_LockedUntilUtc");
+            .HasDatabaseName("IX_Outbox_LockedUntilUtc")
+            .HasFilter("[LockedUntilUtc] IS NOT NULL");
     }
 }

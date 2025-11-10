@@ -82,17 +82,14 @@ namespace DigiTekShop.Identity.Interceptors
                 var causId = TryRead(ie, "CausationId") ?? ambientCausation ?? TryRead(ie, "MessageId");
 
 
-                var outboxMsg = new DigiTekShop.Identity.Models.IdentityOutboxMessage()
-                {
-                    Id = Guid.NewGuid(),
-                    OccurredAtUtc = _clock.UtcNow,
-                    Type = ie.GetType().FullName!,
-                    Payload = JsonSerializer.Serialize(ie),
-                    Status = OutboxStatus.Pending,
-                    Attempts = 0,
-                    CorrelationId = corrId, 
-                    CausationId = causId
-                };
+                var messageKey = TryRead(ie, "MessageId") ?? TryRead(ie, "Id")?.ToString();
+                var outboxMsg = DigiTekShop.Identity.Models.IdentityOutboxMessage.Create(
+                    type: ie.GetType().FullName!,
+                    payload: JsonSerializer.Serialize(ie),
+                    messageKey: messageKey,
+                    correlationId: corrId,
+                    causationId: causId);
+                
                 set.Add(outboxMsg);
                 
                 // ✅ Debug log

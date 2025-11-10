@@ -28,10 +28,11 @@ public sealed class IdentityOutboxPublisherService : BackgroundService
                 var db = scope.ServiceProvider.GetRequiredService<DigiTekShopIdentityDbContext>();
                 var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
-                var ids = await db.Set<IdentityOutboxMessage>() // یا OutboxMessage
+                var now = DateTimeOffset.UtcNow;
+                var ids = await db.Set<IdentityOutboxMessage>()
                     .Where(x => x.Status == OutboxStatus.Pending
-                                && (x.NextRetryUtc == null || x.NextRetryUtc <= DateTime.UtcNow)
-                                && (x.LockedUntilUtc == null || x.LockedUntilUtc <= DateTime.UtcNow))
+                                && (x.NextRetryUtc == null || x.NextRetryUtc <= now)
+                                && (x.LockedUntilUtc == null || x.LockedUntilUtc <= now))
                     .OrderBy(x => x.OccurredAtUtc)
                     .Select(x => x.Id)
                     .Take(50)
@@ -58,15 +59,24 @@ public sealed class IdentityOutboxPublisherService : BackgroundService
                             await bus.PublishAsync(msg.Type, msg.Payload, ct);
                         });
 
-                        await OutboxSqlHelpers.AckAsync(db, msg.Id, ct);
+                        // Use model method for success
+                        msg.MarkAsSucceeded();
+                        await db.SaveChangesAsync(ct);
                     }
                     catch (Exception ex)
                     {
-                        var attempts = msg.Attempts + 1;
-                        var giveUp = attempts >= 10;
-                        await OutboxSqlHelpers.NackAsync(db, msg.Id, attempts, giveUp, ex.Message, ct);
+                        // Calculate exponential backoff: 1, 2, 4, 8, 16, ... minutes (max 60)
+                        // Note: MarkAsFailed will increment Attempts, so we calculate based on current attempts
+                        var nextAttempt = msg.Attempts + 1;
+                        var giveUp = nextAttempt >= 10;
+                        var delayMinutes = giveUp ? 0 : Math.Min(60, (int)Math.Pow(2, Math.Max(0, nextAttempt - 1)));
+                        DateTimeOffset? nextRetryUtc = giveUp ? null : DateTimeOffset.UtcNow.AddMinutes(delayMinutes);
 
-                        _log.LogError(ex, "Outbox publish failed (Shop). Id={Id}, Attempts={Attempts}, GiveUp={GiveUp}", msg.Id, attempts, giveUp);
+                        // Use model method for failure (model increments attempts itself)
+                        msg.MarkAsFailed(ex.Message, nextRetryUtc);
+                        await db.SaveChangesAsync(ct);
+
+                        _log.LogError(ex, "Outbox publish failed. Id={Id}, Attempts={Attempts}, GiveUp={GiveUp}", msg.Id, msg.Attempts, giveUp);
                     }
                 }
             }

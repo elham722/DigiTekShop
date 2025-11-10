@@ -23,9 +23,9 @@ internal static class OutboxSqlHelpers
         var rows = await db.Database.ExecuteSqlRawAsync(
             sql,
             id,
-            "Processing",
-            "Pending",
-            30,                 // lock window (sec)
+            1,  // OutboxStatus.Processing = 1
+            0,  // OutboxStatus.Pending = 0
+            30, // lock window (sec)
             Environment.MachineName);
         return rows == 1;
     }
@@ -44,14 +44,14 @@ internal static class OutboxSqlHelpers
                       LockedBy = NULL
                   WHERE Id = @p0
                   """;
-        await db.Database.ExecuteSqlRawAsync(sql, id, "Succeeded");
+        await db.Database.ExecuteSqlRawAsync(sql, id, 2); // OutboxStatus.Succeeded = 2
     }
 
     public static async Task NackAsync(DbContext db, Guid id, int attempts, bool giveUp, string error, CancellationToken ct)
     {
         // backoff نمایی: 1, 2, 4, 8, 16, ... دقیقه (سقف 60)
         var delayMinutes = Math.Min(60, (int)Math.Pow(2, Math.Max(0, attempts - 1)));
-        var next = giveUp ? "Failed" : "Pending";
+        var nextStatus = giveUp ? 3 : 0; // OutboxStatus.Failed = 3, Pending = 0
 
         // تشخیص نوع جدول بر اساس DbContext
         var tableName = GetTableName(db);
@@ -60,13 +60,13 @@ internal static class OutboxSqlHelpers
                   UPDATE {tableName}
                   SET Status = @p4,
                       Attempts = @p1,
-                      Error = LEFT(@p2, 1000),
+                      Error = LEFT(@p2, 1024),
                       NextRetryUtc = CASE WHEN @p3 = 1 THEN NULL ELSE DATEADD(MINUTE, @p5, SYSUTCDATETIME()) END,
                       LockedUntilUtc = NULL,
                       LockedBy = NULL
                   WHERE Id = @p0
                   """;
-        await db.Database.ExecuteSqlRawAsync(sql, id, attempts, error, giveUp ? 1 : 0, next, delayMinutes);
+        await db.Database.ExecuteSqlRawAsync(sql, id, attempts, error, giveUp ? 1 : 0, nextStatus, delayMinutes);
     }
 
     private static string GetTableName(DbContext db)
