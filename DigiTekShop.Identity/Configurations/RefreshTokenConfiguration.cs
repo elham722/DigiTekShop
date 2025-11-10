@@ -34,12 +34,12 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
             .IsRequired(false);
 
         builder.Property(rt => rt.DeviceId)
-            .HasMaxLength(256)
+            .HasMaxLength(128) // Consistent with other models (LoginAttempt, PhoneVerification)
             .IsRequired(false)
             .IsUnicode(false);
 
         builder.Property(rt => rt.UserAgent)
-            .HasMaxLength(512)
+            .HasMaxLength(1024) // Consistent with other models (AuditLog, SecurityEvent)
             .IsRequired(false);
 
         builder.Property(rt => rt.CreatedByIp)
@@ -47,17 +47,14 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
             .IsRequired(false)
             .IsUnicode(false);
 
-        builder.Property(rt => rt.ParentTokenHash)
-            .HasMaxLength(128)
-            .IsRequired(false)
-            .IsUnicode(false);
+        builder.Property(rt => rt.ParentTokenId)
+            .IsRequired(false);
 
-        builder.Property(rt => rt.ReplacedByTokenHash)
-            .HasMaxLength(128)
-            .IsRequired(false)
-            .IsUnicode(false);
+        builder.Property(rt => rt.ReplacedByTokenId)
+            .IsRequired(false);
 
         builder.Property(rt => rt.UsageCount)
+            .HasDefaultValue(0)
             .IsRequired();
 
         builder.Property(rt => rt.RowVersion)
@@ -104,11 +101,33 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         builder.HasIndex(rt => rt.CreatedAtUtc)
             .HasDatabaseName("IX_RefreshTokens_CreatedAtUtc");
 
-        builder.HasIndex(rt => rt.ParentTokenHash)
-            .HasDatabaseName("IX_RefreshTokens_ParentTokenHash");
+        // Foreign keys for token rotation chain (self-referencing)
+        builder.HasOne(rt => rt.ParentToken)
+            .WithMany()
+            .HasForeignKey(rt => rt.ParentTokenId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
 
-        builder.HasIndex(rt => rt.ReplacedByTokenHash)
-            .HasDatabaseName("IX_RefreshTokens_ReplacedByTokenHash");
+        builder.HasOne(rt => rt.ReplacedByToken)
+            .WithMany()
+            .HasForeignKey(rt => rt.ReplacedByTokenId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
+
+        builder.HasIndex(rt => rt.ParentTokenId)
+            .HasDatabaseName("IX_RefreshTokens_ParentTokenId")
+            .HasFilter("[ParentTokenId] IS NOT NULL");
+
+        builder.HasIndex(rt => rt.ReplacedByTokenId)
+            .HasDatabaseName("IX_RefreshTokens_ReplacedByTokenId")
+            .HasFilter("[ReplacedByTokenId] IS NOT NULL");
+
+        // Optional: Unique index to enforce "one active token per user per device"
+        // Note: Expiration check must be enforced in application layer (cannot use non-deterministic functions in filter)
+        builder.HasIndex(rt => new { rt.UserId, rt.DeviceId })
+            .IsUnique()
+            .HasFilter("[RevokedAtUtc] IS NULL AND [DeviceId] IS NOT NULL")
+            .HasDatabaseName("UX_RefreshTokens_User_Device_Active");
 
 
         builder.ToTable(tb =>
@@ -119,11 +138,21 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
 
             tb.HasCheckConstraint(
                 "CK_RefreshTokens_RotationConsistency",
-                "(([RotatedAtUtc] IS NULL AND [ReplacedByTokenHash] IS NULL) OR ([RotatedAtUtc] IS NOT NULL AND [ReplacedByTokenHash] IS NOT NULL))");
+                "(([RotatedAtUtc] IS NULL AND [ReplacedByTokenId] IS NULL) OR ([RotatedAtUtc] IS NOT NULL AND [ReplacedByTokenId] IS NOT NULL))");
 
             tb.HasCheckConstraint(
                 "CK_RefreshTokens_RevokedConsistency",
                 "(([RevokedAtUtc] IS NULL AND [RevokedReason] IS NULL) OR ([RevokedAtUtc] IS NOT NULL))");
+
+            // LastUsedAtUtc must be between CreatedAtUtc and ExpiresAtUtc
+            tb.HasCheckConstraint(
+                "CK_RefreshTokens_LastUsedRange",
+                "([LastUsedAtUtc] IS NULL OR ([LastUsedAtUtc] >= [CreatedAtUtc] AND [LastUsedAtUtc] <= [ExpiresAtUtc]))");
+
+            // RevokedAtUtc must be after CreatedAtUtc
+            tb.HasCheckConstraint(
+                "CK_RefreshTokens_RevokedAfterCreated",
+                "([RevokedAtUtc] IS NULL OR [RevokedAtUtc] >= [CreatedAtUtc])");
         });
     }
 }

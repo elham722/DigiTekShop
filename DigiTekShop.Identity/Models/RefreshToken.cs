@@ -18,8 +18,10 @@ public sealed class RefreshToken
     public DateTimeOffset? RotatedAtUtc { get; private set; }
 
     public string? RevokedReason { get; private set; }
-    public string? ReplacedByTokenHash { get; private set; }
-    public string? ParentTokenHash { get; private set; }
+    public Guid? ReplacedByTokenId { get; private set; }
+    public Guid? ParentTokenId { get; private set; }
+    public RefreshToken? ReplacedByToken { get; private set; }
+    public RefreshToken? ParentToken { get; private set; }
     public int UsageCount { get; private set; }
 
     public string? CreatedByIp { get; private set; }
@@ -41,7 +43,7 @@ public sealed class RefreshToken
         string? deviceId = null,
         string? createdByIp = null,
         string? userAgent = null,
-        string? parentTokenHash = null,
+        Guid? parentTokenId = null,
         DateTimeOffset? createdAtUtc = null)
     {
         Guard.AgainstNullOrEmpty(tokenHash,nameof(tokenHash));
@@ -57,7 +59,7 @@ public sealed class RefreshToken
             DeviceId = deviceId,
             CreatedByIp = createdByIp,
             UserAgent = userAgent,
-            ParentTokenHash = parentTokenHash
+            ParentTokenId = parentTokenId
         };
     }
 
@@ -69,10 +71,10 @@ public sealed class RefreshToken
         return true;
     }
 
-    public void MarkAsRotated(string newTokenHash, DateTimeOffset? now = null)
+    public void MarkAsRotated(Guid newTokenId, DateTimeOffset? now = null)
     {
         RotatedAtUtc = now ?? DateTimeOffset.UtcNow;
-        ReplacedByTokenHash = newTokenHash;
+        ReplacedByTokenId = newTokenId;
         if (RevokedAtUtc is null)
         {
             RevokedAtUtc = RotatedAtUtc;

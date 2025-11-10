@@ -59,7 +59,7 @@ public sealed class TokenService : ITokenService
             deviceId: _client.DeviceId,
             createdByIp: _client.IpAddress,
             userAgent: _client.UserAgent,
-            parentTokenHash: null,
+            parentTokenId: null,
             createdAtUtc: _time.UtcNow);
 
 
@@ -94,7 +94,7 @@ public sealed class TokenService : ITokenService
         if (token is null || token.User is null)
             return Result<RefreshTokenResponse>.Failure(ErrorCodes.Identity.INVALID_TOKEN);
 
-        if (!string.IsNullOrEmpty(token.ReplacedByTokenHash))
+        if (token.ReplacedByTokenId.HasValue)
         {
             var actives = await _db.RefreshTokens
                 .Where(t => t.UserId == token.UserId && t.RevokedAtUtc == null && t.ExpiresAtUtc > now)
@@ -117,8 +117,6 @@ public sealed class TokenService : ITokenService
         var (access, accessExp, accessIat, jti) = CreateAccessToken(token.User);
         var (rawRefresh, newHash, newExp) = CreateRefreshToken();
 
-        token.MarkAsRotated(newHash, now);
-
         var replacement = RefreshToken.Create(
             tokenHash: newHash,
             expiresAtUtc: newExp,
@@ -126,10 +124,14 @@ public sealed class TokenService : ITokenService
             deviceId: _client.DeviceId,
             createdByIp: _client.IpAddress,
             userAgent: _client.UserAgent,
-            parentTokenHash: token.TokenHash,
+            parentTokenId: token.Id,
             createdAtUtc: now);
 
         _db.RefreshTokens.Add(replacement);
+
+        // Mark the old token as rotated with the new token's ID
+        // The replacement.Id is already set by Guid.NewGuid() in the property initializer
+        token.MarkAsRotated(replacement.Id, now);
 
         try
         {
@@ -284,6 +286,10 @@ public sealed class TokenService : ITokenService
         return (raw, hash, expires);
     }
 
+    /// <summary>
+    /// Hashes a refresh token using HMACSHA256 and returns Base64Url-encoded result.
+    /// Base64Url encoding is case-sensitive and consistent, so no normalization (ToLower/ToUpper) is needed.
+    /// </summary>
     private string HashRefreshToken(string raw)
     {
         var secret = _jwt.RefreshTokenHashSecret;
