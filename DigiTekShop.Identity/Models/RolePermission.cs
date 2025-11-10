@@ -1,25 +1,29 @@
-﻿namespace DigiTekShop.Identity.Models;
-    public sealed class RolePermission
+﻿using DigiTekShop.SharedKernel.Guards;
+
+namespace DigiTekShop.Identity.Models;
+
+public sealed class RolePermission
+{
+    public Guid RoleId { get; private set; }
+    public Role Role { get; private set; } = default!;
+
+    public Guid PermissionId { get; private set; }
+    public Permission Permission { get; private set; } = default!;
+
+    public DateTimeOffset CreatedAt { get; private set; } // Set by DB via SYSUTCDATETIME()
+
+    private RolePermission() { }
+
+    public static RolePermission Create(Guid roleId, Guid permissionId)
     {
-        public Guid RoleId { get; private set; }
-        public Role Role { get; private set; } = default!;
+        Guard.AgainstEmpty(roleId, nameof(roleId));
+        Guard.AgainstEmpty(permissionId, nameof(permissionId));
 
-        public Guid PermissionId { get; private set; }
-        public Permission Permission { get; private set; } = default!;
-
-        public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
-
-        private RolePermission() { }
-
-        public static RolePermission Create(Guid roleId, Guid permissionId)
+        return new RolePermission
         {
-            Guard.AgainstEmpty(roleId, nameof(roleId));
-            Guard.AgainstEmpty(permissionId, nameof(permissionId));
-
-            return new RolePermission
-            {
-                RoleId = roleId,
-                PermissionId = permissionId
-            };
-        }
+            RoleId = roleId,
+            PermissionId = permissionId
+            // CreatedAt will be set by DB via HasDefaultValueSql("SYSUTCDATETIME()")
+        };
     }
+}
