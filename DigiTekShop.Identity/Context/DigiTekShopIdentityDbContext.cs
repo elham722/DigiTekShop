@@ -25,9 +25,8 @@ public class DigiTekShopIdentityDbContext : IdentityDbContext<User, Role, Guid>
 
         builder.ApplyConfigurationsFromAssembly(typeof(DigiTekShopIdentityDbContext).Assembly);
 
-
+        // Map Identity tables (Role table name is set in RoleConfiguration)
         builder.Entity<User>().ToTable("Users");
-        builder.Entity<Role>().ToTable("Roles");
         builder.Entity<IdentityUserRole<Guid>>().ToTable("UserRoles");
         builder.Entity<IdentityUserClaim<Guid>>().ToTable("UserClaims");
         builder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins");

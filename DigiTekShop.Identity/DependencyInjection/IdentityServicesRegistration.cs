@@ -14,7 +14,11 @@ public static class IdentityServicesRegistration
             var clock = sp.GetRequiredService<IDateTimeProvider>();
             var corr = sp.GetRequiredService<ICorrelationContext>(); 
 
-            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock, corr)); 
+            opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock, corr));
+            
+            // Optional: Automatically update UpdatedAt for Role entities when modified
+            // Uncomment the line below if you want automatic UpdatedAt tracking for Role
+            // opt.AddInterceptors(new RoleUpdatedAtInterceptor()); 
         });
 
         #endregion
