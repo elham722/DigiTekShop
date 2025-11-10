@@ -1,4 +1,5 @@
-﻿using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace DigiTekShop.Identity.Configurations;
 
@@ -12,8 +13,10 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(64)
             .IsRequired(false);
 
-        b.Property(u => u.IsDeleted).HasDefaultValue(false);
-        b.Property(u => u.CreatedAtUtc).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+        b.Property(u => u.IsDeleted).HasDefaultValue(false).IsRequired();
+        b.Property(u => u.CreatedAtUtc)
+            .HasDefaultValueSql("SYSUTCDATETIME()")
+            .IsRequired();
         b.Property(u => u.UpdatedAtUtc).IsRequired(false);
         b.Property(u => u.DeletedAtUtc).IsRequired(false);
         b.Property(u => u.LastLoginAtUtc).IsRequired(false);
@@ -37,17 +40,24 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
         b.HasQueryFilter(u => !u.IsDeleted);
 
 
-        b.HasIndex(u => u.NormalizedEmail)
-            .HasFilter("[IsDeleted] = 0")
-            .HasDatabaseName("IX_Users_NormalizedEmail_Active");
+        // Override Identity's default indexes with filtered versions to support soft-delete
+        // Using Identity's default index names ensures EF replaces them instead of creating duplicates
 
-        b.HasIndex(u => u.Email)
-            .HasDatabaseName("IX_Users_Email_Active");
-
+        // Override Identity's default "UserNameIndex" (unique on NormalizedUserName)
         b.HasIndex(u => u.NormalizedUserName)
             .IsUnique()
             .HasFilter("[IsDeleted] = 0")
-            .HasDatabaseName("UX_Users_NormalizedUserName_Active");
+            .HasDatabaseName("UserNameIndex");
+
+        // Override Identity's default "EmailIndex" (non-unique on NormalizedEmail)
+        b.HasIndex(u => u.NormalizedEmail)
+            .HasFilter("[IsDeleted] = 0")
+            .HasDatabaseName("EmailIndex");
+
+        // Additional index on non-normalized Email for queries that don't use normalized values
+        b.HasIndex(u => u.Email)
+            .HasFilter("[IsDeleted] = 0")
+            .HasDatabaseName("IX_Users_Email_Active");
 
         b.HasIndex(u => u.PhoneNumber)
             .HasFilter("[IsDeleted] = 0")

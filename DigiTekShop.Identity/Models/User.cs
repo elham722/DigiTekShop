@@ -1,5 +1,6 @@
 ﻿using DigiTekShop.SharedKernel.Exceptions.NotFound;
 using DigiTekShop.SharedKernel.Exceptions.Validation;
+using DigiTekShop.SharedKernel.Guards;
 using DigiTekShop.SharedKernel.Utilities.Text;
 
 namespace DigiTekShop.Identity.Models;
@@ -11,10 +12,10 @@ public class User : IdentityUser<Guid>
     public bool TermsAccepted { get; private set; } = true;
     public bool IsDeleted { get; private set; }
 
-    public DateTime CreatedAtUtc { get; private set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAtUtc { get; private set; }
-    public DateTime? DeletedAtUtc { get; private set; }
-    public DateTime? LastLoginAtUtc { get; private set; }
+    public DateTimeOffset CreatedAtUtc { get; private set; } // Set by DB via SYSUTCDATETIME()
+    public DateTimeOffset? UpdatedAtUtc { get; private set; }
+    public DateTimeOffset? DeletedAtUtc { get; private set; }
+    public DateTimeOffset? LastLoginAtUtc { get; private set; }
 
     public string? NormalizedPhoneNumber { get; private set; }
 
@@ -52,13 +53,13 @@ public class User : IdentityUser<Guid>
     {
         if (IsDeleted) return;
         IsDeleted = true;
-        DeletedAtUtc = DateTime.UtcNow;
+        DeletedAtUtc = DateTimeOffset.UtcNow;
         Touch();
     }
 
     public void RecordLogin(DateTimeOffset whenUtc)
     {
-        LastLoginAtUtc = whenUtc.UtcDateTime;
+        LastLoginAtUtc = whenUtc;
         Touch();
     }
 
@@ -82,12 +83,16 @@ public class User : IdentityUser<Guid>
 
   
 
-    public void AddDevice(UserDevice device, DateTime nowUtc, int maxActiveDevices = 5, int maxTrustedDevices = 3)
+    public void AddDevice(UserDevice device, DateTimeOffset nowUtc, int maxActiveDevices = 5, int maxTrustedDevices = 3)
     {
         Guard.AgainstNull(device, nameof(device));
-        nowUtc = EnsureUtc(nowUtc);
 
+        // Check for duplicate by Id (entity-level)
         if (Devices.Any(d => d.Id == device.Id)) return;
+
+        // Check for duplicate by DeviceId (database unique constraint)
+        // This prevents DB unique constraint violation before SaveChanges
+        if (Devices.Any(d => d.DeviceId == device.DeviceId)) return;
 
         var activeCount = Devices.Count(d => d.IsActive);
         if (activeCount >= maxActiveDevices)
@@ -124,18 +129,16 @@ public class User : IdentityUser<Guid>
         Touch();
     }
 
-    public void DeactivateInactiveDevices(TimeSpan inactivityThreshold, DateTime nowUtc)
+    public void DeactivateInactiveDevices(TimeSpan inactivityThreshold, DateTimeOffset nowUtc)
     {
-        nowUtc = EnsureUtc(nowUtc);
         var cutoff = nowUtc - inactivityThreshold;
         var toDeactivate = Devices.Where(d => d.IsActive && d.LastSeenUtc < cutoff).ToList();
         foreach (var d in toDeactivate) d.Deactivate();
         if (toDeactivate.Any()) Touch();
     }
 
-    public void RemoveOldInactiveDevices(TimeSpan removalThreshold, DateTime nowUtc)
+    public void RemoveOldInactiveDevices(TimeSpan removalThreshold, DateTimeOffset nowUtc)
     {
-        nowUtc = EnsureUtc(nowUtc);
         var cutoff = nowUtc - removalThreshold;
         var olds = Devices.Where(d => !d.IsActive && d.LastSeenUtc < cutoff).ToList();
         foreach (var d in olds) Devices.Remove(d);
@@ -210,15 +213,5 @@ public class User : IdentityUser<Guid>
     public bool IsActiveUser => !IsLocked && PhoneNumberConfirmed && !IsDeleted;
     public bool CanLogin() => IsActiveUser && !IsLocked;
 
-    private void Touch() => UpdatedAtUtc = DateTime.UtcNow;
-
-    private static DateTime EnsureUtc(DateTime dt)
-        => dt.Kind == DateTimeKind.Utc ? dt : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
-
-    private Guid FindDeviceEntityIdByDeviceId(string deviceId)
-    {
-        var dev = Devices.FirstOrDefault(d => d.DeviceId == deviceId)
-            ?? throw new NotFoundException("Device not found", ErrorCodes.Identity.DEVICE_NOT_FOUND);
-        return dev.Id;
-    }
+    private void Touch() => UpdatedAtUtc = DateTimeOffset.UtcNow;
 }
