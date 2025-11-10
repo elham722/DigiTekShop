@@ -1,5 +1,6 @@
 ﻿using DigiTekShop.Contracts.DTOs.Auth.SecurityEvent;
 using DigiTekShop.Contracts.Options.Security;
+using DigiTekShop.SharedKernel.Enums.Audit;
 using DigiTekShop.SharedKernel.Enums.Security;
 using System.Text.Json;
 using DigiTekShop.SharedKernel.Utilities.Security;
@@ -110,23 +111,9 @@ public sealed class SecurityEventService : ISecurityEventService
                     se.ResolvedAt,
                     se.ResolvedBy,
                     se.ResolutionNotes,
-                   
-                    se.Type == SecurityEventType.SystemIntrusion
-                        || se.Type == SecurityEventType.DataBreach
-                        || se.Type == SecurityEventType.BruteForceAttempt
-                        || se.Type == SecurityEventType.TokenReplay
-                        || se.Type == SecurityEventType.DeviceSuspicious
-                        || se.Type == SecurityEventType.UnauthorizedAccess
-                        ? "High"
-                        : (se.Type == SecurityEventType.LoginFailed
-                            || se.Type == SecurityEventType.AccountLocked
-                            || se.Type == SecurityEventType.MfaFailed
-                            || se.Type == SecurityEventType.RefreshTokenAnomaly
-                            || se.Type == SecurityEventType.DeviceUntrusted
-                            || se.Type == SecurityEventType.PermissionDenied
-                            || se.Type == SecurityEventType.RateLimitExceeded
-                            ? "Medium"
-                            : "Low")
+                    se.Severity == AuditSeverity.Critical ? "High"
+                        : se.Severity == AuditSeverity.Warning ? "Medium"
+                        : "Low"
                 ))
                 .ToListAsync(ct);
 
@@ -204,7 +191,7 @@ public sealed class SecurityEventService : ISecurityEventService
 
         try
         {
-            var cutoff = _time.UtcNow - timeWindow;
+            var cutoff = DateTimeOffset.UtcNow - timeWindow;
 
             var list = await _db.SecurityEvents.AsNoTracking()
                 .Where(se => se.IpAddress == ipAddress && se.OccurredAt >= cutoff)
@@ -283,28 +270,17 @@ public sealed class SecurityEventService : ISecurityEventService
     {
         try
         {
-            var since = _time.UtcNow - timeWindow;
+            var since = DateTimeOffset.UtcNow - timeWindow;
             var q = _db.SecurityEvents.AsNoTracking().Where(e => e.OccurredAt >= since);
 
             var totalTask = q.CountAsync(ct);
             var unresolvedTask = q.CountAsync(e => !e.IsResolved, ct);
 
             var highTask = q.CountAsync(e =>
-                e.Type == SecurityEventType.SystemIntrusion
-                || e.Type == SecurityEventType.DataBreach
-                || e.Type == SecurityEventType.BruteForceAttempt
-                || e.Type == SecurityEventType.TokenReplay
-                || e.Type == SecurityEventType.DeviceSuspicious
-                || e.Type == SecurityEventType.UnauthorizedAccess, ct);
+                e.Severity == AuditSeverity.Critical, ct);
 
             var mediumTask = q.CountAsync(e =>
-                e.Type == SecurityEventType.LoginFailed
-                || e.Type == SecurityEventType.AccountLocked
-                || e.Type == SecurityEventType.MfaFailed
-                || e.Type == SecurityEventType.RefreshTokenAnomaly
-                || e.Type == SecurityEventType.DeviceUntrusted
-                || e.Type == SecurityEventType.PermissionDenied
-                || e.Type == SecurityEventType.RateLimitExceeded, ct);
+                e.Severity == AuditSeverity.Warning, ct);
 
             var byTypeTask = q.GroupBy(e => e.Type)
                 .Select(g => new { g.Key, Cnt = g.Count() })
@@ -346,7 +322,7 @@ public sealed class SecurityEventService : ISecurityEventService
         try
         {
             if (olderThan <= TimeSpan.Zero) return 0;
-            var cutoff = _time.UtcNow - olderThan;
+            var cutoff = DateTimeOffset.UtcNow - olderThan;
 
             var deleted = await _db.SecurityEvents
                 .Where(se => se.OccurredAt < cutoff && se.IsResolved)

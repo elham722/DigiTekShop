@@ -10,9 +10,9 @@ namespace DigiTekShop.Contracts.DTOs.Auth.SecurityEvent
         string? UserAgent,
         string? DeviceId,
         string? MetadataJson,
-        DateTime OccurredAt,
+        DateTimeOffset OccurredAt,
         bool IsResolved,
-        DateTime? ResolvedAt,
+        DateTimeOffset? ResolvedAt,
         string? ResolvedBy,
         string? ResolutionNotes,
         string? RiskLevel
