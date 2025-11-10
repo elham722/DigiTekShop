@@ -147,59 +147,88 @@ public sealed class OtpAuthService : IAuthService
         var purpose = SharedKernel.Enums.Verification.VerificationPurpose.Login;
         var channel = SharedKernel.Enums.Verification.VerificationChannel.Sms;
 
-        // Find active PV for this user/phone/purpose/channel
-        // With unique filtered index, we need to expire any active records first if creating new
-        var pv = await _db.PhoneVerifications
-            .Where(x => x.UserId == user.Id && 
-                       x.PhoneNumberNormalized == phone &&
-                       x.Purpose == purpose &&
-                       x.Channel == channel &&
-                       !x.IsVerified && 
-                       x.ExpiresAtUtc > now)
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .FirstOrDefaultAsync(ct);
-
-        if (pv is null)
+        // Find or create PV for this user/phone/purpose/channel
+        // With unique filtered index (IsVerified = 0), we enforce "only one active OTP" in application layer
+        // Use a transaction to prevent race conditions with unique index
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        PhoneVerification pv;
+        try
         {
-            // Expire any remaining active records for this phone/purpose/channel to satisfy unique index
-            await _db.PhoneVerifications
+            // Find any unverified record (expired or not) for this phone/purpose/channel
+            var existing = await _db.PhoneVerifications
                 .Where(x => x.PhoneNumberNormalized == phone &&
                            x.Purpose == purpose &&
                            x.Channel == channel &&
-                           !x.IsVerified &&
-                           x.ExpiresAtUtc > now)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(x => x.ExpiresAtUtc, now), ct);
+                           !x.IsVerified)
+                .OrderByDescending(x => x.CreatedAtUtc)
+                .FirstOrDefaultAsync(ct);
 
-            pv = PhoneVerification.CreateForUser(
-                userId: user.Id,
-                codeHash: codeHash,
-                expiresAtUtc: expires,
-                phoneNumber: phone,
-                ipAddress: _client.IpAddress,
-                userAgent: _client.UserAgent,
-                deviceId: deviceId,
-                purpose: purpose,
-                channel: channel,
-                codeHashAlgo: "HMACSHA256",
-                secretVersion: 1,
-                encryptedCodeProtected: protectedCode
-            );
-            _db.PhoneVerifications.Add(pv);
+            if (existing != null)
+            {
+                // If there's an active (non-expired) record, reset it
+                if (existing.ExpiresAtUtc > now)
+                {
+                    existing.ResetCode(
+                        newHash: codeHash,
+                        newExpiresAtUtc: expires,
+                        phoneNumber: phone,
+                        ipAddress: _client.IpAddress,
+                        userAgent: _client.UserAgent,
+                        deviceId: deviceId,
+                        codeHashAlgo: "HMACSHA256",
+                        secretVersion: 1,
+                        encryptedCodeProtected: protectedCode
+                    );
+                    pv = existing;
+                }
+                else
+                {
+                    // If expired, delete it to make room for new record
+                    _db.PhoneVerifications.Remove(existing);
+                    pv = PhoneVerification.CreateForUser(
+                        userId: user.Id,
+                        codeHash: codeHash,
+                        expiresAtUtc: expires,
+                        phoneNumber: phone,
+                        ipAddress: _client.IpAddress,
+                        userAgent: _client.UserAgent,
+                        deviceId: deviceId,
+                        purpose: purpose,
+                        channel: channel,
+                        codeHashAlgo: "HMACSHA256",
+                        secretVersion: 1,
+                        encryptedCodeProtected: protectedCode
+                    );
+                    _db.PhoneVerifications.Add(pv);
+                }
+            }
+            else
+            {
+                // No existing record, create new one
+                pv = PhoneVerification.CreateForUser(
+                    userId: user.Id,
+                    codeHash: codeHash,
+                    expiresAtUtc: expires,
+                    phoneNumber: phone,
+                    ipAddress: _client.IpAddress,
+                    userAgent: _client.UserAgent,
+                    deviceId: deviceId,
+                    purpose: purpose,
+                    channel: channel,
+                    codeHashAlgo: "HMACSHA256",
+                    secretVersion: 1,
+                    encryptedCodeProtected: protectedCode
+                );
+                _db.PhoneVerifications.Add(pv);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
         }
-        else
+        catch
         {
-            pv.ResetCode(
-                newHash: codeHash,
-                newExpiresAtUtc: expires,
-                phoneNumber: phone,
-                ipAddress: _client.IpAddress,
-                userAgent: _client.UserAgent,
-                deviceId: deviceId,
-                codeHashAlgo: "HMACSHA256",
-                secretVersion: 1,
-                encryptedCodeProtected: protectedCode
-            );
+            await transaction.RollbackAsync(ct);
+            throw;
         }
 
         // 7) Raise domain event (Outbox)

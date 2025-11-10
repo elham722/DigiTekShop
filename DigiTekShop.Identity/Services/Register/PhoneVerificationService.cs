@@ -92,50 +92,70 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         var hash = BCrypt.Net.BCrypt.HashPassword(code);
 
         // Find or create PhoneVerification
-        // With unique filtered index, we need to expire any active records first
+        // With unique filtered index (IsVerified = 0), we enforce "only one active OTP" in application layer
         var purpose = SharedKernel.Enums.Verification.VerificationPurpose.Signup;
         var channel = SharedKernel.Enums.Verification.VerificationChannel.Sms;
 
-        var last = await _db.PhoneVerifications
-            .Where(p => p.UserId == user.Id && 
-                       p.PhoneNumberNormalized == normalized &&
-                       p.Purpose == purpose &&
-                       p.Channel == channel &&
-                       !p.IsVerified && 
-                       p.ExpiresAtUtc > now)
-            .OrderByDescending(p => p.CreatedAtUtc)
-            .FirstOrDefaultAsync(ct);
-
-        if (last is null)
+        // Use a transaction to prevent race conditions with unique index
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        PhoneVerification pv;
+        try
         {
-            // Expire any remaining active records for this phone/purpose/channel to satisfy unique index
-            await _db.PhoneVerifications
+            // Find any unverified record (expired or not) for this phone/purpose/channel
+            var existing = await _db.PhoneVerifications
                 .Where(p => p.PhoneNumberNormalized == normalized &&
                            p.Purpose == purpose &&
                            p.Channel == channel &&
-                           !p.IsVerified &&
-                           p.ExpiresAtUtc > now)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(p => p.ExpiresAtUtc, now), ct);
+                           !p.IsVerified)
+                .OrderByDescending(p => p.CreatedAtUtc)
+                .FirstOrDefaultAsync(ct);
 
-            var pv = PhoneVerification.CreateForUser(
-                userId: user.Id,
-                codeHash: hash,
-                expiresAtUtc: expires,
-                phoneNumber: normalized,
-                purpose: purpose,
-                channel: channel);
-            _db.PhoneVerifications.Add(pv);
+            if (existing != null)
+            {
+                // If there's an active (non-expired) record, reset it
+                if (existing.ExpiresAtUtc > now)
+                {
+                    existing.ResetCode(
+                        newHash: hash,
+                        newExpiresAtUtc: expires,
+                        phoneNumber: normalized);
+                    pv = existing;
+                }
+                else
+                {
+                    // If expired, delete it to make room for new record
+                    _db.PhoneVerifications.Remove(existing);
+                    pv = PhoneVerification.CreateForUser(
+                        userId: user.Id,
+                        codeHash: hash,
+                        expiresAtUtc: expires,
+                        phoneNumber: normalized,
+                        purpose: purpose,
+                        channel: channel);
+                    _db.PhoneVerifications.Add(pv);
+                }
+            }
+            else
+            {
+                // No existing record, create new one
+                pv = PhoneVerification.CreateForUser(
+                    userId: user.Id,
+                    codeHash: hash,
+                    expiresAtUtc: expires,
+                    phoneNumber: normalized,
+                    purpose: purpose,
+                    channel: channel);
+                _db.PhoneVerifications.Add(pv);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
         }
-        else
+        catch
         {
-            last.ResetCode(
-                newHash: hash,
-                newExpiresAtUtc: expires,
-                phoneNumber: normalized);
+            await transaction.RollbackAsync(ct);
+            throw;
         }
-
-        await _db.SaveChangesAsync(ct);
 
         // ارسال SMS (اگر بعداً Outbox/Worker داری، اینجا می‌تونی DomainEvent بلند کنی)
         var templateName = _opts.Template?.OtpTemplateName ?? "default_otp";

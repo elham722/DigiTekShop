@@ -124,11 +124,12 @@ public class PhoneVerificationConfiguration : IEntityTypeConfiguration<PhoneVeri
         builder.HasIndex(pv => new { pv.Purpose, pv.Channel, pv.ExpiresAtUtc })
             .HasDatabaseName("IX_PV_Purpose_Channel_ExpiresAt");
 
-        // Unique filtered index: Only one active OTP per phone/purpose/channel combination
-        // This prevents multiple active OTPs for the same phone number and purpose
+        // Unique filtered index: Only one unverified OTP per phone/purpose/channel combination
+        // Note: Cannot use non-deterministic functions (SYSUTCDATETIME) in index filter
+        // The "active" logic (not expired) is enforced in application layer
         builder.HasIndex(pv => new { pv.PhoneNumberNormalized, pv.Purpose, pv.Channel })
             .IsUnique()
-            .HasFilter("[PhoneNumberNormalized] IS NOT NULL AND [IsVerified] = 0 AND [ExpiresAtUtc] > SYSUTCDATETIME()")
+            .HasFilter("[PhoneNumberNormalized] IS NOT NULL AND [IsVerified] = 0")
             .HasDatabaseName("UX_PV_Active_Phone_Purpose_Channel");
     }
 }
