@@ -1,51 +1,135 @@
+using DigiTekShop.SharedKernel.Enums.Verification;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 namespace DigiTekShop.Identity.Configurations;
 
 public class PhoneVerificationConfiguration : IEntityTypeConfiguration<PhoneVerification>
 {
+    // Field length constants
+    private const int MaxPhoneNumberLength = 32;
+    private const int MaxPhoneNumberNormalizedLength = 20; // E.164 max length
+    private const int MaxIpAddressLength = 45;
+    private const int MaxUserAgentLength = 1024;
+    private const int MaxDeviceIdLength = 128;
+    private const int MaxCodeHashLength = 256;
+    private const int MaxCodeHashAlgoLength = 32;
+
     public void Configure(EntityTypeBuilder<PhoneVerification> builder)
     {
+        builder.ToTable("PhoneVerifications");
         builder.HasKey(pv => pv.Id);
 
-        builder.Property(pv => pv.CodeHash).IsRequired().HasMaxLength(256);
-        builder.Property(pv => pv.CodeHashAlgo).HasMaxLength(32);
-        builder.Property(pv => pv.SecretVersion).HasDefaultValue(1);
+        builder.Property(pv => pv.CodeHash)
+            .IsRequired()
+            .HasMaxLength(MaxCodeHashLength);
+
+        builder.Property(pv => pv.CodeHashAlgo)
+            .HasMaxLength(MaxCodeHashAlgoLength)
+            .IsRequired(false);
+
+        builder.Property(pv => pv.SecretVersion)
+            .HasDefaultValue(1)
+            .IsRequired();
 
         builder.Property(pv => pv.EncryptedCodeProtected)
-               .HasColumnType("nvarchar(max)")
-               .IsRequired(false);
+            .HasColumnType("nvarchar(max)")
+            .IsRequired(false);
 
-        builder.Property(pv => pv.DeviceId).HasMaxLength(128);
+        builder.Property(pv => pv.DeviceId)
+            .HasMaxLength(MaxDeviceIdLength)
+            .IsRequired(false);
 
-        builder.Property(pv => pv.Attempts).HasDefaultValue(0);
-        builder.Property(pv => pv.CreatedAtUtc).IsRequired().HasDefaultValueSql("GETUTCDATE()");
-        builder.Property(pv => pv.ExpiresAtUtc).IsRequired();
-        builder.Property(pv => pv.IsVerified).HasDefaultValue(false);
+        builder.Property(pv => pv.Attempts)
+            .HasDefaultValue(0)
+            .IsRequired();
 
-        builder.Property(pv => pv.PhoneNumber).HasMaxLength(32);
-        builder.Property(pv => pv.IpAddress).HasMaxLength(45);
-        builder.Property(pv => pv.UserAgent).HasMaxLength(512);
+        builder.Property(pv => pv.CreatedAtUtc)
+            .HasDefaultValueSql("SYSUTCDATETIME()")
+            .IsRequired();
 
-        builder.Property(x => x.RowVersion).IsRowVersion();
+        builder.Property(pv => pv.ExpiresAtUtc)
+            .IsRequired();
+
+        builder.Property(pv => pv.VerifiedAtUtc)
+            .IsRequired(false);
+
+        builder.Property(pv => pv.LockedUntilUtc)
+            .IsRequired(false);
+
+        builder.Property(pv => pv.IsVerified)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(pv => pv.PhoneNumber)
+            .HasMaxLength(MaxPhoneNumberLength)
+            .IsRequired(false);
+
+        builder.Property(pv => pv.PhoneNumberNormalized)
+            .HasMaxLength(MaxPhoneNumberNormalizedLength)
+            .IsUnicode(false)
+            .IsRequired(false);
+
+        builder.Property(pv => pv.IpAddress)
+            .HasMaxLength(MaxIpAddressLength)
+            .IsRequired(false);
+
+        builder.Property(pv => pv.UserAgent)
+            .HasMaxLength(MaxUserAgentLength)
+            .IsRequired(false);
+
+        builder.Property(pv => pv.Purpose)
+            .HasConversion<byte>()
+            .HasDefaultValue((byte)VerificationPurpose.Login)
+            .IsRequired();
+
+        builder.Property(pv => pv.Channel)
+            .HasConversion<byte>()
+            .HasDefaultValue((byte)VerificationChannel.Sms)
+            .IsRequired();
+
+        builder.Property(pv => pv.RowVersion)
+            .IsRowVersion();
 
         builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(pv => pv.UserId)
-            .OnDelete(DeleteBehavior.Cascade)
+            .OnDelete(DeleteBehavior.SetNull) // Preserve security audit trail when user is deleted
             .IsRequired(false);
 
-        builder.HasIndex(pv => pv.PhoneNumber).HasDatabaseName("IX_PhoneVerifications_Phone");
-        builder.HasIndex(pv => pv.ExpiresAtUtc).HasDatabaseName("IX_PhoneVerifications_ExpiresAt");
-        builder.HasIndex(pv => pv.CreatedAtUtc).HasDatabaseName("IX_PhoneVerifications_CreatedAt");
+        // Indexes
+        builder.HasIndex(pv => pv.PhoneNumber)
+            .HasDatabaseName("IX_PhoneVerifications_Phone");
 
-        builder.HasIndex(pv => new { pv.PhoneNumber, pv.IsVerified, pv.ExpiresAtUtc })
-            .HasDatabaseName("IX_PV_Phone_Active");
+        builder.HasIndex(pv => pv.PhoneNumberNormalized)
+            .HasDatabaseName("IX_PhoneVerifications_PhoneNormalized")
+            .HasFilter("[PhoneNumberNormalized] IS NOT NULL");
+
+        builder.HasIndex(pv => pv.ExpiresAtUtc)
+            .HasDatabaseName("IX_PhoneVerifications_ExpiresAt");
+
+        builder.HasIndex(pv => pv.CreatedAtUtc)
+            .HasDatabaseName("IX_PhoneVerifications_CreatedAt");
+
+        builder.HasIndex(pv => pv.LockedUntilUtc)
+            .HasDatabaseName("IX_PhoneVerifications_LockedUntil")
+            .HasFilter("[LockedUntilUtc] IS NOT NULL");
+
+        builder.HasIndex(pv => new { pv.PhoneNumberNormalized, pv.IsVerified, pv.ExpiresAtUtc })
+            .HasDatabaseName("IX_PV_PhoneNormalized_Active");
 
         builder.HasIndex(pv => new { pv.UserId, pv.IsVerified, pv.ExpiresAtUtc })
             .HasDatabaseName("IX_PV_User_Active");
 
-        builder.HasIndex(pv => new { pv.PhoneNumber, pv.CodeHash, pv.ExpiresAtUtc })
+        builder.HasIndex(pv => new { pv.Purpose, pv.Channel, pv.ExpiresAtUtc })
+            .HasDatabaseName("IX_PV_Purpose_Channel_ExpiresAt");
+
+        // Unique filtered index: Only one active OTP per phone/purpose/channel combination
+        // This prevents multiple active OTPs for the same phone number and purpose
+        builder.HasIndex(pv => new { pv.PhoneNumberNormalized, pv.Purpose, pv.Channel })
             .IsUnique()
-            .HasDatabaseName("UX_PhoneVerifications_Phone_Code_ExpiresAt");
+            .HasFilter("[PhoneNumberNormalized] IS NOT NULL AND [IsVerified] = 0 AND [ExpiresAtUtc] > SYSUTCDATETIME()")
+            .HasDatabaseName("UX_PV_Active_Phone_Purpose_Channel");
     }
 }
 

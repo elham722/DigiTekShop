@@ -1,4 +1,8 @@
-﻿namespace DigiTekShop.Identity.Models;
+﻿using DigiTekShop.SharedKernel.Enums.Verification;
+using DigiTekShop.SharedKernel.Guards;
+using DigiTekShop.SharedKernel.Utilities.Text;
+
+namespace DigiTekShop.Identity.Models;
 
 public class PhoneVerification
 {
@@ -8,20 +12,25 @@ public class PhoneVerification
     public string CodeHash { get; private set; } = null!;
     public int Attempts { get; private set; }
 
-    public DateTime CreatedAtUtc { get; private set; } = DateTime.UtcNow;
-    public DateTime ExpiresAtUtc { get; private set; }
-    public DateTime? VerifiedAtUtc { get; private set; }
+    public DateTimeOffset CreatedAtUtc { get; private set; }
+    public DateTimeOffset ExpiresAtUtc { get; private set; }
+    public DateTimeOffset? VerifiedAtUtc { get; private set; }
+    public DateTimeOffset? LockedUntilUtc { get; private set; }
 
-    public string? PhoneNumber { get; private set; }
+    public string? PhoneNumber { get; private set; } // Display/Raw format
+    public string? PhoneNumberNormalized { get; private set; } // E.164 format
     public string? IpAddress { get; private set; }
     public string? UserAgent { get; private set; }
 
     public bool IsVerified { get; private set; }
 
-    public string? CodeHashAlgo { get; private set; }    
-    public int SecretVersion { get; private set; }        
-    public string? EncryptedCodeProtected { get; private set; } 
-    public string? DeviceId { get; private set; }           
+    public VerificationPurpose Purpose { get; private set; } = VerificationPurpose.Login;
+    public VerificationChannel Channel { get; private set; } = VerificationChannel.Sms;
+
+    public string? CodeHashAlgo { get; private set; }
+    public int SecretVersion { get; private set; }
+    public string? EncryptedCodeProtected { get; private set; }
+    public string? DeviceId { get; private set; }
 
     public byte[]? RowVersion { get; private set; }
 
@@ -31,19 +40,31 @@ public class PhoneVerification
     public static PhoneVerification CreateForUser(
         Guid userId,
         string codeHash,
-        DateTime createdAtUtc,
-        DateTime expiresAtUtc,
+        DateTimeOffset expiresAtUtc,
         string? phoneNumber = null,
         string? ipAddress = null,
         string? userAgent = null,
         string? deviceId = null,
+        VerificationPurpose purpose = VerificationPurpose.Login,
+        VerificationChannel channel = VerificationChannel.Sms,
         string? codeHashAlgo = "HMACSHA256",
         int secretVersion = 1,
         string? encryptedCodeProtected = null)
     {
         Guard.AgainstEmpty(userId, nameof(userId));
         Guard.AgainstNullOrEmpty(codeHash, nameof(codeHash));
-        Guard.AgainstPastDate(expiresAtUtc, () => DateTime.UtcNow, nameof(expiresAtUtc));
+        var now = DateTimeOffset.UtcNow;
+        Guard.AgainstPastDate(expiresAtUtc, () => now, nameof(expiresAtUtc));
+
+        // Normalize phone number to E.164 format
+        string? normalizedPhone = null;
+        if (!string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            if (Normalization.TryNormalizePhoneIranE164(phoneNumber, out var e164))
+            {
+                normalizedPhone = e164;
+            }
+        }
 
         return new PhoneVerification
         {
@@ -53,19 +74,21 @@ public class PhoneVerification
             SecretVersion = secretVersion,
             EncryptedCodeProtected = encryptedCodeProtected,
             Attempts = 0,
-            CreatedAtUtc = createdAtUtc,
+            // CreatedAtUtc will be set by DB via HasDefaultValueSql("SYSUTCDATETIME()")
             ExpiresAtUtc = expiresAtUtc,
-            PhoneNumber = TrimTo(phoneNumber, 32),
-            IpAddress = TrimTo(ipAddress, 45),
-            UserAgent = TrimTo(userAgent, 512),
-            DeviceId = TrimTo(deviceId, 128)
+            PhoneNumber = StringNormalizer.NormalizeAndTruncate(phoneNumber, 32),
+            PhoneNumberNormalized = normalizedPhone,
+            IpAddress = StringNormalizer.NormalizeAndTruncate(ipAddress, 45),
+            UserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024),
+            DeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128),
+            Purpose = purpose,
+            Channel = channel
         };
     }
 
     public void ResetCode(
         string newHash,
-        DateTime newCreatedAtUtc,
-        DateTime newExpiresAtUtc,
+        DateTimeOffset newExpiresAtUtc,
         string? phoneNumber = null,
         string? ipAddress = null,
         string? userAgent = null,
@@ -75,42 +98,74 @@ public class PhoneVerification
         string? encryptedCodeProtected = null)
     {
         Guard.AgainstNullOrEmpty(newHash, nameof(newHash));
-        Guard.AgainstPastDate(newExpiresAtUtc, () => DateTime.UtcNow, nameof(newExpiresAtUtc));
+        var now = DateTimeOffset.UtcNow;
+        Guard.AgainstPastDate(newExpiresAtUtc, () => now, nameof(newExpiresAtUtc));
 
         CodeHash = newHash;
         CodeHashAlgo = codeHashAlgo;
         SecretVersion = secretVersion;
         EncryptedCodeProtected = encryptedCodeProtected;
-        CreatedAtUtc = newCreatedAtUtc;
         ExpiresAtUtc = newExpiresAtUtc;
         Attempts = 0;
         IsVerified = false;
         VerifiedAtUtc = null;
+        LockedUntilUtc = null;
 
-        if (!string.IsNullOrWhiteSpace(phoneNumber)) PhoneNumber = TrimTo(phoneNumber, 32);
-        if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = TrimTo(ipAddress, 45);
-        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = TrimTo(userAgent, 512);
-        if (!string.IsNullOrWhiteSpace(deviceId)) DeviceId = TrimTo(deviceId, 128);
+        // Normalize phone number to E.164 format
+        if (!string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            PhoneNumber = StringNormalizer.NormalizeAndTruncate(phoneNumber, 32);
+            if (Normalization.TryNormalizePhoneIranE164(phoneNumber, out var e164))
+            {
+                PhoneNumberNormalized = e164;
+            }
+            else
+            {
+                PhoneNumberNormalized = null;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
+        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
+        if (!string.IsNullOrWhiteSpace(deviceId)) DeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128);
     }
 
-    public bool TryIncrementAttempts(int maxAttempts = DefaultMaxAttempts)
-    { if (Attempts >= maxAttempts) return false; Attempts++; return true; }
+    public bool TryIncrementAttempts(int maxAttempts = DefaultMaxAttempts, TimeSpan? lockDuration = null)
+    {
+        if (Attempts >= maxAttempts)
+        {
+            // Lock if max attempts reached
+            if (lockDuration.HasValue)
+            {
+                LockedUntilUtc = DateTimeOffset.UtcNow.Add(lockDuration.Value);
+            }
+            return false;
+        }
 
-    public void ResetAttempts() => Attempts = 0;
+        Attempts++;
+        return true;
+    }
 
-    public void MarkAsVerified(DateTime nowUtc)
-    { IsVerified = true; VerifiedAtUtc = nowUtc; }
+    public void ResetAttempts()
+    {
+        Attempts = 0;
+        LockedUntilUtc = null;
+    }
+
+    public void MarkAsVerified(DateTimeOffset nowUtc)
+    {
+        IsVerified = true;
+        VerifiedAtUtc = nowUtc;
+    }
 
     public void UpdateRequestInfo(string? ipAddress = null, string? userAgent = null)
     {
-        if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = TrimTo(ipAddress, 45);
-        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = TrimTo(userAgent, 512);
+        if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
+        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
     }
 
-    public bool IsExpired(DateTime nowUtc) => nowUtc >= ExpiresAtUtc;
-    public bool IsValid(DateTime nowUtc, int maxAttempts = DefaultMaxAttempts)
-        => !IsExpired(nowUtc) && !IsVerified && Attempts < maxAttempts;
-
-    private static string? TrimTo(string? value, int max)
-        => string.IsNullOrEmpty(value) ? value : (value.Length <= max ? value : value[..max]);
+    public bool IsExpired(DateTimeOffset nowUtc) => nowUtc >= ExpiresAtUtc;
+    public bool IsLocked(DateTimeOffset nowUtc) => LockedUntilUtc.HasValue && nowUtc < LockedUntilUtc.Value;
+    public bool IsValid(DateTimeOffset nowUtc, int maxAttempts = DefaultMaxAttempts)
+        => !IsExpired(nowUtc) && !IsLocked(nowUtc) && !IsVerified && Attempts < maxAttempts;
 }

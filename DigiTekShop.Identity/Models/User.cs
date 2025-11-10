@@ -56,9 +56,9 @@ public class User : IdentityUser<Guid>
         Touch();
     }
 
-    public void RecordLogin(DateTime whenUtc)
+    public void RecordLogin(DateTimeOffset whenUtc)
     {
-        LastLoginAtUtc = EnsureUtc(whenUtc);
+        LastLoginAtUtc = whenUtc.UtcDateTime;
         Touch();
     }
 

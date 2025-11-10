@@ -91,20 +91,48 @@ public sealed class PhoneVerificationService : IPhoneVerificationService
         var code = GenerateNumericCode(_opts.CodeLength);
         var hash = BCrypt.Net.BCrypt.HashPassword(code);
 
-        // Upsert آخرین PhoneVerification (درجا)
+        // Find or create PhoneVerification
+        // With unique filtered index, we need to expire any active records first
+        var purpose = SharedKernel.Enums.Verification.VerificationPurpose.Signup;
+        var channel = SharedKernel.Enums.Verification.VerificationChannel.Sms;
+
         var last = await _db.PhoneVerifications
-            .Where(p => p.UserId == user.Id)
+            .Where(p => p.UserId == user.Id && 
+                       p.PhoneNumberNormalized == normalized &&
+                       p.Purpose == purpose &&
+                       p.Channel == channel &&
+                       !p.IsVerified && 
+                       p.ExpiresAtUtc > now)
             .OrderByDescending(p => p.CreatedAtUtc)
             .FirstOrDefaultAsync(ct);
 
         if (last is null)
         {
-            var pv = PhoneVerification.CreateForUser(user.Id, hash, now, expires, normalized);
+            // Expire any remaining active records for this phone/purpose/channel to satisfy unique index
+            await _db.PhoneVerifications
+                .Where(p => p.PhoneNumberNormalized == normalized &&
+                           p.Purpose == purpose &&
+                           p.Channel == channel &&
+                           !p.IsVerified &&
+                           p.ExpiresAtUtc > now)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(p => p.ExpiresAtUtc, now), ct);
+
+            var pv = PhoneVerification.CreateForUser(
+                userId: user.Id,
+                codeHash: hash,
+                expiresAtUtc: expires,
+                phoneNumber: normalized,
+                purpose: purpose,
+                channel: channel);
             _db.PhoneVerifications.Add(pv);
         }
         else
         {
-            last.ResetCode(hash, now, expires, normalized);
+            last.ResetCode(
+                newHash: hash,
+                newExpiresAtUtc: expires,
+                phoneNumber: normalized);
         }
 
         await _db.SaveChangesAsync(ct);

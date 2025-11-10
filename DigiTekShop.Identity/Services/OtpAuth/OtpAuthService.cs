@@ -111,9 +111,10 @@ public sealed class OtpAuthService : IAuthService
 
         // 5) Resend cooldown
         var lastPv = await FindLastActiveUnverifiedPVAsync(user.Id, phone, ct);
+        var nowCheck = DateTimeOffset.UtcNow;
         if (lastPv is not null)
         {
-            if (!_phoneOpts.AllowResendCode && lastPv.ExpiresAtUtc > DateTime.UtcNow)
+            if (!_phoneOpts.AllowResendCode && lastPv.ExpiresAtUtc > nowCheck)
             {
                 // تا زمان انقضای کد قبلی اجازه‌ی ارسال مجدد نده
                 var fakeDecision = BuildCooldownRateLimitDecision(lastPv.ExpiresAtUtc, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
@@ -125,7 +126,7 @@ public sealed class OtpAuthService : IAuthService
             if (_phoneOpts.AllowResendCode)
             {
                 var nextAllowed = lastPv.CreatedAtUtc.Add(_phoneOpts.ResendCooldown);
-                if (DateTime.UtcNow < nextAllowed)
+                if (nowCheck < nextAllowed)
                 {
                     var fakeDecision = BuildCooldownRateLimitDecision(nextAllowed, policy: "OtpSendPolicy", reason: ErrorCodes.Otp.OTP_SEND_RATE_LIMITED);
                     return Result.Failure(
@@ -140,24 +141,46 @@ public sealed class OtpAuthService : IAuthService
         var code = GenerateNumericCode(_phoneOpts.CodeLength);
         var codeHash = HashOtp(code, _phoneOpts.CodeHashSecret);
         var protectedCode = _crypto.Encrypt(code, SharedKernel.Enums.Security.CryptoPurpose.TotpSecret);
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
         var expires = now.Add(_phoneOpts.CodeValidity);
 
+        var purpose = SharedKernel.Enums.Verification.VerificationPurpose.Login;
+        var channel = SharedKernel.Enums.Verification.VerificationChannel.Sms;
+
+        // Find active PV for this user/phone/purpose/channel
+        // With unique filtered index, we need to expire any active records first if creating new
         var pv = await _db.PhoneVerifications
+            .Where(x => x.UserId == user.Id && 
+                       x.PhoneNumberNormalized == phone &&
+                       x.Purpose == purpose &&
+                       x.Channel == channel &&
+                       !x.IsVerified && 
+                       x.ExpiresAtUtc > now)
             .OrderByDescending(x => x.CreatedAtUtc)
-            .FirstOrDefaultAsync(x => x.UserId == user.Id && !x.IsVerified && x.ExpiresAtUtc > now, ct);
+            .FirstOrDefaultAsync(ct);
 
         if (pv is null)
         {
+            // Expire any remaining active records for this phone/purpose/channel to satisfy unique index
+            await _db.PhoneVerifications
+                .Where(x => x.PhoneNumberNormalized == phone &&
+                           x.Purpose == purpose &&
+                           x.Channel == channel &&
+                           !x.IsVerified &&
+                           x.ExpiresAtUtc > now)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(x => x.ExpiresAtUtc, now), ct);
+
             pv = PhoneVerification.CreateForUser(
                 userId: user.Id,
                 codeHash: codeHash,
-                createdAtUtc: now,
                 expiresAtUtc: expires,
                 phoneNumber: phone,
                 ipAddress: _client.IpAddress,
                 userAgent: _client.UserAgent,
                 deviceId: deviceId,
+                purpose: purpose,
+                channel: channel,
                 codeHashAlgo: "HMACSHA256",
                 secretVersion: 1,
                 encryptedCodeProtected: protectedCode
@@ -168,7 +191,6 @@ public sealed class OtpAuthService : IAuthService
         {
             pv.ResetCode(
                 newHash: codeHash,
-                newCreatedAtUtc: now,
                 newExpiresAtUtc: expires,
                 phoneNumber: phone,
                 ipAddress: _client.IpAddress,
@@ -228,12 +250,13 @@ public sealed class OtpAuthService : IAuthService
         }
 
         // آخرین PV فعال
+        var nowCheck = DateTimeOffset.UtcNow;
         var pv = await _db.PhoneVerifications
             .OrderByDescending(x => x.CreatedAtUtc)
-            .FirstOrDefaultAsync(x => x.UserId == user.Id && !x.IsVerified && x.ExpiresAtUtc > DateTime.UtcNow, ct)
+            .FirstOrDefaultAsync(x => x.UserId == user.Id && !x.IsVerified && x.ExpiresAtUtc > nowCheck, ct)
             ?? await _db.PhoneVerifications
                  .OrderByDescending(x => x.CreatedAtUtc)
-                 .FirstOrDefaultAsync(x => x.PhoneNumber == phone && !x.IsVerified && x.ExpiresAtUtc > DateTime.UtcNow, ct);
+                 .FirstOrDefaultAsync(x => x.PhoneNumber == phone && !x.IsVerified && x.ExpiresAtUtc > nowCheck, ct);
 
         if (pv is null)
         {
@@ -245,7 +268,7 @@ public sealed class OtpAuthService : IAuthService
             pv.Id, pv.ExpiresAtUtc, pv.Attempts, _phoneOpts.MaxAttempts);
 
         // محدودیت تلاش (business-level)
-        if (!pv.IsValid(DateTime.UtcNow, _phoneOpts.MaxAttempts))
+        if (!pv.IsValid(nowCheck, _phoneOpts.MaxAttempts))
         {
             // 429 به‌جای 400 برای UX بهتر
             var fakeDecision = BuildCooldownRateLimitDecision(pv.ExpiresAtUtc, policy: "OtpVerifyPolicy", reason: ErrorCodes.Otp.OTP_VERIFY_RATE_LIMITED);
@@ -284,7 +307,7 @@ public sealed class OtpAuthService : IAuthService
         // if (!string.Equals(pv.DeviceId, deviceId, StringComparison.Ordinal))
         //     return Result<LoginResponseDto>.Failure(ErrorCodes.Common.VALIDATION_FAILED);
 
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
         pv.MarkAsVerified(now);
         user.SetPhoneNumber(phone, confirmed: true);
         user.RecordLogin(now);
@@ -341,7 +364,7 @@ public sealed class OtpAuthService : IAuthService
     // --------------------------------------------------------------------
     private async Task<PhoneVerification?> FindLastActiveUnverifiedPVAsync(Guid userId, string phone, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
         var pv = await _db.PhoneVerifications
             .OrderByDescending(x => x.CreatedAtUtc)
             .FirstOrDefaultAsync(x => x.UserId == userId && !x.IsVerified && x.ExpiresAtUtc > now, ct);
@@ -355,39 +378,33 @@ public sealed class OtpAuthService : IAuthService
         return pv;
     }
 
-    private static RateLimitedException BuildCooldownRateLimit(DateTime expiresAtUtc, string policy, string reason)
+    private static RateLimitedException BuildCooldownRateLimit(DateTimeOffset expiresAtUtc, string policy, string reason)
     {
-        var expUtc = DateTime.SpecifyKind(expiresAtUtc, DateTimeKind.Utc);
-        var nowUtc = DateTime.UtcNow;
-
-        var window = expUtc > nowUtc ? (expUtc - nowUtc) : TimeSpan.FromSeconds(1);
-        var resetAt = new DateTimeOffset(expUtc, TimeSpan.Zero); 
+        var nowUtc = DateTimeOffset.UtcNow;
+        var window = expiresAtUtc > nowUtc ? (expiresAtUtc - nowUtc) : TimeSpan.FromSeconds(1);
 
         return RateLimitedException.FromRaw(
             count: 0,
             limit: 1,
             window: window,
-            resetAt: resetAt,
+            resetAt: expiresAtUtc,
             policy: policy,
             key: "cooldown",
             reason: reason
         );
     }
 
-    private static RateLimitDecision BuildCooldownRateLimitDecision(DateTime expiresAtUtc, string policy, string reason)
+    private static RateLimitDecision BuildCooldownRateLimitDecision(DateTimeOffset expiresAtUtc, string policy, string reason)
     {
-        var expUtc = DateTime.SpecifyKind(expiresAtUtc, DateTimeKind.Utc);
-        var nowUtc = DateTime.UtcNow;
-
-        var window = expUtc > nowUtc ? (expUtc - nowUtc) : TimeSpan.FromSeconds(1);
-        var resetAt = new DateTimeOffset(expUtc, TimeSpan.Zero); 
+        var nowUtc = DateTimeOffset.UtcNow;
+        var window = expiresAtUtc > nowUtc ? (expiresAtUtc - nowUtc) : TimeSpan.FromSeconds(1);
 
         return new RateLimitDecision(
             Allowed: false,
             Count: 1,
             Limit: 1,
             Window: window,
-            ResetAt: resetAt,
+            ResetAt: expiresAtUtc,
             Ttl: null
         );
     }
