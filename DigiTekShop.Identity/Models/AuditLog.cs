@@ -1,5 +1,6 @@
 ﻿using DigiTekShop.SharedKernel.Enums.Audit;
 using DigiTekShop.SharedKernel.Utilities.Security;
+using DigiTekShop.SharedKernel.Utilities.Text;
 
 namespace DigiTekShop.Identity.Models;
 
@@ -57,15 +58,15 @@ public sealed class AuditLog
         var redactedNewJson = JsonRedactor.RedactSensitiveFields(newValueJson);
 
         // Normalize and truncate string fields
-        var normalizedTargetName = NormalizeAndTruncate(targetEntityName, 256);
-        var normalizedTargetId = NormalizeAndTruncate(targetEntityId, 256);
-        var normalizedIp = NormalizeAndTruncate(ipAddress, 45);
-        var normalizedUserAgent = NormalizeAndTruncate(userAgent, 1024);
-        var normalizedDeviceId = NormalizeAndTruncate(deviceId, 128);
-        var normalizedError = NormalizeAndTruncate(errorMessage, 1024);
-        var normalizedCorrelationId = NormalizeAndTruncate(correlationId, 128);
-        var normalizedRequestId = NormalizeAndTruncate(requestId, 128);
-        var normalizedSessionId = NormalizeAndTruncate(sessionId, 128);
+        var normalizedTargetName = StringNormalizer.NormalizeAndTruncate(targetEntityName, 256);
+        var normalizedTargetId = StringNormalizer.NormalizeAndTruncate(targetEntityId, 256);
+        var normalizedIp = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
+        var normalizedUserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
+        var normalizedDeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128);
+        var normalizedError = StringNormalizer.NormalizeAndTruncate(errorMessage, 1024);
+        var normalizedCorrelationId = StringNormalizer.NormalizeAndTruncate(correlationId, 128);
+        var normalizedRequestId = StringNormalizer.NormalizeAndTruncate(requestId, 128);
+        var normalizedSessionId = StringNormalizer.NormalizeAndTruncate(sessionId, 128);
 
         var finalSeverity = severity ?? (isSuccess ? AuditSeverity.Info : AuditSeverity.Warning);
         
@@ -92,22 +93,10 @@ public sealed class AuditLog
         };
     }
 
-    private static string? NormalizeAndTruncate(string? value, int maxLength)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-
-        var trimmed = value.Trim();
-        if (trimmed.Length == 0)
-            return null;
-
-        return trimmed.Length > maxLength ? trimmed[..maxLength] : trimmed;
-    }
-
     public void UpdateResult(bool isSuccess, string? errorMessage = null, AuditSeverity? severity = null)
     {
         IsSuccess = isSuccess;
-        ErrorMessage = NormalizeAndTruncate(errorMessage, 1024);
+        ErrorMessage = StringNormalizer.NormalizeAndTruncate(errorMessage, 1024);
         Severity = severity ?? (isSuccess ? AuditSeverity.Info : AuditSeverity.Warning);
     }
 }

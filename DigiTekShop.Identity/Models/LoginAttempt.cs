@@ -52,12 +52,12 @@ public sealed class LoginAttempt
         }
 
         // Normalize and truncate string fields
-        var normalizedIp = NormalizeAndTruncate(ipAddress, 45);
-        var normalizedUserAgent = NormalizeAndTruncate(userAgent, 1024);
-        var normalizedDeviceId = NormalizeAndTruncate(deviceId, 128);
-        var normalizedCorrelationId = NormalizeAndTruncate(correlationId, 128);
-        var normalizedRequestId = NormalizeAndTruncate(requestId, 128);
-        var normalizedLoginName = NormalizeAndTruncate(trimmedLogin, 256);
+        var normalizedIp = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
+        var normalizedUserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
+        var normalizedDeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128);
+        var normalizedCorrelationId = StringNormalizer.NormalizeAndTruncate(correlationId, 128);
+        var normalizedRequestId = StringNormalizer.NormalizeAndTruncate(requestId, 128);
+        var normalizedLoginName = StringNormalizer.NormalizeAndTruncate(trimmedLogin, 256);
 
         return new LoginAttempt
         {
@@ -75,17 +75,6 @@ public sealed class LoginAttempt
         };
     }
 
-    private static string? NormalizeAndTruncate(string? value, int maxLength)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-
-        var trimmed = value.Trim();
-        if (trimmed.Length == 0)
-            return null;
-
-        return trimmed.Length > maxLength ? trimmed[..maxLength] : trimmed;
-    }
 }
 
 

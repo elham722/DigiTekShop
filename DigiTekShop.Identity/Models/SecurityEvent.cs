@@ -2,6 +2,7 @@ using DigiTekShop.SharedKernel.Enums.Audit;
 using DigiTekShop.SharedKernel.Enums.Security;
 using DigiTekShop.SharedKernel.Guards;
 using DigiTekShop.SharedKernel.Utilities.Security;
+using DigiTekShop.SharedKernel.Utilities.Text;
 
 namespace DigiTekShop.Identity.Models;
 
@@ -48,11 +49,11 @@ public sealed class SecurityEvent
         var redactedMetadata = JsonRedactor.RedactSensitiveFields(metadataJson);
 
         // Normalize and truncate string fields
-        var normalizedIp = NormalizeAndTruncate(ipAddress, 45);
-        var normalizedUserAgent = NormalizeAndTruncate(userAgent, 1024);
-        var normalizedDeviceId = NormalizeAndTruncate(deviceId, 128);
-        var normalizedCorrelationId = NormalizeAndTruncate(correlationId, 128);
-        var normalizedRequestId = NormalizeAndTruncate(requestId, 128);
+        var normalizedIp = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
+        var normalizedUserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
+        var normalizedDeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128);
+        var normalizedCorrelationId = StringNormalizer.NormalizeAndTruncate(correlationId, 128);
+        var normalizedRequestId = StringNormalizer.NormalizeAndTruncate(requestId, 128);
 
         return new SecurityEvent
         {
@@ -93,17 +94,6 @@ public sealed class SecurityEvent
         };
     }
 
-    private static string? NormalizeAndTruncate(string? value, int maxLength)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-
-        var trimmed = value.Trim();
-        if (trimmed.Length == 0)
-            return null;
-
-        return trimmed.Length > maxLength ? trimmed[..maxLength] : trimmed;
-    }
 
     public static SecurityEvent CreateWithMetadata<T>(
         SecurityEventType type,
@@ -127,8 +117,8 @@ public sealed class SecurityEvent
 
         IsResolved = true;
         ResolvedAt = DateTimeOffset.UtcNow;
-        ResolvedBy = NormalizeAndTruncate(resolvedBy, 256);
-        ResolutionNotes = NormalizeAndTruncate(resolutionNotes, 2000);
+        ResolvedBy = StringNormalizer.NormalizeAndTruncate(resolvedBy, 256);
+        ResolutionNotes = StringNormalizer.NormalizeAndTruncate(resolutionNotes, 2000);
     }
 
     public void Unresolve()
