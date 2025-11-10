@@ -1,4 +1,7 @@
-﻿namespace DigiTekShop.Identity.Models;
+﻿using DigiTekShop.SharedKernel.Guards;
+using DigiTekShop.SharedKernel.Utilities.Text;
+
+namespace DigiTekShop.Identity.Models;
 
 public class UserDevice
 {
@@ -10,8 +13,8 @@ public class UserDevice
     public string DeviceName { get; private set; } = default!;
     public string? DeviceFingerprint { get; private set; }
 
-    public DateTime FirstSeenUtc { get; private set; }
-    public DateTime LastSeenUtc { get; private set; }
+    public DateTimeOffset FirstSeenUtc { get; private set; } // Set by DB via SYSUTCDATETIME()
+    public DateTimeOffset LastSeenUtc { get; private set; } // Set by DB via SYSUTCDATETIME()
     public string? LastIp { get; private set; }
     public string? BrowserInfo { get; private set; }
     public string? OperatingSystem { get; private set; }
@@ -21,13 +24,15 @@ public class UserDevice
     public DateTimeOffset? TrustedUntilUtc { get; private set; }
     public int TrustCount { get; private set; }
 
+    public byte[]? RowVersion { get; private set; }
+
     private UserDevice() { }
 
     public static UserDevice Create(
         Guid userId,
         string deviceId,
         string deviceName,
-        DateTime nowUtc,
+        DateTimeOffset nowUtc,
         string? ip = null,
         string? fingerprint = null,
         string? browser = null,
@@ -40,30 +45,32 @@ public class UserDevice
         return new UserDevice
         {
             UserId = userId,
-            DeviceId = deviceId,
-            DeviceName = deviceName,
-            DeviceFingerprint = string.IsNullOrWhiteSpace(fingerprint) ? null : fingerprint,
-            FirstSeenUtc = DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc),
-            LastSeenUtc = DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc),
-            LastIp = string.IsNullOrWhiteSpace(ip) ? null : ip,
-            BrowserInfo = string.IsNullOrWhiteSpace(browser) ? null : browser,
-            OperatingSystem = string.IsNullOrWhiteSpace(os) ? null : os,
+            DeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128)!,
+            DeviceName = StringNormalizer.NormalizeAndTruncate(deviceName, 100)!,
+            DeviceFingerprint = StringNormalizer.NormalizeAndTruncate(fingerprint, 256),
+            // FirstSeenUtc and LastSeenUtc will be set by DB via HasDefaultValueSql("SYSUTCDATETIME()")
+            LastIp = StringNormalizer.NormalizeAndTruncate(ip, 45),
+            BrowserInfo = StringNormalizer.NormalizeAndTruncate(browser, 512),
+            OperatingSystem = StringNormalizer.NormalizeAndTruncate(os, 64),
             IsActive = true
         };
     }
 
-    public void Touch(DateTime nowUtc, string? ip, string? browser, string? os)
+    public void Touch(DateTimeOffset nowUtc, string? ip, string? browser, string? os)
     {
-        LastSeenUtc = DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc);
-        if (!string.IsNullOrWhiteSpace(ip)) LastIp = ip;
-        if (!string.IsNullOrWhiteSpace(browser)) BrowserInfo = browser;
-        if (!string.IsNullOrWhiteSpace(os)) OperatingSystem = os;
+        LastSeenUtc = nowUtc;
+        if (!string.IsNullOrWhiteSpace(ip)) LastIp = StringNormalizer.NormalizeAndTruncate(ip, 45);
+        if (!string.IsNullOrWhiteSpace(browser)) BrowserInfo = StringNormalizer.NormalizeAndTruncate(browser, 512);
+        if (!string.IsNullOrWhiteSpace(os)) OperatingSystem = StringNormalizer.NormalizeAndTruncate(os, 64);
         IsActive = true;
     }
 
     public void UpdateName(string name)
     {
-        if (!string.IsNullOrWhiteSpace(name)) DeviceName = name;
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            DeviceName = StringNormalizer.NormalizeAndTruncate(name, 100)!;
+        }
     }
 
     public void Untrust()
@@ -74,10 +81,15 @@ public class UserDevice
 
     public void TrustUntil(DateTimeOffset untilUtc)
     {
-        if (untilUtc <= DateTimeOffset.UtcNow)
+        TrustUntil(untilUtc, DateTimeOffset.UtcNow);
+    }
+
+    public void TrustUntil(DateTimeOffset untilUtc, DateTimeOffset nowUtc)
+    {
+        if (untilUtc <= nowUtc)
             throw new ArgumentOutOfRangeException(nameof(untilUtc), "Trust until must be in the future.");
 
-        TrustedAtUtc = DateTimeOffset.UtcNow;
+        TrustedAtUtc = nowUtc;
         TrustedUntilUtc = untilUtc;
         TrustCount++;
     }
@@ -86,13 +98,13 @@ public class UserDevice
     {
         if (window <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(window));
-        TrustUntil(nowUtc + window);
+        TrustUntil(nowUtc + window, nowUtc);
     }
 
     public bool IsCurrentlyTrusted(DateTimeOffset nowUtc) 
         => TrustedUntilUtc.HasValue && TrustedUntilUtc.Value > nowUtc;
 
-    public bool IsInactive(TimeSpan threshold, DateTime nowUtc)
+    public bool IsInactive(TimeSpan threshold, DateTimeOffset nowUtc)
         => !IsActive || nowUtc - LastSeenUtc > threshold;
 
     public void Deactivate() => IsActive = false;
