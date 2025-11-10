@@ -6,6 +6,13 @@ namespace DigiTekShop.Identity.Configurations;
 
 public class LoginAttemptConfiguration : IEntityTypeConfiguration<LoginAttempt>
 {
+    // Field length constants
+    private const int MaxLoginNameLength = 256;
+    private const int MaxIpAddressLength = 45;
+    private const int MaxUserAgentLength = 1024;
+    private const int MaxDeviceIdLength = 128;
+    private const int MaxCorrelationFieldLength = 128; // For CorrelationId, RequestId
+
     public void Configure(EntityTypeBuilder<LoginAttempt> builder)
     {
         builder.ToTable("LoginAttempts");
@@ -20,47 +27,84 @@ public class LoginAttemptConfiguration : IEntityTypeConfiguration<LoginAttempt>
             .IsRequired(false);
 
         builder.Property(la => la.LoginNameOrEmail)
-            .HasMaxLength(256).IsUnicode(false).IsRequired(false);
-
+            .HasMaxLength(MaxLoginNameLength)
+            .IsUnicode(false)
+            .IsRequired(false);
 
         builder.Property(la => la.LoginNameOrEmailNormalized)
-            .HasMaxLength(256).IsUnicode(false).IsRequired(false);
-
+            .HasMaxLength(MaxLoginNameLength)
+            .IsUnicode(false)
+            .IsRequired(false);
 
         builder.Property(la => la.AttemptedAt)
-            .IsRequired()
-            .HasDefaultValueSql("GETUTCDATE()");
+            .HasDefaultValueSql("SYSUTCDATETIME()")
+            .IsRequired();
 
         builder.Property(la => la.Status)
-            .IsRequired()
-            .HasConversion<string>();
+            .HasConversion<int>()
+            .IsRequired();
 
         builder.Property(la => la.IpAddress)
-            .HasMaxLength(45)
+            .HasMaxLength(MaxIpAddressLength)
             .IsUnicode(false)
             .IsRequired(false);
 
         builder.Property(la => la.UserAgent)
-            .HasMaxLength(512)
+            .HasMaxLength(MaxUserAgentLength)
+            .IsRequired(false);
+
+        builder.Property(la => la.DeviceId)
+            .HasMaxLength(MaxDeviceIdLength)
+            .IsRequired(false);
+
+        // Correlation fields
+        builder.Property(la => la.CorrelationId)
+            .HasMaxLength(MaxCorrelationFieldLength)
+            .IsRequired(false);
+
+        builder.Property(la => la.RequestId)
+            .HasMaxLength(MaxCorrelationFieldLength)
             .IsRequired(false);
 
 
-        builder.HasIndex(la => new { la.UserId, la.AttemptedAt })
-            .HasDatabaseName("IX_LoginAttempts_UserId_AttemptedAt")
-            .IncludeProperties(la => new { la.Status, la.IpAddress });
+        // Configure indexes - optimized for brute-force detection and security analysis
+        // Single column indexes (if needed for filtering)
+        builder.HasIndex(la => la.UserId)
+            .HasDatabaseName("IX_LoginAttempts_UserId");
 
-        builder.HasIndex(la => la.LoginNameOrEmailNormalized)
-            .HasFilter("[LoginNameOrEmailNormalized] IS NOT NULL")
-            .HasDatabaseName("IX_LoginAttempts_LoginNameOrEmailNorm");
+        builder.HasIndex(la => la.AttemptedAt)
+            .HasDatabaseName("IX_LoginAttempts_AttemptedAt");
 
-        builder.HasIndex(la => la.IpAddress)
-            .HasDatabaseName("IX_LoginAttempts_IpAddress");
-
-        builder.HasIndex(la => new { la.Status, la.AttemptedAt })
-            .HasDatabaseName("IX_LoginAttempts_Status_AttemptedAt")
-            .IncludeProperties(la => new { la.UserId, la.IpAddress });
-
+        // Composite indexes for common queries (most important first)
+        // For brute-force detection: Failed attempts by IP + time
         builder.HasIndex(la => new { la.IpAddress, la.Status, la.AttemptedAt })
-            .HasDatabaseName("IX_LoginAttempts_Ip_Status_AttemptedAt");
+            .HasDatabaseName("IX_LoginAttempts_Ip_Status_Time");
+
+        // For brute-force detection: Failed attempts by normalized login + time
+        builder.HasIndex(la => new { la.LoginNameOrEmailNormalized, la.Status, la.AttemptedAt })
+            .HasFilter("[LoginNameOrEmailNormalized] IS NOT NULL")
+            .HasDatabaseName("IX_LoginAttempts_Login_Status_Time");
+
+        // For user history queries
+        builder.HasIndex(la => new { la.UserId, la.AttemptedAt })
+            .HasDatabaseName("IX_LoginAttempts_UserId_Time");
+
+        // For filtering failed attempts by time (brute-force detection)
+        builder.HasIndex(la => new { la.Status, la.AttemptedAt })
+            .HasDatabaseName("IX_LoginAttempts_Status_Time");
+
+        // Correlation fields indexes
+        builder.HasIndex(la => la.CorrelationId)
+            .HasDatabaseName("IX_LoginAttempts_CorrelationId")
+            .HasFilter("[CorrelationId] IS NOT NULL");
+
+        builder.HasIndex(la => new { la.IpAddress, la.AttemptedAt })
+    .HasDatabaseName("IX_LoginAttempts_Ip_Fail_Time")
+    .HasFilter($"[IpAddress] IS NOT NULL AND [Status] <> {(int)LoginStatus.Success}");
+
+        builder.HasIndex(la => new { la.LoginNameOrEmailNormalized, la.AttemptedAt })
+            .HasDatabaseName("IX_LoginAttempts_LoginNorm_Fail_Time")
+            .HasFilter($"[LoginNameOrEmailNormalized] IS NOT NULL AND [Status] <> {(int)LoginStatus.Success}");
+
     }
 }

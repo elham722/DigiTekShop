@@ -43,8 +43,8 @@ public sealed class LoginAttemptService : ILoginAttemptService
                .Take(take)
                .Select(SelectDto()));
 
-    private static readonly Func<DigiTekShopIdentityDbContext, string, DateTime, Task<int>> Q_FailedFromIpSince =
-        EF.CompileAsyncQuery((DigiTekShopIdentityDbContext ctx, string ip, DateTime cutoffUtc) =>
+    private static readonly Func<DigiTekShopIdentityDbContext, string, DateTimeOffset, Task<int>> Q_FailedFromIpSince =
+        EF.CompileAsyncQuery((DigiTekShopIdentityDbContext ctx, string ip, DateTimeOffset cutoffUtc) =>
             ctx.LoginAttempts.Count(la => la.IpAddress == ip
                                        && la.Status == LoginStatus.Failed
                                        && la.AttemptedAt >= cutoffUtc));
@@ -76,18 +76,18 @@ public sealed class LoginAttemptService : ILoginAttemptService
 
             var ip = string.IsNullOrWhiteSpace(ipAddress) ? _client.IpAddress : ipAddress;
             var ua = string.IsNullOrWhiteSpace(userAgent) ? _client.UserAgent : userAgent;
+            var deviceId = _client.DeviceId;
 
-            var norm = Normalization.Normalize(loginNameOrEmail);
-            var nowUtc = _time.UtcNow;
-
+            // CorrelationId and RequestId are optional - can be added later via ICorrelationContext if needed
             var attempt = LoginAttempt.Create(
                 userId: userId,
                 status: status,
-                attemptedAtUtc: nowUtc,
                 ipAddress: ip,
                 userAgent: ua,
+                deviceId: deviceId,
                 loginNameOrEmail: loginNameOrEmail,
-                loginNameOrEmailNormalized: norm);
+                correlationId: null, // Can be injected via ICorrelationContext if needed
+                requestId: null);   // Can be injected via ICorrelationContext if needed
 
             _db.LoginAttempts.Add(attempt);
             await _db.SaveChangesAsync(ct);
@@ -168,7 +168,7 @@ public sealed class LoginAttemptService : ILoginAttemptService
 
         try
         {
-            var cutoffUtc = _time.UtcNow - timeWindow;
+            var cutoffUtc = DateTimeOffset.UtcNow - timeWindow;
             var count = await Q_FailedFromIpSince(_db, ipAddress, cutoffUtc);
             return count;
         }
@@ -184,7 +184,7 @@ public sealed class LoginAttemptService : ILoginAttemptService
     {
         try
         {
-            var cutoffUtc = _time.UtcNow - olderThan;
+            var cutoffUtc = DateTimeOffset.UtcNow - olderThan;
             var deleted = await _db.LoginAttempts
                 .Where(la => la.AttemptedAt < cutoffUtc)
                 .ExecuteDeleteAsync(ct);
@@ -210,6 +210,7 @@ public sealed class LoginAttemptService : ILoginAttemptService
         Status = la.Status,
         IpAddress = la.IpAddress,
         UserAgent = la.UserAgent,
+        DeviceId = la.DeviceId,
         LoginNameOrEmail = la.LoginNameOrEmail,
         AttemptedAt = la.AttemptedAt
     };
@@ -222,6 +223,7 @@ public sealed class LoginAttemptService : ILoginAttemptService
             Status = la.Status,
             IpAddress = la.IpAddress,
             UserAgent = la.UserAgent,
+            DeviceId = la.DeviceId,
             LoginNameOrEmail = la.LoginNameOrEmail,
             AttemptedAt = la.AttemptedAt
         });
