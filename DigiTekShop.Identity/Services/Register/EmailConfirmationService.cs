@@ -150,7 +150,7 @@ public sealed class EmailConfirmationService : IEmailConfirmationService
             .Select(a => a.Timestamp)
             .FirstOrDefaultAsync(ct);
 
-        var now = _time.UtcNow;
+        var now = DateTimeOffset.UtcNow;
         return last == default || now >= last.Add(_opts.ResendCooldown);
     }
 
@@ -188,7 +188,15 @@ public sealed class EmailConfirmationService : IEmailConfirmationService
     {
         try
         {
-            _db.AuditLogs.Add(AuditLog.Create(userId, action, AuditTarget, email, status, isSuccess: true));
+            var log = AuditLog.Create(
+                actorId: userId,
+                action: action,
+                targetEntityName: AuditTarget,
+                targetEntityId: email,
+                newValueJson: status,
+                isSuccess: true);
+            
+            _db.AuditLogs.Add(log);
             await _db.SaveChangesAsync(ct);
         }
         catch (Exception ex)

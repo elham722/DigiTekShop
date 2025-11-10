@@ -1,4 +1,5 @@
 using DigiTekShop.Identity.Models;
+using DigiTekShop.SharedKernel.Enums.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -6,6 +7,15 @@ namespace DigiTekShop.Identity.Configurations;
 
 public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
+    // Field length constants
+    private const int MaxTargetEntityNameLength = 256;
+    private const int MaxTargetEntityIdLength = 256;
+    private const int MaxIpAddressLength = 45;
+    private const int MaxUserAgentLength = 1024;
+    private const int MaxDeviceIdLength = 128;
+    private const int MaxErrorMessageLength = 1024;
+    private const int MaxCorrelationFieldLength = 128; // For CorrelationId, RequestId, SessionId
+
     public void Configure(EntityTypeBuilder<AuditLog> builder)
     {
         builder.ToTable("AuditLogs");
@@ -21,21 +31,21 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .IsRequired();
 
         builder.Property(al => al.ActorType)
-            .IsRequired()
-            .HasMaxLength(50)
-            .HasDefaultValue("User");
+            .HasConversion<byte>()
+            .HasDefaultValue((byte)ActorType.User)
+            .IsRequired();
 
         builder.Property(al => al.Action)
-            .IsRequired()
-            .HasConversion<string>();
+            .HasConversion<int>()
+            .IsRequired();
 
         builder.Property(al => al.TargetEntityName)
             .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(MaxTargetEntityNameLength);
 
         builder.Property(al => al.TargetEntityId)
             .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(MaxTargetEntityIdLength);
 
         builder.Property(al => al.OldValueJson)
             .HasColumnType("nvarchar(max)")
@@ -46,62 +56,75 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .IsRequired(false);
 
         builder.Property(al => al.Timestamp)
-            .IsRequired()
-            .HasDefaultValueSql("GETUTCDATE()");
+            .HasDefaultValueSql("SYSUTCDATETIME()")
+            .IsRequired();
 
         builder.Property(al => al.IsSuccess)
+            .HasDefaultValue(true)
             .IsRequired();
 
         builder.Property(al => al.ErrorMessage)
-            .HasMaxLength(2000)
+            .HasMaxLength(MaxErrorMessageLength)
             .IsRequired(false);
 
         builder.Property(al => al.Severity)
-            .IsRequired()
-            .HasConversion<string>();
+            .HasConversion<int>()
+            .HasDefaultValue((int)AuditSeverity.Info)
+            .IsRequired();
 
         builder.Property(al => al.IpAddress)
-            .HasMaxLength(45)
+            .HasMaxLength(MaxIpAddressLength)
             .IsRequired(false);
 
         builder.Property(al => al.UserAgent)
-            .HasMaxLength(1000)
+            .HasMaxLength(MaxUserAgentLength)
             .IsRequired(false);
 
         builder.Property(al => al.DeviceId)
-            .HasMaxLength(256)
+            .HasMaxLength(MaxDeviceIdLength)
             .IsRequired(false);
 
-        // Configure indexes
+        // Correlation fields
+        builder.Property(al => al.CorrelationId)
+            .HasMaxLength(MaxCorrelationFieldLength)
+            .IsRequired(false);
+
+        builder.Property(al => al.RequestId)
+            .HasMaxLength(MaxCorrelationFieldLength)
+            .IsRequired(false);
+
+        builder.Property(al => al.SessionId)
+            .HasMaxLength(MaxCorrelationFieldLength)
+            .IsRequired(false);
+
+        // Configure indexes - optimized for common query patterns
+        // Single column indexes (if needed for filtering)
         builder.HasIndex(al => al.ActorId)
             .HasDatabaseName("IX_AuditLogs_ActorId");
-
-        builder.HasIndex(al => al.Action)
-            .HasDatabaseName("IX_AuditLogs_Action");
-
-        builder.HasIndex(al => al.TargetEntityName)
-            .HasDatabaseName("IX_AuditLogs_TargetEntityName");
 
         builder.HasIndex(al => al.Timestamp)
             .HasDatabaseName("IX_AuditLogs_Timestamp");
 
-        builder.HasIndex(al => al.Severity)
-            .HasDatabaseName("IX_AuditLogs_Severity");
-
-        builder.HasIndex(al => al.IsSuccess)
-            .HasDatabaseName("IX_AuditLogs_IsSuccess");
-
-        // Composite indexes for common queries
+        // Composite indexes for common queries (most important first)
         builder.HasIndex(al => new { al.ActorId, al.Timestamp })
             .HasDatabaseName("IX_AuditLogs_ActorId_Timestamp");
 
         builder.HasIndex(al => new { al.TargetEntityName, al.TargetEntityId, al.Timestamp })
-            .HasDatabaseName("IX_AuditLogs_Entity_Timestamp");
+            .HasDatabaseName("IX_AuditLogs_Target_Timestamp");
+
+        // Index for queries filtering by target entity + action + time
+        builder.HasIndex(al => new { al.TargetEntityName, al.TargetEntityId, al.Action, al.Timestamp })
+            .HasDatabaseName("IX_AuditLogs_Target_Action_Time");
 
         builder.HasIndex(al => new { al.Action, al.Timestamp })
             .HasDatabaseName("IX_AuditLogs_Action_Timestamp");
 
-        builder.HasIndex(al => new { al.Severity, al.IsSuccess, al.Timestamp })
-            .HasDatabaseName("IX_AuditLogs_Severity_Success_Timestamp");
+        builder.HasIndex(al => new { al.Severity, al.Timestamp })
+            .HasDatabaseName("IX_AuditLogs_Severity_Timestamp");
+
+        // CorrelationId index for request tracking
+        builder.HasIndex(al => al.CorrelationId)
+            .HasDatabaseName("IX_AuditLogs_CorrelationId")
+            .HasFilter("[CorrelationId] IS NOT NULL");
     }
 }
