@@ -1,4 +1,4 @@
-using DigiTekShop.Identity.Models;
+﻿using DigiTekShop.Identity.Models;
 using DigiTekShop.SharedKernel.Enums.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -31,9 +31,11 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .IsRequired();
 
         builder.Property(al => al.ActorType)
-            .HasConversion<byte>()
-            .HasDefaultValue((byte)ActorType.User)
-            .IsRequired();
+      .IsRequired()
+      .HasConversion<string>()        // enum <-> string
+      .HasMaxLength(50)
+      .HasDefaultValue(ActorType.User);   // ✅ به‌جای nameof(ActorType.User)
+
 
         builder.Property(al => al.Action)
             .HasConversion<int>()
@@ -68,9 +70,10 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .IsRequired(false);
 
         builder.Property(al => al.Severity)
-            .HasConversion<int>()
-            .HasDefaultValue((int)AuditSeverity.Info)
-            .IsRequired();
+     .IsRequired()
+     .HasConversion<int>()             
+     .HasDefaultValue(AuditSeverity.Info);  
+
 
         builder.Property(al => al.IpAddress)
             .HasMaxLength(MaxIpAddressLength)

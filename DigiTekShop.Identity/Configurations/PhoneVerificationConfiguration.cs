@@ -80,12 +80,12 @@ public class PhoneVerificationConfiguration : IEntityTypeConfiguration<PhoneVeri
 
         builder.Property(pv => pv.Purpose)
             .HasConversion<byte>()
-            .HasDefaultValue((byte)VerificationPurpose.Login)
+            .HasDefaultValue(VerificationPurpose.Login)
             .IsRequired();
 
         builder.Property(pv => pv.Channel)
             .HasConversion<byte>()
-            .HasDefaultValue((byte)VerificationChannel.Sms)
+            .HasDefaultValue(VerificationChannel.Sms)
             .IsRequired();
 
         builder.Property(pv => pv.RowVersion)

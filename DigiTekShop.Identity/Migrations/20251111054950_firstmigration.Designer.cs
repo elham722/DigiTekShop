@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Identity.Migrations
 {
     [DbContext(typeof(DigiTekShopIdentityDbContext))]
-    [Migration("20251109053249_firstmig")]
-    partial class firstmig
+    [Migration("20251111054950_firstmigration")]
+    partial class firstmigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -30,9 +30,8 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Action")
+                        .HasColumnType("int");
 
                     b.Property<Guid>("ActorId")
                         .HasColumnType("uniqueidentifier");
@@ -44,20 +43,26 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasDefaultValue("User");
 
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
                     b.Property<string>("DeviceId")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("ErrorMessage")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
 
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
                         .HasColumnType("nvarchar(45)");
 
                     b.Property<bool>("IsSuccess")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("NewValueJson")
                         .HasColumnType("nvarchar(max)");
@@ -65,9 +70,18 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<string>("OldValueJson")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Severity")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("Severity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(2);
 
                     b.Property<string>("TargetEntityId")
                         .IsRequired()
@@ -79,31 +93,23 @@ namespace DigiTekShop.Identity.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<DateTime>("Timestamp")
+                    b.Property<DateTimeOffset>("Timestamp")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<string>("UserAgent")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Action")
-                        .HasDatabaseName("IX_AuditLogs_Action");
 
                     b.HasIndex("ActorId")
                         .HasDatabaseName("IX_AuditLogs_ActorId");
 
-                    b.HasIndex("IsSuccess")
-                        .HasDatabaseName("IX_AuditLogs_IsSuccess");
-
-                    b.HasIndex("Severity")
-                        .HasDatabaseName("IX_AuditLogs_Severity");
-
-                    b.HasIndex("TargetEntityName")
-                        .HasDatabaseName("IX_AuditLogs_TargetEntityName");
+                    b.HasIndex("CorrelationId")
+                        .HasDatabaseName("IX_AuditLogs_CorrelationId")
+                        .HasFilter("[CorrelationId] IS NOT NULL");
 
                     b.HasIndex("Timestamp")
                         .HasDatabaseName("IX_AuditLogs_Timestamp");
@@ -114,11 +120,14 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasIndex("ActorId", "Timestamp")
                         .HasDatabaseName("IX_AuditLogs_ActorId_Timestamp");
 
-                    b.HasIndex("Severity", "IsSuccess", "Timestamp")
-                        .HasDatabaseName("IX_AuditLogs_Severity_Success_Timestamp");
+                    b.HasIndex("Severity", "Timestamp")
+                        .HasDatabaseName("IX_AuditLogs_Severity_Timestamp");
 
                     b.HasIndex("TargetEntityName", "TargetEntityId", "Timestamp")
-                        .HasDatabaseName("IX_AuditLogs_Entity_Timestamp");
+                        .HasDatabaseName("IX_AuditLogs_Target_Timestamp");
+
+                    b.HasIndex("TargetEntityName", "TargetEntityId", "Action", "Timestamp")
+                        .HasDatabaseName("IX_AuditLogs_Target_Action_Time");
 
                     b.ToTable("AuditLogs", (string)null);
                 });
@@ -134,47 +143,51 @@ namespace DigiTekShop.Identity.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<string>("CausationId")
-                        .HasMaxLength(100)
+                        .HasMaxLength(128)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(100)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<string>("CorrelationId")
-                        .HasMaxLength(100)
+                        .HasMaxLength(128)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(100)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<string>("Error")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
 
                     b.Property<string>("LockedBy")
-                        .HasMaxLength(64)
+                        .HasMaxLength(128)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(64)");
+                        .HasColumnType("varchar(128)");
 
-                    b.Property<DateTime?>("LockedUntilUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("LockedUntilUtc")
+                        .HasColumnType("datetimeoffset");
 
-                    b.Property<DateTime?>("NextRetryUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("MessageKey")
+                        .HasMaxLength(256)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(256)");
 
-                    b.Property<DateTime>("OccurredAtUtc")
+                    b.Property<DateTimeOffset?>("NextRetryUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<string>("Payload")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("ProcessedAtUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("ProcessedAtUtc")
+                        .HasColumnType("datetimeoffset");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
+                    b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Pending");
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -185,10 +198,20 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CorrelationId")
-                        .HasDatabaseName("IX_Outbox_CorrelationId");
+                        .HasDatabaseName("IX_Outbox_CorrelationId")
+                        .HasFilter("[CorrelationId] IS NOT NULL");
 
                     b.HasIndex("LockedUntilUtc")
-                        .HasDatabaseName("IX_Outbox_LockedUntilUtc");
+                        .HasDatabaseName("IX_Outbox_LockedUntilUtc")
+                        .HasFilter("[LockedUntilUtc] IS NOT NULL");
+
+                    b.HasIndex("MessageKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Outbox_MessageKey")
+                        .HasFilter("[MessageKey] IS NOT NULL");
+
+                    b.HasIndex("OccurredAtUtc")
+                        .HasDatabaseName("IX_Outbox_OccurredAtUtc");
 
                     b.HasIndex("Status", "OccurredAtUtc")
                         .HasDatabaseName("IX_Outbox_Status_OccurredAtUtc");
@@ -196,7 +219,10 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasIndex("Status", "NextRetryUtc", "OccurredAtUtc")
                         .HasDatabaseName("IX_Outbox_Status_NextRetry_OccurredAt");
 
-                    b.ToTable("IdentityOutboxMessages", (string)null);
+                    b.ToTable("IdentityOutboxMessages", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Outbox_Attempts_NonNegative", "[Attempts] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.LoginAttempt", b =>
@@ -204,10 +230,18 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("AttemptedAt")
+                    b.Property<DateTimeOffset>("AttemptedAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
@@ -224,38 +258,52 @@ namespace DigiTekShop.Identity.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(256)");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<string>("UserAgent")
-                        .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)");
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
 
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IpAddress")
-                        .HasDatabaseName("IX_LoginAttempts_IpAddress");
+                    b.HasIndex("AttemptedAt")
+                        .HasDatabaseName("IX_LoginAttempts_AttemptedAt");
 
-                    b.HasIndex("LoginNameOrEmailNormalized")
-                        .HasDatabaseName("IX_LoginAttempts_LoginNameOrEmailNorm")
-                        .HasFilter("[LoginNameOrEmailNormalized] IS NOT NULL");
+                    b.HasIndex("CorrelationId")
+                        .HasDatabaseName("IX_LoginAttempts_CorrelationId")
+                        .HasFilter("[CorrelationId] IS NOT NULL");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_LoginAttempts_UserId");
+
+                    b.HasIndex("IpAddress", "AttemptedAt")
+                        .HasDatabaseName("IX_LoginAttempts_Ip_Fail_Time")
+                        .HasFilter("[IpAddress] IS NOT NULL AND [Status] <> 1");
+
+                    b.HasIndex("LoginNameOrEmailNormalized", "AttemptedAt")
+                        .HasDatabaseName("IX_LoginAttempts_LoginNorm_Fail_Time")
+                        .HasFilter("[LoginNameOrEmailNormalized] IS NOT NULL AND [Status] <> 1");
 
                     b.HasIndex("Status", "AttemptedAt")
-                        .HasDatabaseName("IX_LoginAttempts_Status_AttemptedAt");
-
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Status", "AttemptedAt"), new[] { "UserId", "IpAddress" });
+                        .HasDatabaseName("IX_LoginAttempts_Status_Time");
 
                     b.HasIndex("UserId", "AttemptedAt")
-                        .HasDatabaseName("IX_LoginAttempts_UserId_AttemptedAt");
-
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("UserId", "AttemptedAt"), new[] { "Status", "IpAddress" });
+                        .HasDatabaseName("IX_LoginAttempts_UserId_Time");
 
                     b.HasIndex("IpAddress", "Status", "AttemptedAt")
-                        .HasDatabaseName("IX_LoginAttempts_Ip_Status_AttemptedAt");
+                        .HasDatabaseName("IX_LoginAttempts_Ip_Status_Time");
+
+                    b.HasIndex("LoginNameOrEmailNormalized", "Status", "AttemptedAt")
+                        .HasDatabaseName("IX_LoginAttempts_Login_Status_Time")
+                        .HasFilter("[LoginNameOrEmailNormalized] IS NOT NULL");
 
                     b.ToTable("LoginAttempts", (string)null);
                 });
@@ -266,10 +314,10 @@ namespace DigiTekShop.Identity.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
@@ -285,8 +333,8 @@ namespace DigiTekShop.Identity.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.HasKey("Id");
 
@@ -314,6 +362,11 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
+                    b.Property<byte>("Channel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((byte)1);
+
                     b.Property<string>("CodeHash")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -323,10 +376,10 @@ namespace DigiTekShop.Identity.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
-                    b.Property<DateTime>("CreatedAtUtc")
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<string>("DeviceId")
                         .HasMaxLength(128)
@@ -335,8 +388,8 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<string>("EncryptedCodeProtected")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
@@ -347,9 +400,22 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<DateTimeOffset?>("LockedUntilUtc")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("PhoneNumberNormalized")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<byte>("Purpose")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((byte)1);
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -362,14 +428,14 @@ namespace DigiTekShop.Identity.Migrations
                         .HasDefaultValue(1);
 
                     b.Property<string>("UserAgent")
-                        .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)");
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
 
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("VerifiedAtUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("VerifiedAtUtc")
+                        .HasColumnType("datetimeoffset");
 
                     b.HasKey("Id");
 
@@ -379,21 +445,32 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasIndex("ExpiresAtUtc")
                         .HasDatabaseName("IX_PhoneVerifications_ExpiresAt");
 
+                    b.HasIndex("LockedUntilUtc")
+                        .HasDatabaseName("IX_PhoneVerifications_LockedUntil")
+                        .HasFilter("[LockedUntilUtc] IS NOT NULL");
+
                     b.HasIndex("PhoneNumber")
                         .HasDatabaseName("IX_PhoneVerifications_Phone");
 
-                    b.HasIndex("PhoneNumber", "CodeHash", "ExpiresAtUtc")
-                        .IsUnique()
-                        .HasDatabaseName("UX_PhoneVerifications_Phone_Code_ExpiresAt")
-                        .HasFilter("[PhoneNumber] IS NOT NULL");
+                    b.HasIndex("PhoneNumberNormalized")
+                        .HasDatabaseName("IX_PhoneVerifications_PhoneNormalized")
+                        .HasFilter("[PhoneNumberNormalized] IS NOT NULL");
 
-                    b.HasIndex("PhoneNumber", "IsVerified", "ExpiresAtUtc")
-                        .HasDatabaseName("IX_PV_Phone_Active");
+                    b.HasIndex("PhoneNumberNormalized", "IsVerified", "ExpiresAtUtc")
+                        .HasDatabaseName("IX_PV_PhoneNormalized_Active");
+
+                    b.HasIndex("PhoneNumberNormalized", "Purpose", "Channel")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PV_Active_Phone_Purpose_Channel")
+                        .HasFilter("[PhoneNumberNormalized] IS NOT NULL AND [IsVerified] = 0");
+
+                    b.HasIndex("Purpose", "Channel", "ExpiresAtUtc")
+                        .HasDatabaseName("IX_PV_Purpose_Channel_ExpiresAt");
 
                     b.HasIndex("UserId", "IsVerified", "ExpiresAtUtc")
                         .HasDatabaseName("IX_PV_User_Active");
 
-                    b.ToTable("PhoneVerifications");
+                    b.ToTable("PhoneVerifications", (string)null);
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.RefreshToken", b =>
@@ -413,9 +490,9 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("varchar(45)");
 
                     b.Property<string>("DeviceId")
-                        .HasMaxLength(256)
+                        .HasMaxLength(128)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(256)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<DateTimeOffset>("ExpiresAtUtc")
                         .HasColumnType("datetimeoffset");
@@ -423,15 +500,11 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<DateTimeOffset?>("LastUsedAtUtc")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<string>("ParentTokenHash")
-                        .HasMaxLength(128)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(128)");
+                    b.Property<Guid?>("ParentTokenId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("ReplacedByTokenHash")
-                        .HasMaxLength(128)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(128)");
+                    b.Property<Guid?>("ReplacedByTokenId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset?>("RevokedAtUtc")
                         .HasColumnType("datetimeoffset");
@@ -456,11 +529,13 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("varchar(128)");
 
                     b.Property<int>("UsageCount")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("UserAgent")
-                        .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)");
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -473,11 +548,13 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasIndex("ExpiresAtUtc")
                         .HasDatabaseName("IX_RefreshTokens_ExpiresAtUtc");
 
-                    b.HasIndex("ParentTokenHash")
-                        .HasDatabaseName("IX_RefreshTokens_ParentTokenHash");
+                    b.HasIndex("ParentTokenId")
+                        .HasDatabaseName("IX_RefreshTokens_ParentTokenId")
+                        .HasFilter("[ParentTokenId] IS NOT NULL");
 
-                    b.HasIndex("ReplacedByTokenHash")
-                        .HasDatabaseName("IX_RefreshTokens_ReplacedByTokenHash");
+                    b.HasIndex("ReplacedByTokenId")
+                        .HasDatabaseName("IX_RefreshTokens_ReplacedByTokenId")
+                        .HasFilter("[ReplacedByTokenId] IS NOT NULL");
 
                     b.HasIndex("RevokedAtUtc")
                         .HasDatabaseName("IX_RefreshTokens_RevokedAtUtc");
@@ -485,6 +562,11 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasIndex("TokenHash")
                         .IsUnique()
                         .HasDatabaseName("IX_RefreshTokens_TokenHash");
+
+                    b.HasIndex("UserId", "DeviceId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_RefreshTokens_User_Device_Active")
+                        .HasFilter("[RevokedAtUtc] IS NULL AND [DeviceId] IS NOT NULL");
 
                     b.HasIndex("UserId", "ExpiresAtUtc", "RevokedAtUtc")
                         .HasDatabaseName("IX_RefreshTokens_User_Active")
@@ -502,9 +584,13 @@ namespace DigiTekShop.Identity.Migrations
                         {
                             t.HasCheckConstraint("CK_RefreshTokens_ExpiresAfterCreated", "[ExpiresAtUtc] > [CreatedAtUtc]");
 
+                            t.HasCheckConstraint("CK_RefreshTokens_LastUsedRange", "([LastUsedAtUtc] IS NULL OR ([LastUsedAtUtc] >= [CreatedAtUtc] AND [LastUsedAtUtc] <= [ExpiresAtUtc]))");
+
+                            t.HasCheckConstraint("CK_RefreshTokens_RevokedAfterCreated", "([RevokedAtUtc] IS NULL OR [RevokedAtUtc] >= [CreatedAtUtc])");
+
                             t.HasCheckConstraint("CK_RefreshTokens_RevokedConsistency", "(([RevokedAtUtc] IS NULL AND [RevokedReason] IS NULL) OR ([RevokedAtUtc] IS NOT NULL))");
 
-                            t.HasCheckConstraint("CK_RefreshTokens_RotationConsistency", "(([RotatedAtUtc] IS NULL AND [ReplacedByTokenHash] IS NULL) OR ([RotatedAtUtc] IS NOT NULL AND [ReplacedByTokenHash] IS NOT NULL))");
+                            t.HasCheckConstraint("CK_RefreshTokens_RotationConsistency", "(([RotatedAtUtc] IS NULL AND [ReplacedByTokenId] IS NULL) OR ([RotatedAtUtc] IS NOT NULL AND [ReplacedByTokenId] IS NOT NULL))");
                         });
                 });
 
@@ -518,10 +604,10 @@ namespace DigiTekShop.Identity.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
@@ -531,8 +617,8 @@ namespace DigiTekShop.Identity.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.HasKey("Id");
 
@@ -555,23 +641,20 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<Guid>("PermissionId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.HasKey("RoleId", "PermissionId");
 
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("IX_RolePermissions_CreatedAt");
 
-                    b.HasIndex("PermissionId");
+                    b.HasIndex("PermissionId")
+                        .HasDatabaseName("IX_RolePermissions_PermissionId");
 
-                    b.HasIndex("RoleId", "PermissionId")
-                        .IsUnique()
-                        .HasDatabaseName("UX_RolePermissions_Role_Permission");
-
-                    b.ToTable("RolePermissions");
+                    b.ToTable("RolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.SecurityEvent", b =>
@@ -579,9 +662,16 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("AuditLogId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
                     b.Property<string>("DeviceId")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
@@ -595,49 +685,53 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<string>("MetadataJson")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("OccurredAt")
+                    b.Property<DateTimeOffset>("OccurredAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("ResolutionNotes")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
-                    b.Property<DateTime?>("ResolvedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("ResolvedBy")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Severity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(2);
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
 
                     b.Property<string>("UserAgent")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
 
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DeviceId")
-                        .HasDatabaseName("IX_SecurityEvents_DeviceId");
+                    b.HasIndex("AuditLogId")
+                        .HasDatabaseName("IX_SecurityEvents_AuditLogId")
+                        .HasFilter("[AuditLogId] IS NOT NULL");
 
-                    b.HasIndex("IpAddress")
-                        .HasDatabaseName("IX_SecurityEvents_IpAddress");
-
-                    b.HasIndex("IsResolved")
-                        .HasDatabaseName("IX_SecurityEvents_IsResolved");
+                    b.HasIndex("CorrelationId")
+                        .HasDatabaseName("IX_SecurityEvents_CorrelationId")
+                        .HasFilter("[CorrelationId] IS NOT NULL");
 
                     b.HasIndex("OccurredAt")
                         .HasDatabaseName("IX_SecurityEvents_OccurredAt");
-
-                    b.HasIndex("Type")
-                        .HasDatabaseName("IX_SecurityEvents_Type");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("IX_SecurityEvents_UserId");
@@ -645,12 +739,6 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasIndex("IsResolved", "OccurredAt")
                         .HasDatabaseName("IX_SecurityEvents_Unresolved_OccurredAt")
                         .HasFilter("[IsResolved] = 0");
-
-                    b.HasIndex("DeviceId", "Type", "OccurredAt")
-                        .HasDatabaseName("IX_SecurityEvents_DeviceId_Type_OccurredAt");
-
-                    b.HasIndex("IpAddress", "Type", "OccurredAt")
-                        .HasDatabaseName("IX_SecurityEvents_IpAddress_Type_OccurredAt");
 
                     b.HasIndex("Type", "IsResolved", "OccurredAt")
                         .HasDatabaseName("IX_SecurityEvents_Type_Resolved_OccurredAt");
@@ -674,16 +762,16 @@ namespace DigiTekShop.Identity.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("CreatedAtUtc")
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CustomerId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("DeletedAtUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -697,8 +785,8 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
-                    b.Property<DateTime?>("LastLoginAtUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("LastLoginAtUtc")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -736,8 +824,8 @@ namespace DigiTekShop.Identity.Migrations
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
 
-                    b.Property<DateTime?>("UpdatedAtUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
@@ -746,10 +834,11 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
-                        .HasDatabaseName("IX_Users_Email_Active");
+                        .HasDatabaseName("IX_Users_Email_Active")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("IX_Users_NormalizedEmail_Active")
+                        .HasDatabaseName("EmailIndex")
                         .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("NormalizedPhoneNumber")
@@ -759,7 +848,7 @@ namespace DigiTekShop.Identity.Migrations
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
-                        .HasDatabaseName("UX_Users_NormalizedUserName_Active")
+                        .HasDatabaseName("UserNameIndex")
                         .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("PhoneNumber")
@@ -787,17 +876,19 @@ namespace DigiTekShop.Identity.Migrations
 
                     b.Property<string>("DeviceId")
                         .IsRequired()
-                        .HasMaxLength(64)
+                        .HasMaxLength(128)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(64)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<string>("DeviceName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<DateTime>("FirstSeenUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("FirstSeenUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -809,12 +900,19 @@ namespace DigiTekShop.Identity.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(45)");
 
-                    b.Property<DateTime>("LastSeenUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("LastSeenUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<string>("OperatingSystem")
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<int>("TrustCount")
                         .ValueGeneratedOnAdd()
@@ -851,9 +949,18 @@ namespace DigiTekShop.Identity.Migrations
                         .HasDatabaseName("IX_UserDevices_User_IsActive");
 
                     b.HasIndex("UserId", "TrustedUntilUtc")
-                        .HasDatabaseName("IX_UserDevices_User_TrustedUntil");
+                        .HasDatabaseName("IX_UserDevices_User_TrustedUntil")
+                        .HasFilter("[TrustedUntilUtc] IS NOT NULL");
 
-                    b.ToTable("UserDevices", (string)null);
+                    b.HasIndex("UserId", "IsActive", "LastSeenUtc")
+                        .HasDatabaseName("IX_UserDevices_User_Active_LastSeen");
+
+                    b.ToTable("UserDevices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_UserDevices_LastSeen_GTE_FirstSeen", "[LastSeenUtc] >= [FirstSeenUtc]");
+
+                            t.HasCheckConstraint("CK_UserDevices_TrustRange", "([TrustedUntilUtc] IS NULL AND [TrustedAtUtc] IS NULL) OR ([TrustedUntilUtc] >= [TrustedAtUtc])");
+                        });
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.UserMfa", b =>
@@ -863,10 +970,14 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Attempts")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<bool>("IsEnabled")
                         .ValueGeneratedOnAdd()
@@ -878,18 +989,20 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
-                    b.Property<DateTime?>("LastVerifiedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("LastVerifiedAt")
+                        .HasColumnType("datetimeoffset");
 
-                    b.Property<DateTime?>("LockedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("LockedAt")
+                        .HasColumnType("datetimeoffset");
 
-                    b.Property<DateTime?>("LockedUntil")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("SecretKeyEncrypted")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(512)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(512)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -902,49 +1015,70 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasIndex("IsLocked")
                         .HasDatabaseName("IX_UserMfa_IsLocked");
 
+                    b.HasIndex("LastVerifiedAt")
+                        .HasDatabaseName("IX_UserMfa_LastVerifiedAt")
+                        .HasFilter("[LastVerifiedAt] IS NOT NULL");
+
                     b.HasIndex("LockedUntil")
-                        .HasDatabaseName("IX_UserMfa_LockedUntil");
+                        .HasDatabaseName("IX_UserMfa_LockedUntil")
+                        .HasFilter("[LockedUntil] IS NOT NULL");
 
                     b.HasIndex("UserId")
                         .IsUnique()
                         .HasDatabaseName("UX_UserMfa_UserId");
 
-                    b.ToTable("UserMfa", (string)null);
+                    b.HasIndex("UserId", "IsEnabled", "IsLocked")
+                        .HasDatabaseName("IX_UserMfa_User_Enabled_Locked");
+
+                    b.ToTable("UserMfa", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_UserMfa_Attempts_NonNegative", "[Attempts] >= 0");
+
+                            t.HasCheckConstraint("CK_UserMfa_LockRange", "([LockedUntil] IS NULL AND [LockedAt] IS NULL) OR ([LockedUntil] >= [LockedAt])");
+                        });
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.UserPermission", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<bool>("IsGranted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
-                    b.Property<Guid>("PermissionId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
 
-                    b.HasKey("Id");
+                    b.HasKey("UserId", "PermissionId");
 
-                    b.HasIndex("IsGranted")
-                        .HasDatabaseName("IX_UserPermissions_IsGranted");
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_UserPermissions_CreatedAt");
 
                     b.HasIndex("PermissionId")
                         .HasDatabaseName("IX_UserPermissions_PermissionId");
 
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("IX_UserPermissions_UserId");
+                    b.HasIndex("UserId", "IsGranted")
+                        .HasDatabaseName("IX_UserPermissions_User_Granted");
 
-                    b.HasIndex("UserId", "PermissionId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_UserPermissions_UserId_PermissionId");
-
-                    b.ToTable("UserPermissions");
+                    b.ToTable("UserPermissions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_UserPermissions_Updated_GTE_Created", "([UpdatedAt] IS NULL OR [UpdatedAt] >= [CreatedAt])");
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -1055,16 +1189,29 @@ namespace DigiTekShop.Identity.Migrations
                     b.HasOne("DigiTekShop.Identity.Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("DigiTekShop.Identity.Models.RefreshToken", b =>
                 {
+                    b.HasOne("DigiTekShop.Identity.Models.RefreshToken", "ParentToken")
+                        .WithMany()
+                        .HasForeignKey("ParentTokenId");
+
+                    b.HasOne("DigiTekShop.Identity.Models.RefreshToken", "ReplacedByToken")
+                        .WithMany()
+                        .HasForeignKey("ReplacedByTokenId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("DigiTekShop.Identity.Models.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ParentToken");
+
+                    b.Navigation("ReplacedByToken");
 
                     b.Navigation("User");
                 });

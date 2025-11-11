@@ -18,7 +18,7 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
 
         builder.Property(rt => rt.CreatedAtUtc)
             .IsRequired()
-            .HasDefaultValueSql("SYSUTCDATETIME()"); 
+            .HasDefaultValueSql("SYSUTCDATETIME()");
 
         builder.Property(rt => rt.LastUsedAtUtc)
             .IsRequired(false);
@@ -61,14 +61,14 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
             .IsRowVersion()
             .IsRequired();
 
-     
+
 
 
         builder.Ignore(rt => rt.IsRevoked);
         builder.Ignore(rt => rt.IsExpired);
         builder.Ignore(rt => rt.IsActive);
 
-        
+
         builder.Property(rt => rt.UserId).IsRequired();
         builder.HasOne(rt => rt.User)
             .WithMany(u => u.RefreshTokens)
@@ -84,7 +84,7 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
 
         builder.HasIndex(rt => new { rt.UserId, rt.DeviceId, rt.ExpiresAtUtc, rt.RevokedAtUtc })
             .HasDatabaseName("IX_RefreshTokens_User_Device_Active")
-            .HasFilter("[RevokedAtUtc] IS NULL") 
+            .HasFilter("[RevokedAtUtc] IS NULL")
             .IncludeProperties(rt => new { rt.Id, rt.TokenHash, rt.CreatedAtUtc });
 
         builder.HasIndex(rt => new { rt.UserId, rt.ExpiresAtUtc, rt.RevokedAtUtc })
@@ -101,18 +101,16 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         builder.HasIndex(rt => rt.CreatedAtUtc)
             .HasDatabaseName("IX_RefreshTokens_CreatedAtUtc");
 
-        // Foreign keys for token rotation chain (self-referencing)
         builder.HasOne(rt => rt.ParentToken)
-            .WithMany()
-            .HasForeignKey(rt => rt.ParentTokenId)
-            .OnDelete(DeleteBehavior.SetNull)
-            .IsRequired(false);
+      .WithMany()
+      .HasForeignKey(rt => rt.ParentTokenId);
+
 
         builder.HasOne(rt => rt.ReplacedByToken)
             .WithMany()
             .HasForeignKey(rt => rt.ReplacedByTokenId)
-            .OnDelete(DeleteBehavior.SetNull)
-            .IsRequired(false);
+            .OnDelete(DeleteBehavior.NoAction);
+
 
         builder.HasIndex(rt => rt.ParentTokenId)
             .HasDatabaseName("IX_RefreshTokens_ParentTokenId")

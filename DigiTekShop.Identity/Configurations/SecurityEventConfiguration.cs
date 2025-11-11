@@ -36,7 +36,7 @@ public class SecurityEventConfiguration : IEntityTypeConfiguration<SecurityEvent
 
         builder.Property(se => se.Severity)
             .HasConversion<int>()
-            .HasDefaultValue((int)AuditSeverity.Info)
+            .HasDefaultValue(AuditSeverity.Info)
             .IsRequired();
 
         builder.Property(se => se.IpAddress)

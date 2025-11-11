@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DigiTekShop.Identity.Migrations
 {
     /// <inheritdoc />
-    public partial class firstmig : Migration
+    public partial class firstmigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,18 +18,21 @@ namespace DigiTekShop.Identity.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ActorId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ActorType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "User"),
-                    Action = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Action = table.Column<int>(type: "int", nullable: false),
                     TargetEntityName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     TargetEntityId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     OldValueJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     NewValueJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
-                    IsSuccess = table.Column<bool>(type: "bit", nullable: false),
-                    ErrorMessage = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
-                    Severity = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Timestamp = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    IsSuccess = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    ErrorMessage = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
+                    Severity = table.Column<int>(type: "int", nullable: false, defaultValue: 2),
                     IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: true),
-                    UserAgent = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    DeviceId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true)
+                    UserAgent = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
+                    DeviceId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    CorrelationId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    RequestId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    SessionId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -41,22 +44,24 @@ namespace DigiTekShop.Identity.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    OccurredAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
+                    OccurredAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
                     Type = table.Column<string>(type: "varchar(512)", unicode: false, maxLength: 512, nullable: false),
                     Payload = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CorrelationId = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: true),
-                    CausationId = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: true),
-                    ProcessedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    MessageKey = table.Column<string>(type: "varchar(256)", unicode: false, maxLength: 256, nullable: true),
+                    CorrelationId = table.Column<string>(type: "varchar(128)", unicode: false, maxLength: 128, nullable: true),
+                    CausationId = table.Column<string>(type: "varchar(128)", unicode: false, maxLength: 128, nullable: true),
+                    ProcessedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     Attempts = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Pending"),
-                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    LockedUntilUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LockedBy = table.Column<string>(type: "varchar(64)", unicode: false, maxLength: 64, nullable: true),
-                    NextRetryUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    Status = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    Error = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
+                    LockedUntilUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    LockedBy = table.Column<string>(type: "varchar(128)", unicode: false, maxLength: 128, nullable: true),
+                    NextRetryUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_IdentityOutboxMessages", x => x.Id);
+                    table.CheckConstraint("CK_Outbox_Attempts_NonNegative", "[Attempts] >= 0");
                 });
 
             migrationBuilder.CreateTable(
@@ -66,11 +71,14 @@ namespace DigiTekShop.Identity.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     LoginNameOrEmail = table.Column<string>(type: "varchar(256)", unicode: false, maxLength: 256, nullable: true),
-                    AttemptedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
-                    Status = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    LoginNameOrEmailNormalized = table.Column<string>(type: "varchar(256)", unicode: false, maxLength: 256, nullable: true),
+                    AttemptedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    Status = table.Column<int>(type: "int", nullable: false),
                     IpAddress = table.Column<string>(type: "varchar(45)", unicode: false, maxLength: 45, nullable: true),
-                    UserAgent = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
-                    LoginNameOrEmailNormalized = table.Column<string>(type: "varchar(256)", unicode: false, maxLength: 256, nullable: true)
+                    UserAgent = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
+                    DeviceId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    CorrelationId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    RequestId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -85,8 +93,8 @@ namespace DigiTekShop.Identity.Migrations
                     Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -98,8 +106,8 @@ namespace DigiTekShop.Identity.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -115,16 +123,20 @@ namespace DigiTekShop.Identity.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    Type = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    Severity = table.Column<int>(type: "int", nullable: false, defaultValue: 2),
                     IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: true),
-                    UserAgent = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    DeviceId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    UserAgent = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
+                    DeviceId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     MetadataJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    OccurredAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
+                    OccurredAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
                     IsResolved = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    ResolvedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ResolvedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     ResolvedBy = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    ResolutionNotes = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true)
+                    ResolutionNotes = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    CorrelationId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    RequestId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    AuditLogId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -139,10 +151,10 @@ namespace DigiTekShop.Identity.Migrations
                     CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     TermsAccepted = table.Column<bool>(type: "bit", nullable: false),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
-                    UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    DeletedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LastLoginAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    UpdatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    DeletedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    LastLoginAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     NormalizedPhoneNumber = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -191,7 +203,7 @@ namespace DigiTekShop.Identity.Migrations
                 {
                     RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     PermissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()")
+                    CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()")
                 },
                 constraints: table =>
                 {
@@ -218,13 +230,17 @@ namespace DigiTekShop.Identity.Migrations
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     CodeHash = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     Attempts = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
-                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
-                    ExpiresAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    VerifiedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    ExpiresAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    VerifiedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    LockedUntilUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     PhoneNumber = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
+                    PhoneNumberNormalized = table.Column<string>(type: "varchar(20)", unicode: false, maxLength: 20, nullable: true),
                     IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: true),
-                    UserAgent = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
+                    UserAgent = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
                     IsVerified = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    Purpose = table.Column<byte>(type: "tinyint", nullable: false, defaultValue: (byte)1),
+                    Channel = table.Column<byte>(type: "tinyint", nullable: false, defaultValue: (byte)1),
                     CodeHashAlgo = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
                     SecretVersion = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
                     EncryptedCodeProtected = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -239,7 +255,7 @@ namespace DigiTekShop.Identity.Migrations
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -254,12 +270,12 @@ namespace DigiTekShop.Identity.Migrations
                     RevokedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     RotatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     RevokedReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    ReplacedByTokenHash = table.Column<string>(type: "varchar(128)", unicode: false, maxLength: 128, nullable: true),
-                    ParentTokenHash = table.Column<string>(type: "varchar(128)", unicode: false, maxLength: 128, nullable: true),
-                    UsageCount = table.Column<int>(type: "int", nullable: false),
+                    ReplacedByTokenId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ParentTokenId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    UsageCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     CreatedByIp = table.Column<string>(type: "varchar(45)", unicode: false, maxLength: 45, nullable: true),
-                    DeviceId = table.Column<string>(type: "varchar(256)", unicode: false, maxLength: 256, nullable: true),
-                    UserAgent = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
+                    DeviceId = table.Column<string>(type: "varchar(128)", unicode: false, maxLength: 128, nullable: true),
+                    UserAgent = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
@@ -267,8 +283,20 @@ namespace DigiTekShop.Identity.Migrations
                 {
                     table.PrimaryKey("PK_RefreshTokens", x => x.Id);
                     table.CheckConstraint("CK_RefreshTokens_ExpiresAfterCreated", "[ExpiresAtUtc] > [CreatedAtUtc]");
+                    table.CheckConstraint("CK_RefreshTokens_LastUsedRange", "([LastUsedAtUtc] IS NULL OR ([LastUsedAtUtc] >= [CreatedAtUtc] AND [LastUsedAtUtc] <= [ExpiresAtUtc]))");
+                    table.CheckConstraint("CK_RefreshTokens_RevokedAfterCreated", "([RevokedAtUtc] IS NULL OR [RevokedAtUtc] >= [CreatedAtUtc])");
                     table.CheckConstraint("CK_RefreshTokens_RevokedConsistency", "(([RevokedAtUtc] IS NULL AND [RevokedReason] IS NULL) OR ([RevokedAtUtc] IS NOT NULL))");
-                    table.CheckConstraint("CK_RefreshTokens_RotationConsistency", "(([RotatedAtUtc] IS NULL AND [ReplacedByTokenHash] IS NULL) OR ([RotatedAtUtc] IS NOT NULL AND [ReplacedByTokenHash] IS NOT NULL))");
+                    table.CheckConstraint("CK_RefreshTokens_RotationConsistency", "(([RotatedAtUtc] IS NULL AND [ReplacedByTokenId] IS NULL) OR ([RotatedAtUtc] IS NOT NULL AND [ReplacedByTokenId] IS NOT NULL))");
+                    table.ForeignKey(
+                        name: "FK_RefreshTokens_RefreshTokens_ParentTokenId",
+                        column: x => x.ParentTokenId,
+                        principalTable: "RefreshTokens",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_RefreshTokens_RefreshTokens_ReplacedByTokenId",
+                        column: x => x.ReplacedByTokenId,
+                        principalTable: "RefreshTokens",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_RefreshTokens_Users_UserId",
                         column: x => x.UserId,
@@ -304,22 +332,25 @@ namespace DigiTekShop.Identity.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    DeviceId = table.Column<string>(type: "varchar(64)", unicode: false, maxLength: 64, nullable: false),
+                    DeviceId = table.Column<string>(type: "varchar(128)", unicode: false, maxLength: 128, nullable: false),
                     DeviceName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     DeviceFingerprint = table.Column<string>(type: "varchar(256)", unicode: false, maxLength: 256, nullable: true),
-                    FirstSeenUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    LastSeenUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    FirstSeenUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    LastSeenUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
                     LastIp = table.Column<string>(type: "varchar(45)", unicode: false, maxLength: 45, nullable: true),
                     BrowserInfo = table.Column<string>(type: "varchar(512)", unicode: false, maxLength: 512, nullable: true),
                     OperatingSystem = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     TrustedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     TrustedUntilUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    TrustCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
+                    TrustCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_UserDevices", x => x.Id);
+                    table.CheckConstraint("CK_UserDevices_LastSeen_GTE_FirstSeen", "[LastSeenUtc] >= [FirstSeenUtc]");
+                    table.CheckConstraint("CK_UserDevices_TrustRange", "([TrustedUntilUtc] IS NULL AND [TrustedAtUtc] IS NULL) OR ([TrustedUntilUtc] >= [TrustedAtUtc])");
                     table.ForeignKey(
                         name: "FK_UserDevices_Users_UserId",
                         column: x => x.UserId,
@@ -354,18 +385,20 @@ namespace DigiTekShop.Identity.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    SecretKeyEncrypted = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    SecretKeyEncrypted = table.Column<string>(type: "varchar(512)", unicode: false, maxLength: 512, nullable: false),
                     IsEnabled = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Attempts = table.Column<int>(type: "int", nullable: false),
-                    LastVerifiedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    Attempts = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    LastVerifiedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     IsLocked = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    LockedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LockedUntil = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    LockedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    LockedUntil = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_UserMfa", x => x.Id);
+                    table.CheckConstraint("CK_UserMfa_Attempts_NonNegative", "[Attempts] >= 0");
+                    table.CheckConstraint("CK_UserMfa_LockRange", "([LockedUntil] IS NULL AND [LockedAt] IS NULL) OR ([LockedUntil] >= [LockedAt])");
                     table.ForeignKey(
                         name: "FK_UserMfa_Users_UserId",
                         column: x => x.UserId,
@@ -378,14 +411,17 @@ namespace DigiTekShop.Identity.Migrations
                 name: "UserPermissions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     PermissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsGranted = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
+                    IsGranted = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_UserPermissions", x => x.Id);
+                    table.PrimaryKey("PK_UserPermissions", x => new { x.UserId, x.PermissionId });
+                    table.CheckConstraint("CK_UserPermissions_Updated_GTE_Created", "([UpdatedAt] IS NULL OR [UpdatedAt] >= [CreatedAt])");
                     table.ForeignKey(
                         name: "FK_UserPermissions_Permissions_PermissionId",
                         column: x => x.PermissionId,
@@ -445,11 +481,6 @@ namespace DigiTekShop.Identity.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_Action",
-                table: "AuditLogs",
-                column: "Action");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_AuditLogs_Action_Timestamp",
                 table: "AuditLogs",
                 columns: new[] { "Action", "Timestamp" });
@@ -465,29 +496,25 @@ namespace DigiTekShop.Identity.Migrations
                 columns: new[] { "ActorId", "Timestamp" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_Entity_Timestamp",
+                name: "IX_AuditLogs_CorrelationId",
+                table: "AuditLogs",
+                column: "CorrelationId",
+                filter: "[CorrelationId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AuditLogs_Severity_Timestamp",
+                table: "AuditLogs",
+                columns: new[] { "Severity", "Timestamp" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AuditLogs_Target_Action_Time",
+                table: "AuditLogs",
+                columns: new[] { "TargetEntityName", "TargetEntityId", "Action", "Timestamp" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AuditLogs_Target_Timestamp",
                 table: "AuditLogs",
                 columns: new[] { "TargetEntityName", "TargetEntityId", "Timestamp" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_IsSuccess",
-                table: "AuditLogs",
-                column: "IsSuccess");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_Severity",
-                table: "AuditLogs",
-                column: "Severity");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_Severity_Success_Timestamp",
-                table: "AuditLogs",
-                columns: new[] { "Severity", "IsSuccess", "Timestamp" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_TargetEntityName",
-                table: "AuditLogs",
-                column: "TargetEntityName");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AuditLogs_Timestamp",
@@ -497,12 +524,26 @@ namespace DigiTekShop.Identity.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Outbox_CorrelationId",
                 table: "IdentityOutboxMessages",
-                column: "CorrelationId");
+                column: "CorrelationId",
+                filter: "[CorrelationId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Outbox_LockedUntilUtc",
                 table: "IdentityOutboxMessages",
-                column: "LockedUntilUtc");
+                column: "LockedUntilUtc",
+                filter: "[LockedUntilUtc] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Outbox_MessageKey",
+                table: "IdentityOutboxMessages",
+                column: "MessageKey",
+                unique: true,
+                filter: "[MessageKey] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Outbox_OccurredAtUtc",
+                table: "IdentityOutboxMessages",
+                column: "OccurredAtUtc");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Outbox_Status_NextRetry_OccurredAt",
@@ -515,32 +556,53 @@ namespace DigiTekShop.Identity.Migrations
                 columns: new[] { "Status", "OccurredAtUtc" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_LoginAttempts_Ip_Status_AttemptedAt",
+                name: "IX_LoginAttempts_AttemptedAt",
+                table: "LoginAttempts",
+                column: "AttemptedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_LoginAttempts_CorrelationId",
+                table: "LoginAttempts",
+                column: "CorrelationId",
+                filter: "[CorrelationId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_LoginAttempts_Ip_Fail_Time",
+                table: "LoginAttempts",
+                columns: new[] { "IpAddress", "AttemptedAt" },
+                filter: "[IpAddress] IS NOT NULL AND [Status] <> 1");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_LoginAttempts_Ip_Status_Time",
                 table: "LoginAttempts",
                 columns: new[] { "IpAddress", "Status", "AttemptedAt" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_LoginAttempts_IpAddress",
+                name: "IX_LoginAttempts_Login_Status_Time",
                 table: "LoginAttempts",
-                column: "IpAddress");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_LoginAttempts_LoginNameOrEmailNorm",
-                table: "LoginAttempts",
-                column: "LoginNameOrEmailNormalized",
+                columns: new[] { "LoginNameOrEmailNormalized", "Status", "AttemptedAt" },
                 filter: "[LoginNameOrEmailNormalized] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_LoginAttempts_Status_AttemptedAt",
+                name: "IX_LoginAttempts_LoginNorm_Fail_Time",
                 table: "LoginAttempts",
-                columns: new[] { "Status", "AttemptedAt" })
-                .Annotation("SqlServer:Include", new[] { "UserId", "IpAddress" });
+                columns: new[] { "LoginNameOrEmailNormalized", "AttemptedAt" },
+                filter: "[LoginNameOrEmailNormalized] IS NOT NULL AND [Status] <> 1");
 
             migrationBuilder.CreateIndex(
-                name: "IX_LoginAttempts_UserId_AttemptedAt",
+                name: "IX_LoginAttempts_Status_Time",
                 table: "LoginAttempts",
-                columns: new[] { "UserId", "AttemptedAt" })
-                .Annotation("SqlServer:Include", new[] { "Status", "IpAddress" });
+                columns: new[] { "Status", "AttemptedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_LoginAttempts_UserId",
+                table: "LoginAttempts",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_LoginAttempts_UserId_Time",
+                table: "LoginAttempts",
+                columns: new[] { "UserId", "AttemptedAt" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Permissions_CreatedAt",
@@ -569,14 +631,31 @@ namespace DigiTekShop.Identity.Migrations
                 column: "ExpiresAtUtc");
 
             migrationBuilder.CreateIndex(
+                name: "IX_PhoneVerifications_LockedUntil",
+                table: "PhoneVerifications",
+                column: "LockedUntilUtc",
+                filter: "[LockedUntilUtc] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_PhoneVerifications_Phone",
                 table: "PhoneVerifications",
                 column: "PhoneNumber");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PV_Phone_Active",
+                name: "IX_PhoneVerifications_PhoneNormalized",
                 table: "PhoneVerifications",
-                columns: new[] { "PhoneNumber", "IsVerified", "ExpiresAtUtc" });
+                column: "PhoneNumberNormalized",
+                filter: "[PhoneNumberNormalized] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PV_PhoneNormalized_Active",
+                table: "PhoneVerifications",
+                columns: new[] { "PhoneNumberNormalized", "IsVerified", "ExpiresAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PV_Purpose_Channel_ExpiresAt",
+                table: "PhoneVerifications",
+                columns: new[] { "Purpose", "Channel", "ExpiresAtUtc" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_PV_User_Active",
@@ -584,11 +663,11 @@ namespace DigiTekShop.Identity.Migrations
                 columns: new[] { "UserId", "IsVerified", "ExpiresAtUtc" });
 
             migrationBuilder.CreateIndex(
-                name: "UX_PhoneVerifications_Phone_Code_ExpiresAt",
+                name: "UX_PV_Active_Phone_Purpose_Channel",
                 table: "PhoneVerifications",
-                columns: new[] { "PhoneNumber", "CodeHash", "ExpiresAtUtc" },
+                columns: new[] { "PhoneNumberNormalized", "Purpose", "Channel" },
                 unique: true,
-                filter: "[PhoneNumber] IS NOT NULL");
+                filter: "[PhoneNumberNormalized] IS NOT NULL AND [IsVerified] = 0");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_CreatedAtUtc",
@@ -601,14 +680,16 @@ namespace DigiTekShop.Identity.Migrations
                 column: "ExpiresAtUtc");
 
             migrationBuilder.CreateIndex(
-                name: "IX_RefreshTokens_ParentTokenHash",
+                name: "IX_RefreshTokens_ParentTokenId",
                 table: "RefreshTokens",
-                column: "ParentTokenHash");
+                column: "ParentTokenId",
+                filter: "[ParentTokenId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_RefreshTokens_ReplacedByTokenHash",
+                name: "IX_RefreshTokens_ReplacedByTokenId",
                 table: "RefreshTokens",
-                column: "ReplacedByTokenHash");
+                column: "ReplacedByTokenId",
+                filter: "[ReplacedByTokenId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_RevokedAtUtc",
@@ -636,6 +717,13 @@ namespace DigiTekShop.Identity.Migrations
                 .Annotation("SqlServer:Include", new[] { "Id", "TokenHash", "CreatedAtUtc" });
 
             migrationBuilder.CreateIndex(
+                name: "UX_RefreshTokens_User_Device_Active",
+                table: "RefreshTokens",
+                columns: new[] { "UserId", "DeviceId" },
+                unique: true,
+                filter: "[RevokedAtUtc] IS NULL AND [DeviceId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RoleClaims_RoleId",
                 table: "RoleClaims",
                 column: "RoleId");
@@ -651,12 +739,6 @@ namespace DigiTekShop.Identity.Migrations
                 column: "PermissionId");
 
             migrationBuilder.CreateIndex(
-                name: "UX_RolePermissions_Role_Permission",
-                table: "RolePermissions",
-                columns: new[] { "RoleId", "PermissionId" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Roles_CreatedAt",
                 table: "Roles",
                 column: "CreatedAt");
@@ -669,39 +751,21 @@ namespace DigiTekShop.Identity.Migrations
                 filter: "[NormalizedName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_SecurityEvents_DeviceId",
+                name: "IX_SecurityEvents_AuditLogId",
                 table: "SecurityEvents",
-                column: "DeviceId");
+                column: "AuditLogId",
+                filter: "[AuditLogId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_SecurityEvents_DeviceId_Type_OccurredAt",
+                name: "IX_SecurityEvents_CorrelationId",
                 table: "SecurityEvents",
-                columns: new[] { "DeviceId", "Type", "OccurredAt" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_SecurityEvents_IpAddress",
-                table: "SecurityEvents",
-                column: "IpAddress");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_SecurityEvents_IpAddress_Type_OccurredAt",
-                table: "SecurityEvents",
-                columns: new[] { "IpAddress", "Type", "OccurredAt" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_SecurityEvents_IsResolved",
-                table: "SecurityEvents",
-                column: "IsResolved");
+                column: "CorrelationId",
+                filter: "[CorrelationId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SecurityEvents_OccurredAt",
                 table: "SecurityEvents",
                 column: "OccurredAt");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_SecurityEvents_Type",
-                table: "SecurityEvents",
-                column: "Type");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SecurityEvents_Type_Resolved_OccurredAt",
@@ -735,6 +799,11 @@ namespace DigiTekShop.Identity.Migrations
                 column: "LastSeenUtc");
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserDevices_User_Active_LastSeen",
+                table: "UserDevices",
+                columns: new[] { "UserId", "IsActive", "LastSeenUtc" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserDevices_User_IsActive",
                 table: "UserDevices",
                 columns: new[] { "UserId", "IsActive" });
@@ -742,7 +811,8 @@ namespace DigiTekShop.Identity.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_UserDevices_User_TrustedUntil",
                 table: "UserDevices",
-                columns: new[] { "UserId", "TrustedUntilUtc" });
+                columns: new[] { "UserId", "TrustedUntilUtc" },
+                filter: "[TrustedUntilUtc] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserDevices_UserId",
@@ -778,9 +848,21 @@ namespace DigiTekShop.Identity.Migrations
                 column: "IsLocked");
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserMfa_LastVerifiedAt",
+                table: "UserMfa",
+                column: "LastVerifiedAt",
+                filter: "[LastVerifiedAt] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserMfa_LockedUntil",
                 table: "UserMfa",
-                column: "LockedUntil");
+                column: "LockedUntil",
+                filter: "[LockedUntil] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserMfa_User_Enabled_Locked",
+                table: "UserMfa",
+                columns: new[] { "UserId", "IsEnabled", "IsLocked" });
 
             migrationBuilder.CreateIndex(
                 name: "UX_UserMfa_UserId",
@@ -789,9 +871,9 @@ namespace DigiTekShop.Identity.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserPermissions_IsGranted",
+                name: "IX_UserPermissions_CreatedAt",
                 table: "UserPermissions",
-                column: "IsGranted");
+                column: "CreatedAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserPermissions_PermissionId",
@@ -799,15 +881,9 @@ namespace DigiTekShop.Identity.Migrations
                 column: "PermissionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserPermissions_UserId",
+                name: "IX_UserPermissions_User_Granted",
                 table: "UserPermissions",
-                column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_UserPermissions_UserId_PermissionId",
-                table: "UserPermissions",
-                columns: new[] { "UserId", "PermissionId" },
-                unique: true);
+                columns: new[] { "UserId", "IsGranted" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserRoles_RoleId",
@@ -815,14 +891,15 @@ namespace DigiTekShop.Identity.Migrations
                 column: "RoleId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Users_Email_Active",
-                table: "Users",
-                column: "Email");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Users_NormalizedEmail_Active",
+                name: "EmailIndex",
                 table: "Users",
                 column: "NormalizedEmail",
+                filter: "[IsDeleted] = 0");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Email_Active",
+                table: "Users",
+                column: "Email",
                 filter: "[IsDeleted] = 0");
 
             migrationBuilder.CreateIndex(
@@ -832,18 +909,18 @@ namespace DigiTekShop.Identity.Migrations
                 filter: "[IsDeleted] = 0");
 
             migrationBuilder.CreateIndex(
+                name: "UserNameIndex",
+                table: "Users",
+                column: "NormalizedUserName",
+                unique: true,
+                filter: "[IsDeleted] = 0");
+
+            migrationBuilder.CreateIndex(
                 name: "UX_Users_NormalizedPhone_Active",
                 table: "Users",
                 column: "NormalizedPhoneNumber",
                 unique: true,
                 filter: "[IsDeleted] = 0 AND [NormalizedPhoneNumber] IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "UX_Users_NormalizedUserName_Active",
-                table: "Users",
-                column: "NormalizedUserName",
-                unique: true,
-                filter: "[IsDeleted] = 0");
         }
 
         /// <inheritdoc />

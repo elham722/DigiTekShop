@@ -62,9 +62,10 @@ public sealed class IdentityOutboxMessageConfiguration : IEntityTypeConfiguratio
         b.ToTable(t => t.HasCheckConstraint("CK_Outbox_Attempts_NonNegative", "[Attempts] >= 0"));
 
         b.Property(x => x.Status)
-            .HasConversion<int>()
-            .HasDefaultValue((int)OutboxStatus.Pending)
-            .IsRequired();
+      .HasConversion<int>()                
+      .HasDefaultValue(OutboxStatus.Pending) 
+      .IsRequired();
+
 
         b.Property(x => x.Error)
             .HasMaxLength(MaxErrorLength)
