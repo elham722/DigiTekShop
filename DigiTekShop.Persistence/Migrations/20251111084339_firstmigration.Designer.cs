@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Persistence.Migrations
 {
     [DbContext(typeof(DigiTekShopDbContext))]
-    [Migration("20251111055117_firstmigration")]
+    [Migration("20251111084339_firstmigration")]
     partial class firstmigration
     {
         /// <inheritdoc />
