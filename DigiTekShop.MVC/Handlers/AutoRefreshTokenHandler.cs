@@ -1,6 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
+using DigiTekShop.Contracts.DTOs.Auth.Token;
 using DigiTekShop.MVC.Extensions;   
 using DigiTekShop.MVC.Services;    
 using Microsoft.Extensions.Http;   
@@ -50,22 +53,46 @@ internal sealed class AutoRefreshTokenHandler : DelegatingHandler
 
             probeResp.Dispose();
 
-            var refreshClient = _factory.CreateClient("ApiRaw"); 
-            using var refreshResp = await refreshClient.PostAsync(ApiRoutes.Auth.Refresh, content: null, ct);
+            // گرفتن RefreshToken از Cookie
+            var refreshToken = _store.GetRefreshToken();
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                await _store.OnRefreshFailedAsync(ct);
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            }
+
+            // ارسال درخواست Refresh
+            var refreshClient = _factory.CreateClient("ApiRaw");
+            var refreshRequest = new RefreshTokenRequest { RefreshToken = refreshToken };
+            var json = JsonSerializer.Serialize(refreshRequest);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            using var refreshResp = await refreshClient.PostAsync(ApiRoutes.Auth.Refresh, content, ct);
             if (!refreshResp.IsSuccessStatusCode)
             {
                 await _store.OnRefreshFailedAsync(ct);
                 return new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }
 
-            var payload = await refreshResp.Content.ReadFromJsonAsync<RefreshResponse>(cancellationToken: ct);
-            if (string.IsNullOrWhiteSpace(payload?.AccessToken))
+            // خواندن پاسخ - API از ApiResponse<T> استفاده می‌کند
+            var apiEnvelope = await refreshResp.Content.ReadFromJsonAsync<ApiEnvelope<RefreshTokenResponse>>(cancellationToken: ct);
+            if (apiEnvelope?.Data is null || string.IsNullOrWhiteSpace(apiEnvelope.Data.AccessToken))
             {
                 await _store.OnRefreshFailedAsync(ct);
                 return new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }
 
-            await _store.UpdateAccessTokenAsync(payload.AccessToken, payload.AccessTokenExpiresAt, ct);
+            var payload = apiEnvelope.Data;
+
+            // به‌روزرسانی توکن‌ها (AccessToken و RefreshToken جدید)
+            // RefreshTokenExpiresAt از ExpiresAtUtc محاسبه می‌شود (30 روز از الان)
+            var refreshTokenExpiresAt = DateTimeOffset.UtcNow.AddDays(30);
+            await _store.UpdateTokensAsync(
+                payload.AccessToken, 
+                payload.ExpiresAtUtc, 
+                payload.RefreshToken, 
+                refreshTokenExpiresAt,
+                ct);
 
             var retryReq = await request.CloneAsync(ct);
           
@@ -77,5 +104,5 @@ internal sealed class AutoRefreshTokenHandler : DelegatingHandler
         }
     }
 
-    private sealed record RefreshResponse(string AccessToken, DateTimeOffset? AccessTokenExpiresAt);
+    private sealed record ApiEnvelope<T>(T? Data, string? TraceId, DateTimeOffset? Timestamp);
 }

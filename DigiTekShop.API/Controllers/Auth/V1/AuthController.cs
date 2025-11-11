@@ -27,7 +27,7 @@ public sealed class AuthController : ControllerBase
     [HttpPost("send-otp")]
     [AllowAnonymous]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // جلوگیری از کش‌شدن پاسخ
-    [ProducesResponseType(typeof(ApiResponse<object?>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
@@ -66,7 +66,7 @@ public sealed class AuthController : ControllerBase
 
     #region REFRESH TOKEN
 
-    [HttpPost("refresh")]
+    [HttpPost("refresh-token")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<RefreshTokenResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

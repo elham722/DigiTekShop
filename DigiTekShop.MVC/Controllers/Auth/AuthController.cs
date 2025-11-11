@@ -33,7 +33,6 @@ public sealed class AuthController : Controller
 
     [HttpPost]
     [AllowAnonymous]
-    [ValidateAntiForgeryToken]
     [Consumes("application/json")]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpRequestDto dto, CancellationToken ct)
     {
@@ -48,25 +47,30 @@ public sealed class AuthController : Controller
             // Handle 429 Rate Limiting specially
             if (result.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                // Try to get retryAfter from headers or fallback to 30
-                var retryAfter = "30";
-                if (result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true)
+                // اول هدر Retry-After را چک کن
+                int retryAfter = 30;
+                if (result.Headers?.RetryAfter?.Delta is { } delta && delta.TotalSeconds > 0)
                 {
-                    retryAfter = ra?.ToString() ?? "30";
+                    retryAfter = (int)delta.TotalSeconds;
                 }
-                else if (result.Problem?.Extensions?.TryGetValue("limit", out var limit) == true)
+                else if (result.Headers?.RetryAfter?.Date is { } date)
                 {
-                    // Fallback: use window seconds if available
-                    if (result.Problem.Extensions.TryGetValue("window", out var window))
-                    {
-                        retryAfter = window?.ToString() ?? "30";
-                    }
+                    var seconds = (int)(date - DateTimeOffset.UtcNow).TotalSeconds;
+                    if (seconds > 0) retryAfter = seconds;
+                }
+                else if (result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true)
+                {
+                    if (int.TryParse(ra?.ToString(), out var parsed)) retryAfter = parsed;
+                }
+                else if (result.Problem?.Extensions?.TryGetValue("window", out var window) == true)
+                {
+                    if (int.TryParse(window?.ToString(), out var parsed)) retryAfter = parsed;
                 }
                 
                 // Return 429 status code
                 Response.StatusCode = 429;
                 return this.JsonError($"درخواست زیاد بود. لطفاً {retryAfter} ثانیه صبر کنید و دوباره تلاش کنید.", 
-                    new { retryAfter = int.Parse(retryAfter) });
+                    new { retryAfter });
             }
             
             return this.JsonError("خطا در ارسال کد. لطفاً دوباره تلاش کنید");
@@ -77,10 +81,14 @@ public sealed class AuthController : Controller
 
     [HttpPost]
     [AllowAnonymous]
-    [ValidateAntiForgeryToken]
     [Consumes("application/json")]
-    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto dto, [FromQuery] string? returnUrl, CancellationToken ct)
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto dto, CancellationToken ct)
     {
+        // ReturnUrl را از Query String یا TempData بگیر
+        var returnUrl = Request.Query["returnUrl"].ToString();
+        if (string.IsNullOrWhiteSpace(returnUrl))
+            returnUrl = TempData["ReturnUrl"]?.ToString();
+
         if (!ModelState.IsValid)
             return this.JsonValidationError("لطفاً اطلاعات را صحیح وارد کنید", ModelState);
 
@@ -92,25 +100,30 @@ public sealed class AuthController : Controller
             // Handle 429 Rate Limiting specially
             if (result.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                // Try to get retryAfter from headers or fallback to 30
-                var retryAfter = "30";
-                if (result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true)
+                // اول هدر Retry-After را چک کن
+                int retryAfter = 30;
+                if (result.Headers?.RetryAfter?.Delta is { } delta && delta.TotalSeconds > 0)
                 {
-                    retryAfter = ra?.ToString() ?? "30";
+                    retryAfter = (int)delta.TotalSeconds;
                 }
-                else if (result.Problem?.Extensions?.TryGetValue("limit", out var limit) == true)
+                else if (result.Headers?.RetryAfter?.Date is { } date)
                 {
-                    // Fallback: use window seconds if available
-                    if (result.Problem.Extensions.TryGetValue("window", out var window))
-                    {
-                        retryAfter = window?.ToString() ?? "30";
-                    }
+                    var seconds = (int)(date - DateTimeOffset.UtcNow).TotalSeconds;
+                    if (seconds > 0) retryAfter = seconds;
+                }
+                else if (result.Problem?.Extensions?.TryGetValue("retryAfter", out var ra) == true)
+                {
+                    if (int.TryParse(ra?.ToString(), out var parsed)) retryAfter = parsed;
+                }
+                else if (result.Problem?.Extensions?.TryGetValue("window", out var window) == true)
+                {
+                    if (int.TryParse(window?.ToString(), out var parsed)) retryAfter = parsed;
                 }
                 
                 // Return 429 status code
                 Response.StatusCode = 429;
                 return this.JsonError($"درخواست زیاد بود. لطفاً {retryAfter} ثانیه صبر کنید و دوباره تلاش کنید.", 
-                    new { retryAfter = int.Parse(retryAfter) });
+                    new { retryAfter });
             }
             
             return this.JsonError("کد تأیید اشتباه است. لطفاً دوباره تلاش کنید");
@@ -130,7 +143,13 @@ public sealed class AuthController : Controller
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, props);
 
-            await _tokenStore.UpdateAccessTokenAsync(login.AccessToken, login.AccessTokenExpiresAtUtc, ct);
+            // ذخیره AccessToken و RefreshToken
+            await _tokenStore.UpdateTokensAsync(
+                login.AccessToken, 
+                login.AccessTokenExpiresAtUtc, 
+                login.RefreshToken, 
+                login.RefreshTokenExpiresAtUtc, 
+                ct);
 
             var safeReturn = NormalizeReturnUrl(returnUrl);
             return this.JsonSuccess("ورود با موفقیت انجام شد", new
@@ -148,14 +167,31 @@ public sealed class AuthController : Controller
 
     [HttpPost]
     [Authorize]
-    [ValidateAntiForgeryToken]
     [Consumes("application/json")]
-    public async Task<IActionResult> Logout([FromBody] LogoutRequest dto, CancellationToken ct)
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest? dto, CancellationToken ct)
     {
-        var res = await _api.PostAsync<LogoutRequest>(ApiRoutes.Auth.Logout, dto, ct);
-        if (!res.Success)
-            _logger.LogWarning("Logout (API) failed: {Status} {Detail}", (int)res.StatusCode, res.Problem?.Detail);
+        // UserId را از Claims بگیر (نه از Body) برای جلوگیری از confused deputy
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdClaim, out var userId))
+        {
+            _logger.LogWarning("Logout: Invalid or missing UserId claim");
+            return Unauthorized();
+        }
 
+        // اگر dto null است، از RefreshToken Cookie استفاده کن
+        var refreshToken = dto?.RefreshToken ?? _tokenStore.GetRefreshToken();
+        
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+        {
+            var logoutDto = new LogoutRequest { UserId = userId, RefreshToken = refreshToken };
+            var res = await _api.PostAsync<LogoutRequest>(ApiRoutes.Auth.Logout, logoutDto, ct);
+            if (!res.Success)
+                _logger.LogWarning("Logout (API) failed: {Status} {Detail}", (int)res.StatusCode, res.Problem?.Detail);
+        }
+
+        // پاک کردن RefreshToken Cookie
+        Response.Cookies.Delete("rt");
+        
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         HttpContext.Session?.Clear();
         return NoContent();
@@ -170,15 +206,27 @@ public sealed class AuthController : Controller
         return Ok(result.Data);
     }
 
+    [HttpGet]
+    [Authorize]
+    public IActionResult AccessDenied()
+    {
+        return View();
+    }
+
     // ----------------- Helpers -----------------
 
     private ClaimsPrincipal BuildPrincipalFromLogin(LoginResponseDto login)
     {
-        var claims = new List<Claim>
+        // Parse Claims از JWT برای همخوانی ۱۰۰٪ با API
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(login.AccessToken);
+        var claims = jwt.Claims.ToList();
+
+        // اطمینان از وجود NameIdentifier
+        if (!claims.Any(c => c.Type == ClaimTypes.NameIdentifier))
         {
-            new Claim(ClaimTypes.NameIdentifier, login.UserId.ToString()),
-            new Claim(ClaimTypes.Name, "User"),
-        };
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, login.UserId.ToString()));
+        }
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         return new ClaimsPrincipal(identity);

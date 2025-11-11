@@ -157,11 +157,12 @@ internal sealed class ApiClient : IApiClient
     {
         var code = resp.StatusCode;
         var status = (int)code;
+        var headers = resp.Headers;
 
         // 204/205
         if (code is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
         {
-            return ApiResult<T>.Ok(typeof(T) == typeof(Unit) ? (T)(object)Unit.Value : default!, code);
+            return ApiResult<T>.Ok(typeof(T) == typeof(Unit) ? (T)(object)Unit.Value : default!, code, headers);
         }
 
 
@@ -172,13 +173,13 @@ internal sealed class ApiClient : IApiClient
         if (resp.IsSuccessStatusCode)
         {
             if (!isJson)
-                return ApiResult<T>.Fail(new ProblemDetails { Title = "Unexpected content-type", Status = status, Detail = media }, code);
+                return ApiResult<T>.Fail(new ProblemDetails { Title = "Unexpected content-type", Status = status, Detail = media }, code, headers);
 
             try
             {
                 var env = await resp.Content!.ReadFromJsonAsync<ApiEnvelope<T>>(Json);
                 if (env is not null)
-                    return ApiResult<T>.Ok(env.Data!, code);
+                    return ApiResult<T>.Ok(env.Data!, code, headers);
             }
             catch
             {
@@ -188,12 +189,12 @@ internal sealed class ApiClient : IApiClient
             try
             {
                 var model = await resp.Content!.ReadFromJsonAsync<T>(Json);
-                return ApiResult<T>.Ok(model!, code);
+                return ApiResult<T>.Ok(model!, code, headers);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to deserialize success response from {Path} into ApiEnvelope<{Type}> or {Type}", path, typeof(T).Name);
-                return ApiResult<T>.Fail(new ProblemDetails { Title = "Invalid JSON", Status = status, Detail = "Deserialization failed" }, code);
+                return ApiResult<T>.Fail(new ProblemDetails { Title = "Invalid JSON", Status = status, Detail = "Deserialization failed" }, code, headers);
             }
         }
 
@@ -202,7 +203,7 @@ internal sealed class ApiClient : IApiClient
             try
             {
                 var pd = await resp.Content!.ReadFromJsonAsync<ProblemDetails>(Json);
-                return ApiResult<T>.Fail(pd, code);
+                return ApiResult<T>.Fail(pd, code, headers);
             }
             catch { /* fall-through */ }
         }
@@ -210,7 +211,7 @@ internal sealed class ApiClient : IApiClient
         var raw = (await resp.Content!.ReadAsStringAsync()) ?? string.Empty;
         var problem = new ProblemDetails { Title = "API Error", Status = status, Detail = Truncate(raw, 600) };
         _logger.LogWarning("API {Status} at {Path}: {Title} | {Detail}", status, path, problem.Title, Truncate(problem.Detail, 600));
-        return ApiResult<T>.Fail(problem, code);
+        return ApiResult<T>.Fail(problem, code, headers);
     }
 
 
