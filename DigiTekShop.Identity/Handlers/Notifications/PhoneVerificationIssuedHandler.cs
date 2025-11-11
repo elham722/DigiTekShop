@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+
 namespace DigiTekShop.Identity.Handlers.Notifications;
 
 public sealed class PhoneVerificationIssuedHandler
@@ -8,15 +10,17 @@ public sealed class PhoneVerificationIssuedHandler
     private readonly IEncryptionService _crypto;
     private readonly PhoneVerificationOptions _opts;
     private readonly ILogger<PhoneVerificationIssuedHandler> _log;
+    private readonly IHostEnvironment _env;
 
     public PhoneVerificationIssuedHandler(
         DigiTekShopIdentityDbContext db,
         IPhoneSender sms,
         IEncryptionService crypto,
         IOptions<PhoneVerificationOptions> opts,
+        IHostEnvironment env,
         ILogger<PhoneVerificationIssuedHandler> log)
     {
-        _db = db; _sms = sms; _crypto = crypto; _opts = opts.Value; _log = log;
+        _db = db; _sms = sms; _crypto = crypto; _opts = opts.Value; _env = env; _log = log;
     }
 
     public async Task HandleAsync(PhoneVerificationIssuedIntegrationEvent e, CancellationToken ct)
@@ -39,6 +43,12 @@ public sealed class PhoneVerificationIssuedHandler
         }
 
         var code = _crypto.Decrypt(pv.EncryptedCodeProtected, DigiTekShop.SharedKernel.Enums.Security.CryptoPurpose.TotpSecret);
+
+        // لاگ کد فقط در Development
+        if (_env.IsDevelopment())
+        {
+            _log.LogInformation("[OTP] Code: {Code} for phone={Phone}, PV={PV}", code, e.PhoneNumber, e.PhoneVerificationId);
+        }
 
         // متن SMS
         var templateName = _opts.Template.OtpTemplateName;

@@ -1,6 +1,7 @@
 ﻿using DigiTekShop.Contracts.Abstractions.ExternalServices.PhoneSender;
 using DigiTekShop.SharedKernel.Guards;
 using DigiTekShop.SharedKernel.Results;
+using DigiTekShop.SharedKernel.Utilities.Security;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text;
@@ -71,8 +72,23 @@ public class SmsIrSmsSender : IPhoneSender
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        var resp = await _http.SendAsync(req, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
+        HttpResponseMessage resp;
+        string body;
+        try
+        {
+            resp = await _http.SendAsync(req, ct);
+            body = await resp.Content.ReadAsStringAsync(ct);
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException || !ct.IsCancellationRequested)
+        {
+            _log.LogError(ex, "[SmsIr] Request timeout after {Timeout}s for phone={Phone}", _opt.TimeoutSeconds, SensitiveDataMasker.MaskPhone(mobile));
+            return Result.Failure($"SMS.ir request timeout after {_opt.TimeoutSeconds} seconds");
+        }
+        catch (HttpRequestException ex)
+        {
+            _log.LogError(ex, "[SmsIr] HTTP request failed for phone={Phone}", SensitiveDataMasker.MaskPhone(mobile));
+            return Result.Failure($"SMS.ir request failed: {ex.Message}");
+        }
 
         if (!resp.IsSuccessStatusCode)
         {

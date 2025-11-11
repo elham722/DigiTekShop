@@ -58,7 +58,9 @@ public class UserDevice
 
     public void Touch(DateTimeOffset nowUtc, string? ip, string? browser, string? os)
     {
-        LastSeenUtc = nowUtc;
+        // Ensure LastSeenUtc >= FirstSeenUtc to satisfy CHECK constraint
+        // This can happen if nowUtc is slightly before FirstSeenUtc due to clock differences
+        LastSeenUtc = nowUtc >= FirstSeenUtc ? nowUtc : FirstSeenUtc;
         if (!string.IsNullOrWhiteSpace(ip)) LastIp = StringNormalizer.NormalizeAndTruncate(ip, 45);
         if (!string.IsNullOrWhiteSpace(browser)) BrowserInfo = StringNormalizer.NormalizeAndTruncate(browser, 512);
         if (!string.IsNullOrWhiteSpace(os)) OperatingSystem = StringNormalizer.NormalizeAndTruncate(os, 64);

@@ -9,6 +9,11 @@ internal static class OutboxSqlHelpers
     {
         // تشخیص نوع جدول بر اساس DbContext
         var tableName = GetTableName(db);
+        var isIdentityOutbox = IsIdentityOutbox(db);
+        
+        // IdentityOutboxMessages از int استفاده می‌کند، OutboxMessages از string
+        var processingStatus = isIdentityOutbox ? (object)1 : "Processing";
+        var pendingStatus = isIdentityOutbox ? (object)0 : "Pending";
         
         var sql = $"""
                   UPDATE {tableName}
@@ -23,8 +28,8 @@ internal static class OutboxSqlHelpers
         var rows = await db.Database.ExecuteSqlRawAsync(
             sql,
             id,
-            1,  // OutboxStatus.Processing = 1
-            0,  // OutboxStatus.Pending = 0
+            processingStatus,  // OutboxStatus.Processing
+            pendingStatus,     // OutboxStatus.Pending
             30, // lock window (sec)
             Environment.MachineName);
         return rows == 1;
@@ -34,6 +39,10 @@ internal static class OutboxSqlHelpers
     {
         // تشخیص نوع جدول بر اساس DbContext
         var tableName = GetTableName(db);
+        var isIdentityOutbox = IsIdentityOutbox(db);
+        
+        // IdentityOutboxMessages از int استفاده می‌کند، OutboxMessages از string
+        var succeededStatus = isIdentityOutbox ? (object)2 : "Succeeded";
         
         var sql = $"""
                   UPDATE {tableName}
@@ -44,17 +53,22 @@ internal static class OutboxSqlHelpers
                       LockedBy = NULL
                   WHERE Id = @p0
                   """;
-        await db.Database.ExecuteSqlRawAsync(sql, id, 2); // OutboxStatus.Succeeded = 2
+        await db.Database.ExecuteSqlRawAsync(sql, id, succeededStatus); // OutboxStatus.Succeeded
     }
 
     public static async Task NackAsync(DbContext db, Guid id, int attempts, bool giveUp, string error, CancellationToken ct)
     {
         // backoff نمایی: 1, 2, 4, 8, 16, ... دقیقه (سقف 60)
         var delayMinutes = Math.Min(60, (int)Math.Pow(2, Math.Max(0, attempts - 1)));
-        var nextStatus = giveUp ? 3 : 0; // OutboxStatus.Failed = 3, Pending = 0
-
+        
         // تشخیص نوع جدول بر اساس DbContext
         var tableName = GetTableName(db);
+        var isIdentityOutbox = IsIdentityOutbox(db);
+        
+        // IdentityOutboxMessages از int استفاده می‌کند، OutboxMessages از string
+        var nextStatus = giveUp 
+            ? (isIdentityOutbox ? (object)3 : "Failed")      // OutboxStatus.Failed
+            : (isIdentityOutbox ? (object)0 : "Pending");     // OutboxStatus.Pending
 
         var sql = $"""
                   UPDATE {tableName}
@@ -71,6 +85,11 @@ internal static class OutboxSqlHelpers
 
     private static string GetTableName(DbContext db)
     {
-        return db is DigiTekShop.Identity.Context.DigiTekShopIdentityDbContext ? "IdentityOutboxMessages" : "OutboxMessages";
+        return IsIdentityOutbox(db) ? "IdentityOutboxMessages" : "OutboxMessages";
+    }
+
+    private static bool IsIdentityOutbox(DbContext db)
+    {
+        return db is DigiTekShop.Identity.Context.DigiTekShopIdentityDbContext;
     }
 }
