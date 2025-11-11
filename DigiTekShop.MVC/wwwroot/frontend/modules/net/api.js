@@ -496,4 +496,50 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     });
+
+    // Auto-handle logout links
+    document.querySelectorAll('[data-logout]').forEach(link => {
+        link.addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            // نمایش پیام تأیید - استفاده از global function یا instance
+            const showConfirmFn = window.showConfirm || 
+                                 (window.DigiTekNotification && window.DigiTekNotification.showConfirm) ||
+                                 ((title, text) => {
+                                     const notification = new window.DigiTekNotification();
+                                     return notification.showConfirm(title, text);
+                                 });
+            
+            const confirmed = await showConfirmFn('خروج از حساب کاربری', 'آیا مطمئن هستید که می‌خواهید خارج شوید؟');
+            if (!confirmed?.isConfirmed) {
+                return;
+            }
+
+            try {
+                // فراخوانی API logout
+                const result = await api.post('/Auth/Logout', null, {
+                    hideLoading: false,
+                    onSuccess: () => {
+                        // بعد از logout موفق، redirect به صفحه اصلی
+                        window.location.href = '/';
+                    },
+                    onError: (error) => {
+                        // حتی اگر logout در API fail شد، باز هم redirect کن
+                        // چون ممکن است session در سمت کلاینت پاک شده باشد
+                        console.warn('Logout API error:', error);
+                        window.location.href = '/';
+                    }
+                });
+
+                // اگر response موفق بود اما callback اجرا نشد، redirect کن
+                if (result.ok || result.status === 204) {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                // در صورت خطا، باز هم redirect کن
+                console.error('Logout error:', error);
+                window.location.href = '/';
+            }
+        });
+    });
 });
