@@ -81,11 +81,13 @@ public class PhoneVerificationConfiguration : IEntityTypeConfiguration<PhoneVeri
         builder.Property(pv => pv.Purpose)
             .HasConversion<byte>()
             .HasDefaultValue(VerificationPurpose.Login)
+            .HasSentinel((VerificationPurpose)0) // CLR default for enum
             .IsRequired();
 
         builder.Property(pv => pv.Channel)
             .HasConversion<byte>()
             .HasDefaultValue(VerificationChannel.Sms)
+            .HasSentinel((VerificationChannel)0) // CLR default for enum
             .IsRequired();
 
         builder.Property(pv => pv.RowVersion)

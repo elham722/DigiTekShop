@@ -37,6 +37,7 @@ public class SecurityEventConfiguration : IEntityTypeConfiguration<SecurityEvent
         builder.Property(se => se.Severity)
             .HasConversion<int>()
             .HasDefaultValue(AuditSeverity.Info)
+            .HasSentinel(AuditSeverity.Trace) // CLR default for enum
             .IsRequired();
 
         builder.Property(se => se.IpAddress)

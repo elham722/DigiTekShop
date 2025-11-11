@@ -70,9 +70,10 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .IsRequired(false);
 
         builder.Property(al => al.Severity)
-     .IsRequired()
-     .HasConversion<int>()             
-     .HasDefaultValue(AuditSeverity.Info);  
+            .IsRequired()
+            .HasConversion<int>()
+            .HasDefaultValue(AuditSeverity.Info)
+            .HasSentinel(AuditSeverity.Trace); // CLR default for enum  
 
 
         builder.Property(al => al.IpAddress)
