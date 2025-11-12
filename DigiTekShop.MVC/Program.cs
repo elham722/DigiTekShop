@@ -1,14 +1,6 @@
-﻿using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.ResponseCompression;
-using Yarp.ReverseProxy.Configuration;
-using Yarp.ReverseProxy.Transforms;
+﻿var builder = WebApplication.CreateBuilder(args);
 
-var builder = WebApplication.CreateBuilder(args);
 
-// ========================================
-// Kestrel Limits (File Upload, etc.)
-// ========================================
 builder.WebHost.ConfigureKestrel(o =>
 {
     o.Limits.MaxRequestBodySize = 100 * 1024 * 1024; // 100 MB
@@ -16,9 +8,7 @@ builder.WebHost.ConfigureKestrel(o =>
     o.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30);
 });
 
-// ========================================
-// Services
-// ========================================
+
 
 builder.Services.AddControllersWithViews(o =>
 {
@@ -29,7 +19,7 @@ builder.Services.AddDataProtection()
     .SetApplicationName("DigiTekShop.MVC")
     .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
 
-// Cookie Authentication برای UI (بدون TokenStore/Refresh)
+
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -53,7 +43,7 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// Antiforgery (فقط برای MVC Forms، نه API calls)
+
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "RequestVerificationToken";
@@ -66,7 +56,6 @@ builder.Services.AddAntiforgery(options =>
         : CookieSecurePolicy.Always;
 });
 
-// Response Compression (برای JSON/HTML)
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -79,7 +68,7 @@ builder.Services.AddResponseCompression(options =>
     });
 });
 
-// Logging
+
 builder.Services.AddLogging(logging =>
 {
     logging.AddConsole();
@@ -87,9 +76,7 @@ builder.Services.AddLogging(logging =>
     logging.SetMinimumLevel(LogLevel.Information);
 });
 
-// ========================================
-// YARP Reverse Proxy: همه /api/* به Backend API
-// ========================================
+
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] 
     ?? throw new InvalidOperationException("ApiBaseUrl is required in appsettings.json");
 
@@ -118,12 +105,12 @@ var clusters = new[]
                 Address = apiBaseUrl.TrimEnd('/')
             }
         },
-        // Health Check (Timeout در Kestrel تنظیم شده)
+        
         HealthCheck = new HealthCheckConfig
         {
             Passive = new PassiveHealthCheckConfig
             {
-                Enabled = true, // اگر 503 بیاد، destination را موقتاً غیرفعال کن
+                Enabled = true, 
                 Policy = "TransientFailurePolicy"
             }
         }
@@ -134,40 +121,23 @@ builder.Services.AddReverseProxy()
     .LoadFromMemory(routes, clusters)
     .AddTransforms(builderContext =>
     {
-        // Forward کردن TraceIdentifier به‌عنوان Correlation ID
+      
         builderContext.AddRequestHeader("X-Request-ID", "{TraceIdentifier}", append: false);
-        
-        // Copy کردن همه headers (Cookie, Device-Id, etc.)
-        // به‌صورت پیش‌فرض YARP این کار را می‌کند، اما اینجا صریح می‌نویسیم
-        // اگر نیاز به modify کردن header خاصی داری، اینجا اضافه کن
-        
-        // مثال: اگر زبان را از Cookie می‌خوانی و می‌خواهی به API بفرستی:
-        // builderContext.AddRequestTransform(async context =>
-        // {
-        //     if (context.HttpContext.Request.Cookies.TryGetValue("lang", out var lang))
-        //     {
-        //         context.ProxyRequest.Headers.TryAddWithoutValidation("Accept-Language", lang);
-        //     }
-        // });
+       
     });
 
-// ========================================
-// App Pipeline
-// ========================================
 
 var app = builder.Build();
 
-// ========================================
-// Forwarded Headers (برای IP واقعی پشت Proxy/LoadBalancer)
-// ========================================
+
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-    // در production اگر پشت nginx/cloudflare هستی، KnownProxies/KnownNetworks تنظیم کن
-    ForwardLimit = 1 // تعداد proxy های قابل اعتماد
+   
+    ForwardLimit = 1 
 });
 
-// Exception Handling
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -190,12 +160,12 @@ app.Use(async (context, next) =>
     headers["X-XSS-Protection"] = "1; mode=block";
     headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     
-    // CSP (Content Security Policy) - سفارشی‌سازی بر اساس نیاز
+ 
     if (!app.Environment.IsDevelopment())
     {
         headers["Content-Security-Policy"] = 
             "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // اگر inline scripts داری
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + 
             "style-src 'self' 'unsafe-inline'; " +
             "img-src 'self' data: https:; " +
             "font-src 'self' data:; " +
@@ -205,7 +175,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// Cache Headers برای Auth/Account (no-store)
+
 app.Use(async (ctx, next) =>
 {
     if (ctx.Request.Path.StartsWithSegments("/Account", StringComparison.OrdinalIgnoreCase) ||
@@ -221,27 +191,25 @@ app.Use(async (ctx, next) =>
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-// WebSockets Support (اگر realtime/SignalR داری)
+
 app.UseWebSockets();
 
 app.UseRouting();
 
-// Authentication/Authorization برای MVC UI
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-// YARP Proxy: /api/* → Backend
-// این باید بعد از UseRouting و قبل از MapControllers باشد
+
 app.MapReverseProxy();
 
-// MVC Routes
+
 app.MapStaticAssets();
 app.MapControllerRoute(
         name: "default",
         pattern: "{controller=Home}/{action=Index}/{id?}")
    .WithStaticAssets();
 
-// Health Check برای خود MVC (اختیاری)
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "Healthy",

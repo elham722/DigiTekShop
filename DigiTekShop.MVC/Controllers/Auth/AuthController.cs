@@ -1,16 +1,5 @@
-﻿using DigiTekShop.MVC.Extensions;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt;
+﻿namespace DigiTekShop.MVC.Controllers.Auth;
 
-namespace DigiTekShop.MVC.Controllers.Auth;
-
-/// <summary>
-/// Controller نازک برای مدیریت UI Authentication
-/// همه API calls از طریق JavaScript → YARP → Backend API
-/// این controller فقط برای View و Cookie management است
-/// </summary>
 [Route("[controller]/[action]")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AuthController : Controller
@@ -22,9 +11,6 @@ public sealed class AuthController : Controller
         _logger = logger;
     }
 
-    /// <summary>
-    /// نمایش صفحه Login (فقط View)
-    /// </summary>
     [HttpGet]
     [AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
@@ -33,10 +19,6 @@ public sealed class AuthController : Controller
         return View();
     }
 
-    /// <summary>
-    /// بعد از موفقیت VerifyOtp در API، JavaScript این endpoint را صدا می‌زند
-    /// تا Cookie برای UI ست شود
-    /// </summary>
     [HttpPost]
     [AllowAnonymous]
     [Consumes("application/json")]
@@ -50,7 +32,6 @@ public sealed class AuthController : Controller
 
         try
         {
-            // Parse JWT token برای گرفتن Claims
             var handler = new JwtSecurityTokenHandler();
             if (!handler.CanReadToken(request.AccessToken))
             {
@@ -61,7 +42,6 @@ public sealed class AuthController : Controller
             var jwt = handler.ReadJwtToken(request.AccessToken);
             var claims = jwt.Claims.ToList();
 
-            // اطمینان از وجود NameIdentifier (userId)
             if (!claims.Any(c => c.Type == ClaimTypes.NameIdentifier))
             {
                 var subClaim = jwt.Claims.FirstOrDefault(c => c.Type == "sub");
@@ -101,10 +81,6 @@ public sealed class AuthController : Controller
         }
     }
 
-    /// <summary>
-    /// Logout: پاک کردن Cookie UI
-    /// JavaScript باید قبل/بعد، API logout را هم صدا بزند
-    /// </summary>
     [HttpPost]
     [Authorize]
     public async Task<IActionResult> Logout(CancellationToken ct)
@@ -118,9 +94,6 @@ public sealed class AuthController : Controller
         return Ok(new { success = true, message = "خروج با موفقیت انجام شد", redirectUrl = "/Auth/Login" });
     }
 
-    /// <summary>
-    /// صفحه AccessDenied
-    /// </summary>
     [HttpGet]
     [Authorize]
     public IActionResult AccessDenied()
@@ -128,9 +101,6 @@ public sealed class AuthController : Controller
         return View();
     }
 
-    /// <summary>
-    /// صفحه Success بعد از Login
-    /// </summary>
     [HttpGet]
     [Authorize]
     public IActionResult Success()
@@ -138,22 +108,13 @@ public sealed class AuthController : Controller
         return View();
     }
 
-    // ----------------- Helpers -----------------
+    #region Helpers
 
     private string NormalizeReturnUrl(string? url)
     {
         if (string.IsNullOrWhiteSpace(url)) return string.Empty;
         return Url.IsLocalUrl(url) ? url : "/";
     }
-}
 
-/// <summary>
-/// Request model برای SetAuthCookie
-/// این اطلاعات بعد از موفقیت VerifyOtp در JavaScript از API دریافت و به این endpoint ارسال می‌شود
-/// </summary>
-public sealed record SetAuthCookieRequest
-{
-    public required string AccessToken { get; init; }
-    public string? ReturnUrl { get; init; }
-    public bool IsNewUser { get; init; }
+    #endregion
 }
