@@ -49,6 +49,30 @@ public sealed class TokenService : ITokenService
         if (user is null)
             return Result<RefreshTokenResponse>.Failure(ErrorCodes.Common.VALIDATION_FAILED);
 
+        var now = _time.UtcNow;
+        
+        // Revoke existing active tokens for this user+device to prevent duplicate key error
+        // This handles the case when user logs in multiple times without logging out
+        if (!string.IsNullOrWhiteSpace(_client.DeviceId))
+        {
+            var existingActiveTokens = await _db.RefreshTokens
+                .Where(t => t.UserId == user.Id 
+                         && t.DeviceId == _client.DeviceId 
+                         && t.RevokedAtUtc == null 
+                         && t.ExpiresAtUtc > now)
+                .ToListAsync(ct);
+
+            if (existingActiveTokens.Count > 0)
+            {
+                foreach (var t in existingActiveTokens)
+                {
+                    t.Revoke("new_login", now);
+                }
+                _log.LogInformation(Events.Issue, "Revoked {Count} existing active token(s) for user={UserId}, device={DeviceId}", 
+                    existingActiveTokens.Count, user.Id, _client.DeviceId);
+            }
+        }
+
         var (access, accessExp, accessIat, jti) = CreateAccessToken(user);
         var (rawRefresh, refreshHash, refreshExp) = CreateRefreshToken();
 
@@ -60,8 +84,7 @@ public sealed class TokenService : ITokenService
             createdByIp: _client.IpAddress,
             userAgent: _client.UserAgent,
             parentTokenId: null,
-            createdAtUtc: _time.UtcNow);
-
+            createdAtUtc: now);
 
         _db.RefreshTokens.Add(rt);
         await _db.SaveChangesAsync(ct);

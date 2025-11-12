@@ -1,10 +1,11 @@
 /**
  * DigiTekShop Auth (OTP) - Modern Vanilla JS
- * هماهنگ با: /Auth/SendOtp , /Auth/VerifyOtp  (MVC endpoints)
+ * هماهنگ با: YARP Proxy → Backend API (v1)
  */
 
-const API_SEND = '/Auth/SendOtp';
-const API_VERIFY = '/Auth/VerifyOtp';
+const API_SEND = '/api/v1/Auth/send-otp';
+const API_VERIFY = '/api/v1/Auth/verify-otp';
+const MVC_SET_COOKIE = '/Auth/SetAuthCookie';
 const REDIRECT_AFTER_LOGIN = '/';
 
 // ارقام فارسی/عربی را به لاتین تبدیل می‌کند و کاراکترهای نامرئی را حذف می‌کند
@@ -267,17 +268,19 @@ export class AuthManager {
     // Helper functions for response validation
     isFailData(data) {
         if (!data || typeof data !== 'object') return false;
-        const success = (data.success ?? data.Success);
-        const problem = (data.problem ?? data.Problem);
-        const errorCode = data?.errorCode || data?.extensions?.errorCode;
-
-        // هر حالت رایج شکست:
+        
+        // ProblemDetails format (API error response)
+        if (data.status && data.title) return true;
+        
+        // Legacy format support
+        const success = (data.success ?? data.Success ?? data.isSuccess);
         if (success === false) return true;
+        
+        const problem = (data.problem ?? data.Problem);
         if (problem) return true;
+        
+        const errorCode = data?.errorCode || data?.code || data?.extensions?.errorCode;
         if (errorCode && errorCode !== 'OK') return true;
-
-        // اگر ساختار ProblemDetails خالی نیست:
-        if (data?.status && data?.title) return true;
 
         return false;
     }
@@ -406,18 +409,13 @@ export class AuthManager {
         this.showLoading('در حال تأیید کد...', 'لطفاً صبر کنید');
         
         try {
-            const csrfToken = getCsrfToken();
-            if (!csrfToken) {
-                console.warn('CSRF token not found - check meta tag');
-            }
-            
+            // Step 1: VerifyOtp با Backend API (از طریق YARP)
             const res = await fetch(API_VERIFY, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'RequestVerificationToken': csrfToken || ''
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({
                     phone: this.normalizedPhone,
@@ -433,11 +431,13 @@ export class AuthManager {
                 console.log('Verify JSON parse error:', e);
             }
 
-            // بررسی هم HTTP status و هم response body
-            if (!res.ok || this.isFailData(data)) {
+            // بررسی موفقیت API (200 OK + data field exists)
+            const isSuccess = res.ok && data?.data;
+            
+            if (!isSuccess) {
                 this.hideLoading();
                 
-                // اگر ریت‌لیمیت است پیام مناسب بده و دکمه را غیرفعال کن
+                // اگر ریت‌لیمیت است
                 const errorCode = data?.errorCode || data?.extensions?.errorCode || data?.code;
                 const retryAfterFromData = data?.retryAfter || data?.data?.retryAfter;
                 const isRateLimit = (res.status === 429 || 
@@ -447,11 +447,8 @@ export class AuthManager {
                     retryAfterFromData !== undefined);
                 
                 if (isRateLimit) {
-                    // دریافت retryAfter از response یا استفاده از 2 دقیقه پیش‌فرض
-                    const retryAfter = retryAfterFromData || 120; // 2 دقیقه پیش‌فرض
+                    const retryAfter = retryAfterFromData || 120;
                     const minutes = Math.ceil(retryAfter / 60);
-                    
-                    // غیرفعال کردن دکمه برای مدت مشخص
                     this.disableButtonForMinutes(minutes);
                     this.toast(`خیلی سریع درخواست دادید؛ ${minutes} دقیقه صبر کنید و دوباره تلاش کنید.`, 'warning');
                 } else {
@@ -462,12 +459,50 @@ export class AuthManager {
                 return;
             }
 
-            // موفقیت واقعی
+            // Step 2: SetAuthCookie در MVC
+            const loginData = data.data;
+            console.log('✅ VerifyOtp success, loginData:', loginData);
+            
+            const csrfToken = getCsrfToken();
+            
+            console.log('Calling SetAuthCookie...', MVC_SET_COOKIE);
+            const cookieRes = await fetch(MVC_SET_COOKIE, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'RequestVerificationToken': csrfToken || ''
+                },
+                body: JSON.stringify({
+                    accessToken: loginData.accessToken,
+                    returnUrl: REDIRECT_AFTER_LOGIN,
+                    isNewUser: loginData.isNewUser || false
+                })
+            });
+
+            const cookieData = await cookieRes.json();
+            console.log('SetAuthCookie response:', cookieRes.status, cookieData);
+            
+            if (!cookieRes.ok || !cookieData.success) {
+                this.hideLoading();
+                console.error('❌ SetAuthCookie failed:', cookieData);
+                this.toast('خطا در تنظیم احراز هویت', 'error');
+                return;
+            }
+
+            // موفقیت کامل
+            console.log('✅ SetAuthCookie success! Redirecting...');
             this.hideLoading();
             this.toast('ورود موفق! خوش آمدید به DigiTekShop', 'success');
             this.showStep('success');
-            setTimeout(() => window.location.href = REDIRECT_AFTER_LOGIN, 2000);
-        } catch {
+            setTimeout(() => {
+                console.log('Redirecting to:', cookieData.redirectUrl || REDIRECT_AFTER_LOGIN);
+                window.location.href = cookieData.redirectUrl || REDIRECT_AFTER_LOGIN;
+            }, 2000);
+            
+        } catch (err) {
+            console.error('Verify error:', err);
             this.hideLoading();
             this.toast('خطا در ارتباط با سرور', 'error');
         } finally {

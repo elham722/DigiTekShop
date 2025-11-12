@@ -56,17 +56,21 @@ builder.Services.AddAntiforgery(options =>
         : CookieSecurePolicy.Always;
 });
 
-builder.Services.AddResponseCompression(options =>
+// Response Compression (فقط Production - برای جلوگیری از تداخل با Browser Link در Development)
+if (!builder.Environment.IsDevelopment())
 {
-    options.EnableForHttps = true;
-    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    builder.Services.AddResponseCompression(options =>
     {
-        "application/json",
-        "application/javascript",
-        "text/css",
-        "text/html"
+        options.EnableForHttps = true;
+        options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+        {
+            "application/json",
+            "application/javascript",
+            "text/css",
+            "text/html"
+        });
     });
-});
+}
 
 
 builder.Services.AddLogging(logging =>
@@ -104,15 +108,6 @@ var clusters = new[]
             {
                 Address = apiBaseUrl.TrimEnd('/')
             }
-        },
-        
-        HealthCheck = new HealthCheckConfig
-        {
-            Passive = new PassiveHealthCheckConfig
-            {
-                Enabled = true, 
-                Policy = "TransientFailurePolicy"
-            }
         }
     }
 };
@@ -148,8 +143,11 @@ else
     app.UseDeveloperExceptionPage();
 }
 
-// Response Compression
-app.UseResponseCompression();
+// Response Compression (فقط Production)
+if (!app.Environment.IsDevelopment())
+{
+    app.UseResponseCompression();
+}
 
 // Security Headers
 app.Use(async (context, next) =>
