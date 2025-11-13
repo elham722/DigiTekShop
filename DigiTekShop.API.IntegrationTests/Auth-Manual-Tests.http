@@ -1,0 +1,275 @@
+### ==============================================
+### DigiTekShop Auth - Manual API Tests
+### استفاده: از VS Code REST Client یا JetBrains HTTP Client
+### ==============================================
+
+@baseUrl = http://localhost:5000
+@apiVersion = v1
+
+### متغیرها (بعد از اجرا set می‌شوند)
+# @phone = +989121234567
+# @code = 123456
+# @accessToken = eyJhbGciOiJIUzI1...
+# @refreshToken = abc123...
+# @userId = 3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+### ==============================================
+### 1️⃣ SEND OTP - ارسال کد تایید
+### ==============================================
+POST {{baseUrl}}/api/{{apiVersion}}/auth/send-otp
+Content-Type: application/json
+
+{
+  "phone": "+989121234567"
+}
+
+### تست: ارسال مجدد بلافاصله (باید 429 برگرداند)
+POST {{baseUrl}}/api/{{apiVersion}}/auth/send-otp
+Content-Type: application/json
+
+{
+  "phone": "+989121234567"
+}
+
+### تست: شماره نامعتبر (باید 400 یا 422 برگرداند)
+POST {{baseUrl}}/api/{{apiVersion}}/auth/send-otp
+Content-Type: application/json
+
+{
+  "phone": "invalid-phone"
+}
+
+### ==============================================
+### 2️⃣ VERIFY OTP - تایید کد (اشتباه)
+### ==============================================
+POST {{baseUrl}}/api/{{apiVersion}}/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phone": "+989121234567",
+  "code": "000000"
+}
+
+### ==============================================
+### 3️⃣ VERIFY OTP - تایید کد (صحیح)
+### توجه: کد واقعی را از SMS/لاگ بردارید
+### ==============================================
+# @name login
+POST {{baseUrl}}/api/{{apiVersion}}/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phone": "+989121234567",
+  "code": "123456"
+}
+
+### استخراج خودکار توکن‌ها
+@accessToken = {{login.response.body.$.data.accessToken}}
+@refreshToken = {{login.response.body.$.data.refreshToken}}
+@userId = {{login.response.body.$.data.userId}}
+
+### ==============================================
+### 4️⃣ ME - اطلاعات کاربر جاری
+### ==============================================
+GET {{baseUrl}}/api/{{apiVersion}}/auth/me
+Authorization: Bearer {{accessToken}}
+
+### تست: بدون Authorization (باید 401 برگرداند)
+GET {{baseUrl}}/api/{{apiVersion}}/auth/me
+
+### ==============================================
+### 5️⃣ REFRESH TOKEN - تازه‌سازی توکن
+### ==============================================
+# @name refresh
+POST {{baseUrl}}/api/{{apiVersion}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### استخراج توکن‌های جدید
+@newAccessToken = {{refresh.response.body.$.data.accessToken}}
+@newRefreshToken = {{refresh.response.body.$.data.refreshToken}}
+
+### تست: استفاده دوباره از همان refresh token (باید 401 برگرداند)
+POST {{baseUrl}}/api/{{apiVersion}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ==============================================
+### 6️⃣ LOGOUT - خروج از دستگاه فعلی
+### ==============================================
+POST {{baseUrl}}/api/{{apiVersion}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}"
+}
+
+### تست: استفاده از همان access token بعد از logout (باید 401 برگرداند)
+GET {{baseUrl}}/api/{{apiVersion}}/auth/me
+Authorization: Bearer {{accessToken}}
+
+### ==============================================
+### 7️⃣ LOGOUT ALL - خروج از تمام دستگاه‌ها
+### ==============================================
+POST {{baseUrl}}/api/{{apiVersion}}/auth/logout-all
+Authorization: Bearer {{newAccessToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}"
+}
+
+### ==============================================
+### 8️⃣ سناریوی کامل: Login → Refresh → Logout
+### ==============================================
+
+### Step 1: ارسال OTP
+POST {{baseUrl}}/api/{{apiVersion}}/auth/send-otp
+Content-Type: application/json
+
+{
+  "phone": "+989129876543"
+}
+
+###
+
+### Step 2: وریفای OTP (کد واقعی را وارد کنید)
+# @name fullFlow
+POST {{baseUrl}}/api/{{apiVersion}}/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phone": "+989129876543",
+  "code": "XXXXXX"
+}
+
+@flowAccessToken = {{fullFlow.response.body.$.data.accessToken}}
+@flowRefreshToken = {{fullFlow.response.body.$.data.refreshToken}}
+@flowUserId = {{fullFlow.response.body.$.data.userId}}
+
+###
+
+### Step 3: دریافت اطلاعات کاربر
+GET {{baseUrl}}/api/{{apiVersion}}/auth/me
+Authorization: Bearer {{flowAccessToken}}
+
+###
+
+### Step 4: Refresh
+# @name flowRefresh
+POST {{baseUrl}}/api/{{apiVersion}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{flowRefreshToken}}"
+}
+
+@flowNewAccessToken = {{flowRefresh.response.body.$.data.accessToken}}
+
+###
+
+### Step 5: استفاده از توکن جدید
+GET {{baseUrl}}/api/{{apiVersion}}/auth/me
+Authorization: Bearer {{flowNewAccessToken}}
+
+###
+
+### Step 6: Logout
+POST {{baseUrl}}/api/{{apiVersion}}/auth/logout
+Authorization: Bearer {{flowNewAccessToken}}
+Content-Type: application/json
+
+{
+  "userId": "{{flowUserId}}"
+}
+
+###
+
+### Step 7: تایید logout (باید 401 برگرداند)
+GET {{baseUrl}}/api/{{apiVersion}}/auth/me
+Authorization: Bearer {{flowNewAccessToken}}
+
+### ==============================================
+### 🧪 تست‌های Edge Case
+### ==============================================
+
+### تست: OTP با شماره خالی
+POST {{baseUrl}}/api/{{apiVersion}}/auth/send-otp
+Content-Type: application/json
+
+{
+  "phone": ""
+}
+
+###
+
+### تست: Verify با کد خالی
+POST {{baseUrl}}/api/{{apiVersion}}/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phone": "+989121234567",
+  "code": ""
+}
+
+###
+
+### تست: Verify با کد غیر عددی
+POST {{baseUrl}}/api/{{apiVersion}}/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phone": "+989121234567",
+  "code": "abc123"
+}
+
+###
+
+### تست: Refresh با توکن خالی
+POST {{baseUrl}}/api/{{apiVersion}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": ""
+}
+
+###
+
+### تست: Refresh با توکن نامعتبر
+POST {{baseUrl}}/api/{{apiVersion}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "invalid-token-12345"
+}
+
+### ==============================================
+### 📊 نکات استفاده
+### ==============================================
+# 
+# ۱. متغیرهای بالا (@accessToken, @refreshToken, ...) به صورت خودکار
+#    از response استخراج می‌شوند (در VS Code REST Client)
+# 
+# ۲. برای اجرای تست‌ها، روی "Send Request" کلیک کنید
+# 
+# ۳. پاسخ‌ها در پنجره جداگانه نمایش داده می‌شوند
+# 
+# ۴. برای دیدن headers کامل، روی "Response Headers" کلیک کنید
+# 
+# ۵. برای تست Rate Limiting، درخواست‌ها را سریع پشت سر هم بفرستید
+# 
+# ۶. کد OTP را از:
+#    - Console/Log اپلیکیشن
+#    - دیتابیس (PhoneVerifications table)
+#    - SMS واقعی (در production)
+#    بردارید
+#
+### ==============================================
+
