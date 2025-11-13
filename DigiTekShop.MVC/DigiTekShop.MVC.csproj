@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="wwwroot\frontend\**" />
+    <Content Remove="wwwroot\frontend\**" />
+    <EmbeddedResource Remove="wwwroot\frontend\**" />
+    <None Remove="wwwroot\frontend\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
