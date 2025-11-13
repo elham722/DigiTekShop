@@ -11,13 +11,17 @@ public sealed class AuthController : Controller
         _logger = logger;
     }
 
-    [HttpGet]
+    #region Login&Register
+
+    [HttpGet()]
     [AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = NormalizeReturnUrl(returnUrl);
         return View();
     }
+
+    #endregion
 
     [HttpPost]
     [AllowAnonymous]

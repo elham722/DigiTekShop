@@ -79,7 +79,7 @@
                                    id="otpCode" 
                                    name="otpCode" 
                                    class="form-control otp-single-input" 
-                                   placeholder="123456"
+                                   placeholder=""
                                    maxlength="6"
                                    inputmode="numeric" 
                                    pattern="[0-9]{6}"
@@ -128,7 +128,7 @@
 
     <!-- Auth Script -->
     <script type="module">
-        import { AuthManager } from '/frontend/modules/auth/index.js';
+        import { AuthManager } from '/js/modules/auth/index.js';
         
         // Initialize AuthManager when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
