@@ -497,6 +497,13 @@ export class AuthManager {
             this.hideLoading();
             this.toast('ورود موفق! خوش آمدید به DigiTekShop', 'success');
             this.showStep('success');
+            
+            // Refresh auth status immediately (if function exists)
+            if (typeof window.refreshAuthStatus === 'function') {
+                console.log('Refreshing auth status...');
+                window.refreshAuthStatus();
+            }
+            
             setTimeout(() => {
                 console.log('Redirecting to:', cookieData.redirectUrl || REDIRECT_AFTER_LOGIN);
                 window.location.href = cookieData.redirectUrl || REDIRECT_AFTER_LOGIN;

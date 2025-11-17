@@ -18,10 +18,103 @@
 
 
 <!-- Modern JavaScript Bundle -->
-<script type="module" src="~/dist/js/main.CZ-6AuBu.js" asp-append-version="true"></script>
+@if (Context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+{
+    <script type="module" src="~/js/main.js" asp-append-version="true"></script>
+}
+else
+{
+    <script type="module" src="~/dist/js/main.CZ-6AuBu.js" asp-append-version="true"></script>
+}
 
 <!-- Search functionality fix -->
 <script src="~/js/search-fix.js" asp-append-version="true"></script>
+
+<!-- Auth Status Check - Fallback if module doesn't load -->
+<script>
+    // Fallback: Check auth status after page load
+    (function() {
+        function checkAuthStatusFallback() {
+            console.log('[Auth Fallback] Checking authentication status...');
+            
+            fetch('/api/v1/Auth/me', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => {
+                console.log('[Auth Fallback] Response status:', res.status);
+                if (res.ok) {
+                    return res.json();
+                }
+                throw new Error('Not authenticated');
+            })
+            .then(payload => {
+                if (payload && payload.data) {
+                    console.log('[Auth Fallback] User authenticated, updating UI...');
+                    // Hide guest elements
+                    document.querySelectorAll('.nav-guest').forEach(el => {
+                        el.classList.add('d-none');
+                        el.style.display = 'none';
+                    });
+                    // Show auth elements
+                    document.querySelectorAll('.nav-auth').forEach(el => {
+                        el.classList.remove('d-none');
+                        el.style.display = '';
+                    });
+                    // Update user info
+                    const nameEl = document.querySelector('[data-user-name]');
+                    if (nameEl) {
+                        nameEl.textContent = payload.data.fullName || payload.data.phone || 'حساب کاربری من';
+                    }
+                    const phoneEl = document.querySelector('[data-user-phone]');
+                    if (phoneEl && payload.data.phone) {
+                        phoneEl.textContent = payload.data.phone;
+                    }
+                } else {
+                    console.log('[Auth Fallback] User not authenticated');
+                    // Show guest, hide auth
+                    document.querySelectorAll('.nav-guest').forEach(el => {
+                        el.classList.remove('d-none');
+                        el.style.display = '';
+                    });
+                    document.querySelectorAll('.nav-auth').forEach(el => {
+                        el.classList.add('d-none');
+                        el.style.display = 'none';
+                    });
+                }
+            })
+            .catch(err => {
+                console.log('[Auth Fallback] Error or not authenticated:', err);
+                // Default to guest state
+                document.querySelectorAll('.nav-guest').forEach(el => {
+                    el.classList.remove('d-none');
+                    el.style.display = '';
+                });
+                document.querySelectorAll('.nav-auth').forEach(el => {
+                    el.classList.add('d-none');
+                    el.style.display = 'none';
+                });
+            });
+        }
+        
+        // Run after DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(checkAuthStatusFallback, 300);
+            });
+        } else {
+            setTimeout(checkAuthStatusFallback, 300);
+        }
+        
+        // Also run after full page load (for redirects)
+        window.addEventListener('load', function() {
+            setTimeout(checkAuthStatusFallback, 500);
+        });
+    })();
+</script>
 
 @await RenderSectionAsync("Scripts", required: false)
 </body>

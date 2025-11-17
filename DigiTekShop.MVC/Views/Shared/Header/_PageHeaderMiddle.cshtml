@@ -44,9 +44,8 @@
             </div>
             <div class="user-options">
                 <div class="user-option user-option--account">
-                    @if (User.Identity.IsAuthenticated)
-                    {
-                        <!-- کاربر لاگین شده -->
+                    <!-- کاربر لاگین شده - پیش‌فرض مخفی -->
+                    <div class="nav-auth d-none">
                         <a href="profile.html" class="user-option-btn user-option-btn--account">
                             <i class="ri-user-3-fill icon"></i>
                             <i class="ri-arrow-down-s-line icon fs-7 text-muted"></i>
@@ -59,12 +58,10 @@
                                             <img src="/images/avatar/default.png" alt="avatar">
                                         </div>
                                         <div class="profile-info">
-                                            <a href="#" class="text-decoration-none text-dark fw-bold mb-2">
-                                                جلال
-                                                بهرامی
-                                                راد
+                                            <a href="#" class="text-decoration-none text-dark fw-bold mb-2" data-user-name>
+                                                حساب کاربری من
                                             </a>
-                                            <div class="text-muted fs-7 fw-bold">۰۹xxxxxxxxx</div>
+                                            <div class="text-muted fs-7 fw-bold" data-user-phone>۰۹xxxxxxxxx</div>
                                         </div>
                                     </div>
                                     <div class="user-options">
@@ -116,10 +113,9 @@
                                 </ul>
                             </div>
                         </div>
-                    }
-                    else
-                    {
-                        <!-- کاربر لاگین نشده -->
+                    </div>
+                    <!-- کاربر لاگین نشده - پیش‌فرض نمایش -->
+                    <div class="nav-guest">
                         <a href="#" class="user-option-btn user-option-btn--account">
                             <i class="ri-user-3-line icon"></i>
                             <i class="ri-arrow-down-s-line icon fs-7 text-muted"></i>
@@ -140,7 +136,7 @@
                                 </div>
                             </div>
                         </div>
-                    }
+                    </div>
                 </div>
                 <div class="user-option">
                     <a href="#" class="user-option-btn user-option-btn--account">
