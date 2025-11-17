@@ -476,6 +476,7 @@ export class AuthManager {
                 },
                 body: JSON.stringify({
                     accessToken: loginData.accessToken,
+                    refreshToken: loginData.refreshToken, // ✅ اضافه شد
                     returnUrl: REDIRECT_AFTER_LOGIN,
                     isNewUser: loginData.isNewUser || false
                 })

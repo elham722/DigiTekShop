@@ -1,4 +1,6 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using System.Net.Http.Headers;
+
+var builder = WebApplication.CreateBuilder(args);
 
 
 builder.WebHost.ConfigureKestrel(o =>
@@ -19,27 +21,10 @@ builder.Services.AddDataProtection()
     .SetApplicationName("DigiTekShop.MVC")
     .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
 
-
-builder.Services
-    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.LoginPath = "/Auth/Login";
-        options.LogoutPath = "/Auth/Logout";
-        options.AccessDeniedPath = "/Auth/AccessDenied";
-        options.ReturnUrlParameter = "returnUrl";
-        options.ExpireTimeSpan = TimeSpan.FromHours(24);
-        options.SlidingExpiration = true;
-        
-        // Cookie Security
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
-        options.Cookie.Path = "/";
-        options.Cookie.Name = ".DigiTekShop.Auth";
-    });
+// ⚠️ ARCHITECTURE NOTE:
+// ما دیگر CookieAuthentication جداگانه نداریم.
+// احراز هویت فقط از طریق JWT در Backend API انجام می‌شود.
+// MVC فقط کوکی‌های dt_at و dt_rt را نگه‌داری می‌کند و YARP آن‌ها را به Bearer Header تبدیل می‌کند.
 
 builder.Services.AddAuthorization();
 
@@ -114,11 +99,31 @@ var clusters = new[]
 
 builder.Services.AddReverseProxy()
     .LoadFromMemory(routes, clusters)
-    .AddTransforms(builderContext =>
+    .AddTransforms(transformBuilderContext =>
     {
-      
-        builderContext.AddRequestHeader("X-Request-ID", "{TraceIdentifier}", append: false);
-       
+        // اضافه کردن TraceId برای observability
+        transformBuilderContext.AddRequestHeader("X-Request-ID", "{TraceIdentifier}", append: false);
+
+        // 🔑 تبدیل کوکی dt_at به Authorization Bearer Header (فقط برای /api/*)
+        transformBuilderContext.AddRequestTransform(transformContext =>
+        {
+            var httpContext = transformContext.HttpContext;
+
+            // فقط برای مسیرهای /api
+            if (httpContext.Request.Path.StartsWithSegments("/api"))
+            {
+                // خواندن AccessToken از کوکی
+                if (httpContext.Request.Cookies.TryGetValue("dt_at", out var accessToken) 
+                    && !string.IsNullOrWhiteSpace(accessToken))
+                {
+                    // ست کردن Bearer Token در هدر درخواست به Backend API
+                    transformContext.ProxyRequest.Headers.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                }
+            }
+
+            return default; // ValueTask<TResult> برای synchronous transform
+        });
     });
 
 
@@ -194,8 +199,8 @@ app.UseWebSockets();
 
 app.UseRouting();
 
-
-app.UseAuthentication();
+// ⚠️ UseAuthentication حذف شد چون دیگر CookieAuth Scheme نداریم
+// احراز هویت در Backend API انجام می‌شود؛ YARP کوکی را به Bearer Header تبدیل می‌کند
 app.UseAuthorization();
 
 
