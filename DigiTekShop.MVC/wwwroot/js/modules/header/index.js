@@ -13,6 +13,11 @@ export function refreshAuthStatus() {
     checkAuthStatus();
 }
 
+// Export logout function globally
+export function handleLogout() {
+    performLogout();
+}
+
 export function mountHeader(context = {}) {
     console.log('Initializing header modules...');
     
@@ -22,6 +27,9 @@ export function mountHeader(context = {}) {
         mountMegaSearch();
         mountVerticalMenu();
         mountNavigation();
+        
+        // Setup logout button handler
+        setupLogoutHandler();
         
         // Check authentication status and update UI
         // Use setTimeout to ensure DOM is fully ready
@@ -176,4 +184,126 @@ function setHeaderLoggedOutState() {
         el.classList.add('d-none');
         el.style.display = 'none'; // Force hide as backup
     });
+}
+
+/**
+ * Sets up logout button click handler
+ */
+function setupLogoutHandler() {
+    // Find all logout links/buttons
+    const logoutElements = document.querySelectorAll('[data-logout], #logoutLink');
+    console.log('[Auth] Found', logoutElements.length, 'logout elements');
+    
+    logoutElements.forEach((element, index) => {
+        element.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log(`[Auth] Logout button ${index + 1} clicked`);
+            
+            // Perform logout directly (no confirmation)
+            await performLogout();
+        });
+        
+        console.log(`[Auth] Logout handler attached to element ${index + 1}`);
+    });
+}
+
+/**
+ * Performs logout by calling API and clearing cookies
+ */
+async function performLogout() {
+    console.log('[Auth] Starting logout process...');
+    
+    try {
+        // Step 1: Get user info from /api/v1/Auth/me to get userId
+        const meRes = await fetch('/api/v1/Auth/me', {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        let userId = null;
+        if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData?.data?.userId) {
+                userId = meData.data.userId;
+                console.log('[Auth] Got userId for logout:', userId);
+            }
+        }
+
+        // Step 2: Call API logout-all endpoint (if we have userId)
+        // logout-all only needs userId and revokes all refresh tokens for the user
+        if (userId) {
+            try {
+                const logoutRes = await fetch('/api/v1/Auth/logout-all', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        userId: userId
+                    })
+                });
+
+                if (logoutRes.ok) {
+                    console.log('[Auth] API logout-all successful - all tokens revoked');
+                } else {
+                    console.warn('[Auth] API logout-all returned status:', logoutRes.status);
+                    // Try to read error response
+                    try {
+                        const errorData = await logoutRes.json();
+                        console.warn('[Auth] API logout-all error:', errorData);
+                    } catch (e) {
+                        // Ignore JSON parse error
+                    }
+                }
+            } catch (apiErr) {
+                console.warn('[Auth] API logout-all error (continuing anyway):', apiErr);
+            }
+        }
+
+        // Step 3: Call MVC logout to clear cookies
+        try {
+            const mvcLogoutRes = await fetch('/Auth/Logout', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (mvcLogoutRes.ok) {
+                console.log('[Auth] MVC logout successful, cookies cleared');
+            } else {
+                console.warn('[Auth] MVC logout returned status:', mvcLogoutRes.status);
+            }
+        } catch (mvcErr) {
+            console.warn('[Auth] MVC logout error (continuing anyway):', mvcErr);
+        }
+
+        // Step 4: Manually clear cookies as backup (in case server-side deletion fails)
+        // Note: HttpOnly cookies cannot be deleted from JavaScript, but we try anyway
+        document.cookie = 'dt_at=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure';
+        document.cookie = 'dt_rt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure';
+        console.log('[Auth] Attempted to clear cookies from client side');
+
+        // Step 5: Update UI immediately
+        setHeaderLoggedOutState();
+
+        // Step 6: Force redirect to login page (use replace to prevent back button)
+        console.log('[Auth] Redirecting to login page...');
+        window.location.replace('/Auth/Login');
+
+    } catch (err) {
+        console.error('[Auth] Logout error:', err);
+        // Even on error, try to clear UI and redirect
+        setHeaderLoggedOutState();
+        window.location.href = '/Auth/Login';
+    }
 }

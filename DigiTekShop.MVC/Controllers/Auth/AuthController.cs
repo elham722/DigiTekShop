@@ -94,8 +94,23 @@ public sealed class AuthController : Controller
     {
         _logger.LogInformation("User logging out from MVC client.");
 
+        // Delete cookies with explicit expiration in the past to ensure they're removed
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddDays(-1) // Set to past to ensure deletion
+        };
+
         Response.Cookies.Delete("dt_at");
         Response.Cookies.Delete("dt_rt");
+        
+        // Also explicitly set expired cookies to ensure deletion
+        Response.Cookies.Append("dt_at", "", cookieOptions);
+        Response.Cookies.Append("dt_rt", "", cookieOptions);
+
+        _logger.LogInformation("Auth cookies deleted successfully.");
 
         return Ok(new
         {

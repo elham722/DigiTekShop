@@ -34,7 +34,7 @@ import noUiSlider from 'nouislider';
 // ========================================
 // App Modules
 // ========================================
-import { mountHeader, refreshAuthStatus } from './modules/header/index.js';
+import { mountHeader, refreshAuthStatus, handleLogout } from './modules/header/index.js';
 import { mountSliders } from './modules/sliders/index.js';
 import { mountForms } from './modules/forms/index.js';
 import { mountShopView } from './modules/shop-view.js';
@@ -60,6 +60,7 @@ window.DigiTekApi = Api;
 window.DigiTekNotification = DigiTekNotification;
 window.AuthManager = AuthManager;
 window.refreshAuthStatus = refreshAuthStatus; // For refreshing auth status after login
+window.handleLogout = handleLogout; // For handling logout
 
 // ========================================
 // Application Bootstrap

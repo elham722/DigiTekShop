@@ -113,6 +113,98 @@ else
         window.addEventListener('load', function() {
             setTimeout(checkAuthStatusFallback, 500);
         });
+        
+        // Setup logout handler (fallback)
+        function setupLogoutFallback() {
+            const logoutElements = document.querySelectorAll('[data-logout], #logoutLink');
+            console.log('[Auth Fallback] Found', logoutElements.length, 'logout elements');
+            
+            logoutElements.forEach((element) => {
+                element.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('[Auth Fallback] Starting logout...');
+                    
+                    try {
+                        // Get userId from /api/v1/Auth/me
+                        const meRes = await fetch('/api/v1/Auth/me', {
+                            method: 'GET',
+                            credentials: 'same-origin',
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                        
+                        let userId = null;
+                        if (meRes.ok) {
+                            const meData = await meRes.json();
+                            if (meData?.data?.userId) {
+                                userId = meData.data.userId;
+                            }
+                        }
+                        
+                        // Call API logout-all (revokes all tokens for user)
+                        if (userId) {
+                            try {
+                                await fetch('/api/v1/Auth/logout-all', {
+                                    method: 'POST',
+                                    credentials: 'same-origin',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    },
+                                    body: JSON.stringify({ userId: userId })
+                                });
+                            } catch (err) {
+                                console.warn('[Auth Fallback] API logout-all error:', err);
+                            }
+                        }
+                        
+                        // Call MVC logout to clear cookies
+                        try {
+                            await fetch('/Auth/Logout', {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                        } catch (err) {
+                            console.warn('[Auth Fallback] MVC logout error:', err);
+                        }
+                        
+                        // Manually clear cookies as backup
+                        document.cookie = 'dt_at=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure';
+                        document.cookie = 'dt_rt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure';
+                        
+                        // Update UI
+                        document.querySelectorAll('.nav-guest').forEach(el => {
+                            el.classList.remove('d-none');
+                            el.style.display = '';
+                        });
+                        document.querySelectorAll('.nav-auth').forEach(el => {
+                            el.classList.add('d-none');
+                            el.style.display = 'none';
+                        });
+                        
+                        // Redirect (use replace to prevent back button)
+                        window.location.replace('/Auth/Login');
+                    } catch (err) {
+                        console.error('[Auth Fallback] Logout error:', err);
+                        window.location.href = '/Auth/Login';
+                    }
+                });
+            });
+        }
+        
+        // Setup logout handler after DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(setupLogoutFallback, 300);
+            });
+        } else {
+            setTimeout(setupLogoutFallback, 300);
+        }
     })();
 </script>
 
