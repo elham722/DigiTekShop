@@ -1,183 +1,113 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Antiforgery
+@inject IAntiforgery Antiforgery
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
+
+@{
+    // تولید و ست کردن کوکی AntiForgery + گرفتن RequestToken
+    var antiForgeryTokens = Antiforgery.GetAndStoreTokens(Context);
+}
+
+<!DOCTYPE html>
 <html lang="fa">
 
 <head>
     <partial name="_MetaTags" />
-    <title>DigiTekShop | home </title>
+
+    <title>DigiTekShop | home</title>
+
+    <!-- CSRF token برای استفاده در JS (SetAuthCookie / Logout و...) -->
+    <meta name="request-verification-token" content="@antiForgeryTokens.RequestToken" />
+
     <link rel="stylesheet" href="~/css/main.css" asp-append-version="true" />
-
 </head>
+
 <body>
-<div class="page-wrapper">
-    @await Html.PartialAsync("_Header")
+    <div class="page-wrapper">
+        @await Html.PartialAsync("_Header")
 
-    <main class="page-content">
-        @RenderBody()
-    </main>
- </div>
+        <main class="page-content">
+            @RenderBody()
+        </main>
+    </div>
 
+    <!-- Modern JavaScript Bundle -->
+    @if (Env.IsDevelopment())
+    {
+        <script type="module" src="~/js/main.js" asp-append-version="true"></script>
+    }
+    else
+    {
+        <script type="module" src="~/dist/js/main.CZ-6AuBu.js" asp-append-version="true"></script>
+    }
 
-<!-- Modern JavaScript Bundle -->
-@if (Context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
-{
-    <script type="module" src="~/js/main.js" asp-append-version="true"></script>
-}
-else
-{
-    <script type="module" src="~/dist/js/main.CZ-6AuBu.js" asp-append-version="true"></script>
-}
+    <!-- Search functionality fix -->
+    <script src="~/js/search-fix.js" asp-append-version="true"></script>
 
-<!-- Search functionality fix -->
-<script src="~/js/search-fix.js" asp-append-version="true"></script>
-
-<!-- Auth Status Check - Fallback if module doesn't load -->
-<script>
-    // Fallback: Check auth status after page load
-    (function() {
-        function checkAuthStatusFallback() {
-            console.log('[Auth Fallback] Checking authentication status...');
-            
-            fetch('/api/v1/Auth/me', {
-                method: 'GET',
-                credentials: 'same-origin',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(res => {
-                console.log('[Auth Fallback] Response status:', res.status);
-                if (res.ok) {
-                    return res.json();
-                }
-                throw new Error('Not authenticated');
-            })
-            .then(payload => {
-                if (payload && payload.data) {
-                    console.log('[Auth Fallback] User authenticated, updating UI...');
-                    // Hide guest elements
-                    document.querySelectorAll('.nav-guest').forEach(el => {
-                        el.classList.add('d-none');
-                        el.style.display = 'none';
-                    });
-                    // Show auth elements
-                    document.querySelectorAll('.nav-auth').forEach(el => {
-                        el.classList.remove('d-none');
-                        el.style.display = '';
-                    });
-                    // Update user info
-                    const nameEl = document.querySelector('[data-user-name]');
-                    if (nameEl) {
-                        nameEl.textContent = payload.data.fullName || payload.data.phone || 'حساب کاربری من';
-                    }
-                    const phoneEl = document.querySelector('[data-user-phone]');
-                    if (phoneEl && payload.data.phone) {
-                        phoneEl.textContent = payload.data.phone;
-                    }
-                } else {
-                    console.log('[Auth Fallback] User not authenticated');
-                    // Show guest, hide auth
-                    document.querySelectorAll('.nav-guest').forEach(el => {
-                        el.classList.remove('d-none');
-                        el.style.display = '';
-                    });
-                    document.querySelectorAll('.nav-auth').forEach(el => {
-                        el.classList.add('d-none');
-                        el.style.display = 'none';
-                    });
-                }
-            })
-            .catch(err => {
-                console.log('[Auth Fallback] Error or not authenticated:', err);
-                // Default to guest state
-                document.querySelectorAll('.nav-guest').forEach(el => {
-                    el.classList.remove('d-none');
-                    el.style.display = '';
-                });
-                document.querySelectorAll('.nav-auth').forEach(el => {
-                    el.classList.add('d-none');
-                    el.style.display = 'none';
-                });
-            });
+    <!-- Auth Status Check - Fallback if module doesn't load -->
+    <script>
+        function getCsrfToken() {
+            const meta = document.querySelector('meta[name="request-verification-token"]');
+            return meta ? meta.content : '';
         }
-        
-        // Run after DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                setTimeout(checkAuthStatusFallback, 300);
-            });
-        } else {
-            setTimeout(checkAuthStatusFallback, 300);
-        }
-        
-        // Also run after full page load (for redirects)
-        window.addEventListener('load', function() {
-            setTimeout(checkAuthStatusFallback, 500);
-        });
-        
-        // Setup logout handler (fallback)
-        function setupLogoutFallback() {
-            const logoutElements = document.querySelectorAll('[data-logout], #logoutLink');
-            console.log('[Auth Fallback] Found', logoutElements.length, 'logout elements');
-            
-            logoutElements.forEach((element) => {
-                element.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    console.log('[Auth Fallback] Starting logout...');
-                    
-                    try {
-                        // Get userId from /api/v1/Auth/me
-                        const meRes = await fetch('/api/v1/Auth/me', {
-                            method: 'GET',
-                            credentials: 'same-origin',
-                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                        });
-                        
-                        let userId = null;
-                        if (meRes.ok) {
-                            const meData = await meRes.json();
-                            if (meData?.data?.userId) {
-                                userId = meData.data.userId;
-                            }
+
+        (function () {
+            // ---- 1) چک کردن وضعیت احراز هویت ----
+            function checkAuthStatusFallback() {
+                console.log('[Auth Fallback] Checking authentication status...');
+
+                fetch('/api/v1/Auth/me', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(res => {
+                        console.log('[Auth Fallback] Response status:', res.status);
+                        if (res.ok) {
+                            return res.json();
                         }
-                        
-                        // Call API logout-all (revokes all tokens for user)
-                        if (userId) {
-                            try {
-                                await fetch('/api/v1/Auth/logout-all', {
-                                    method: 'POST',
-                                    credentials: 'same-origin',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-Requested-With': 'XMLHttpRequest'
-                                    },
-                                    body: JSON.stringify({ userId: userId })
-                                });
-                            } catch (err) {
-                                console.warn('[Auth Fallback] API logout-all error:', err);
-                            }
-                        }
-                        
-                        // Call MVC logout to clear cookies
-                        try {
-                            await fetch('/Auth/Logout', {
-                                method: 'POST',
-                                credentials: 'same-origin',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
+                        throw new Error('Not authenticated');
+                    })
+                    .then(payload => {
+                        if (payload && payload.data) {
+                            console.log('[Auth Fallback] User authenticated, updating UI...');
+                            // Hide guest elements
+                            document.querySelectorAll('.nav-guest').forEach(el => {
+                                el.classList.add('d-none');
+                                el.style.display = 'none';
                             });
-                        } catch (err) {
-                            console.warn('[Auth Fallback] MVC logout error:', err);
+                            // Show auth elements
+                            document.querySelectorAll('.nav-auth').forEach(el => {
+                                el.classList.remove('d-none');
+                                el.style.display = '';
+                            });
+                            // Update user info
+                            const nameEl = document.querySelector('[data-user-name]');
+                            if (nameEl) {
+                                nameEl.textContent =
+                                    payload.data.fullName ||
+                                    payload.data.phone ||
+                                    'حساب کاربری من';
+                            }
+                            const phoneEl = document.querySelector('[data-user-phone]');
+                            if (phoneEl && payload.data.phone) {
+                                phoneEl.textContent = payload.data.phone;
+                            }
+                        } else {
+                            console.log('[Auth Fallback] User not authenticated');
+                            document.querySelectorAll('.nav-guest').forEach(el => {
+                                el.classList.remove('d-none');
+                                el.style.display = '';
+                            });
+                            document.querySelectorAll('.nav-auth').forEach(el => {
+                                el.classList.add('d-none');
+                                el.style.display = 'none';
+                            });
                         }
-                        
-                        // Manually clear cookies as backup
-                        document.cookie = 'dt_at=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure';
-                        document.cookie = 'dt_rt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure';
-                        
-                        // Update UI
+                    })
+                    .catch(err => {
+                        console.log('[Auth Fallback] Error or not authenticated:', err);
                         document.querySelectorAll('.nav-guest').forEach(el => {
                             el.classList.remove('d-none');
                             el.style.display = '';
@@ -186,28 +116,115 @@ else
                             el.classList.add('d-none');
                             el.style.display = 'none';
                         });
-                        
-                        // Redirect (use replace to prevent back button)
-                        window.location.replace('/Auth/Login');
-                    } catch (err) {
-                        console.error('[Auth Fallback] Logout error:', err);
-                        window.location.href = '/Auth/Login';
-                    }
-                });
-            });
-        }
-        
-        // Setup logout handler after DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                setTimeout(setupLogoutFallback, 300);
-            });
-        } else {
-            setTimeout(setupLogoutFallback, 300);
-        }
-    })();
-</script>
+                    });
+            }
 
-@await RenderSectionAsync("Scripts", required: false)
+            // اجرای چک Auth بعد از آماده شدن DOM
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function () {
+                    setTimeout(checkAuthStatusFallback, 300);
+                });
+            } else {
+                setTimeout(checkAuthStatusFallback, 300);
+            }
+
+            // اجرای مجدد بعد از load کامل (برای ریدایرکت‌ها)
+            window.addEventListener('load', function () {
+                setTimeout(checkAuthStatusFallback, 500);
+            });
+
+            // ---- 2) راه‌اندازی لاگ‌آوت ----
+            function setupLogoutFallback() {
+                const logoutElements = document.querySelectorAll('[data-logout], #logoutLink');
+                console.log('[Auth Fallback] Found', logoutElements.length, 'logout elements');
+
+                logoutElements.forEach((element) => {
+                    element.addEventListener('click', async function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        console.log('[Auth Fallback] Starting logout...');
+
+                        try {
+                            // Get userId from /api/v1/Auth/me
+                            const meRes = await fetch('/api/v1/Auth/me', {
+                                method: 'GET',
+                                credentials: 'same-origin',
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                            });
+
+                            let userId = null;
+                            if (meRes.ok) {
+                                const meData = await meRes.json();
+                                if (meData?.data?.userId) {
+                                    userId = meData.data.userId;
+                                }
+                            }
+
+                            // Call API logout-all (revokes all tokens for user)
+                            if (userId) {
+                                try {
+                                    await fetch('/api/v1/Auth/logout-all', {
+                                        method: 'POST',
+                                        credentials: 'same-origin',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-Requested-With': 'XMLHttpRequest'
+                                        },
+                                        body: JSON.stringify({ userId: userId })
+                                    });
+                                } catch (err) {
+                                    console.warn('[Auth Fallback] API logout-all error:', err);
+                                }
+                            }
+
+                            // Call MVC logout to clear cookies (با CSRF Token)
+                            try {
+                                const csrfToken = getCsrfToken();
+                                await fetch('/Auth/Logout', {
+                                    method: 'POST',
+                                    credentials: 'same-origin',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'RequestVerificationToken': csrfToken || ''
+                                    }
+                                });
+                            } catch (err) {
+                                console.warn('[Auth Fallback] MVC logout error:', err);
+                            }
+
+                            // Update UI
+                            document.querySelectorAll('.nav-guest').forEach(el => {
+                                el.classList.remove('d-none');
+                                el.style.display = '';
+                            });
+                            document.querySelectorAll('.nav-auth').forEach(el => {
+                                el.classList.add('d-none');
+                                el.style.display = 'none';
+                            });
+
+                            // Redirect (use replace to prevent back button)
+                            window.location.replace('/Auth/Login');
+                        } catch (err) {
+                            console.error('[Auth Fallback] Logout error:', err);
+                            window.location.href = '/Auth/Login';
+                        }
+                    });
+                });
+            }
+
+            // راه‌اندازی Handler لاگ‌اوت بعد از آماده شدن DOM
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function () {
+                    setTimeout(setupLogoutFallback, 300);
+                });
+            } else {
+                setTimeout(setupLogoutFallback, 300);
+            }
+        })();
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
