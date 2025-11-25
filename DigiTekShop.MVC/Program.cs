@@ -1,6 +1,4 @@
-﻿using System.Net.Http.Headers;
-
-var builder = WebApplication.CreateBuilder(args);
+﻿var builder = WebApplication.CreateBuilder(args);
 
 
 builder.WebHost.ConfigureKestrel(o =>
