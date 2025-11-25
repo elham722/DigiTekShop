@@ -31,7 +31,7 @@ builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "RequestVerificationToken";
     options.FormFieldName = "__RequestVerificationToken";
-    options.Cookie.Name = "__Host-DTS.AntiXsrf";
+    options.Cookie.Name = CookieNames.AntiXsrf;
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Strict;
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
@@ -111,7 +111,7 @@ builder.Services.AddReverseProxy()
             if (httpContext.Request.Path.StartsWithSegments("/api"))
             {
                 // خواندن AccessToken از کوکی
-                if (httpContext.Request.Cookies.TryGetValue("dt_at", out var accessToken) 
+                if (httpContext.Request.Cookies.TryGetValue(CookieNames.AccessToken, out var accessToken) 
                     && !string.IsNullOrWhiteSpace(accessToken))
                 {
                     // ست کردن Bearer Token در هدر درخواست به Backend API

@@ -61,7 +61,7 @@ public sealed class AuthController : Controller
             Expires = accessCookieExpires
         };
 
-        Response.Cookies.Append("dt_at", request.AccessToken, accessCookieOptions);
+        Response.Cookies.Append(CookieNames.AccessToken, request.AccessToken, accessCookieOptions);
 
         if (!string.IsNullOrWhiteSpace(request.RefreshToken))
         {
@@ -73,7 +73,7 @@ public sealed class AuthController : Controller
                 Expires = DateTimeOffset.UtcNow.AddDays(30) 
             };
 
-            Response.Cookies.Append("dt_rt", request.RefreshToken!, refreshCookieOptions);
+            Response.Cookies.Append(CookieNames.RefreshToken, request.RefreshToken!, refreshCookieOptions);
         }
 
         var returnUrl = NormalizeReturnUrl(request.ReturnUrl);
@@ -103,12 +103,12 @@ public sealed class AuthController : Controller
             Expires = DateTimeOffset.UtcNow.AddDays(-1) // Set to past to ensure deletion
         };
 
-        Response.Cookies.Delete("dt_at");
-        Response.Cookies.Delete("dt_rt");
+        Response.Cookies.Delete(CookieNames.AccessToken);
+        Response.Cookies.Delete(CookieNames.RefreshToken);
         
         // Also explicitly set expired cookies to ensure deletion
-        Response.Cookies.Append("dt_at", "", cookieOptions);
-        Response.Cookies.Append("dt_rt", "", cookieOptions);
+        Response.Cookies.Append(CookieNames.AccessToken, "", cookieOptions);
+        Response.Cookies.Append(CookieNames.RefreshToken, "", cookieOptions);
 
         _logger.LogInformation("Auth cookies deleted successfully.");
 

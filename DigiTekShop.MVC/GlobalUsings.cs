@@ -1,4 +1,5 @@
-﻿global using DigiTekShop.MVC.Models;
+﻿global using DigiTekShop.MVC.Common;
+global using DigiTekShop.MVC.Models;
 global using DigiTekShop.MVC.Models.Auth;
 global using Microsoft.AspNetCore.Mvc;
 global using System.Diagnostics;
