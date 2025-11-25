@@ -84,7 +84,8 @@ public static class IdentityServicesRegistration
 
         services.AddScoped<ILogoutService, LogoutService>();
 
-        services.AddScoped<IMeService,MeService>();
+        services.AddScoped<IMeService, MeService>();
+        services.AddScoped<IAdminUserReadService, AdminUserReadService>();
 
 
         #endregion

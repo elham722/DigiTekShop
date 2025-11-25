@@ -14,7 +14,17 @@
     </div>
     <!--  /Loading Container -->
     <partial name="_Navbar" />
-   @RenderBody()
+
+    <!-- Main Container -->
+    <div class="main-container container-fluid">
+        <!-- Page Container -->
+        <div class="page-container">
+            <partial name="_Sidebar" />
+            <partial name="_ChatBar" />
+            @RenderBody()
+        </div>
+    </div>
     <partial name="_ScriptTags" /> 
+    @RenderSection("Scripts", required: false)
 </body>
 </html>

@@ -1,6 +1,7 @@
 ﻿global using DigiTekShop.Application.Common.Events;
 global using DigiTekShop.Contracts.Abstractions.Caching;
 global using DigiTekShop.Contracts.Abstractions.Clients;
+global using DigiTekShop.Contracts.Abstractions.Identity.Admin;
 global using DigiTekShop.Contracts.Abstractions.Identity.Auth;
 global using DigiTekShop.Contracts.Abstractions.Identity.EmailConfirmation;
 global using DigiTekShop.Contracts.Abstractions.Identity.Lockout;
@@ -18,6 +19,7 @@ global using DigiTekShop.Identity.Handlers.Customers;
 global using DigiTekShop.Identity.Handlers.Notifications;
 global using DigiTekShop.Identity.Interceptors;
 global using DigiTekShop.Identity.Models;
+global using DigiTekShop.Identity.Services.Admin;
 global using DigiTekShop.Identity.Services.Lockout;
 global using DigiTekShop.Identity.Services.Login;
 global using DigiTekShop.Identity.Services.Register;
