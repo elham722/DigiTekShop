@@ -21,7 +21,48 @@
         <div class="page-container">
             <partial name="_Sidebar" />
             <partial name="_ChatBar" />
+            <!-- Page Content -->
+            <div class="page-content">
+                <!-- Page Breadcrumb -->
+                <div class="page-breadcrumbs">
+                    <ul class="breadcrumb">
+                        <li>
+                            <i class="fa fa-home"></i>
+                            <a asp-area="Admin"
+                               asp-controller="Dashboard"
+                               asp-action="Index">خانه</a>
+                        </li>
+                        <li class="active">
+                            @(ViewData["Title"] ?? "داشبورد")
+                        </li>
+                    </ul>
+                </div>
+                <!-- /Page Breadcrumb -->
+                <!-- Page Header -->
+                <div class="page-header position-relative">
+                    <div class="header-title">
+                        <h1>@(ViewData["Title"] ?? "داشبورد")</h1>
+                        @if (ViewData["PageDescription"] is string desc && !string.IsNullOrWhiteSpace(desc))
+                        {
+                            <small class="text-muted">@desc</small>
+                        }
+                    </div>
+                    <div class="header-buttons">
+                        <a class="sidebar-toggler" href="#">
+                            <i class="fa fa-arrows-h"></i>
+                        </a>
+                        <a class="refresh" id="refresh-toggler" href="">
+                            <i class="glyphicon glyphicon-refresh"></i>
+                        </a>
+                        <a class="fullscreen" id="fullscreen-toggler" href="#">
+                            <i class="glyphicon glyphicon-fullscreen"></i>
+                        </a>
+                    </div>
+                </div>
+                <!-- /Page Header -->
             @RenderBody()
+            </div>
+            <!-- /Page Content -->
         </div>
     </div>
     <partial name="_ScriptTags" /> 
