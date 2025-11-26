@@ -1,7 +1,7 @@
 ﻿namespace DigiTekShop.Contracts.Abstractions.Paging;
 
 public sealed record PagedResponse<T>(
-    IEnumerable<T> Items,
+    IReadOnlyList<T> Items,
     int TotalCount,
     int Page,
     int Size,
@@ -10,15 +10,19 @@ public sealed record PagedResponse<T>(
     bool HasPrevious
 )
 {
-    public static PagedResponse<TItem> Create<TItem>(IEnumerable<TItem> items, int totalCount, PagedRequest request)
+    public static PagedResponse<T> Create(
+        IEnumerable<T> items,
+        int totalCount,
+        PagedRequest request)
     {
-        var totalPages = (int)Math.Ceiling((double)totalCount / request.Size);
+        var size = request.Size <= 0 ? 10 : request.Size;
+        var totalPages = (int)Math.Ceiling((double)totalCount / size);
 
-        return new PagedResponse<TItem>(
-            Items: items,
+        return new PagedResponse<T>(
+            Items: items.ToList(),
             TotalCount: totalCount,
             Page: request.Page,
-            Size: request.Size,
+            Size: size,
             TotalPages: totalPages,
             HasNext: request.Page < totalPages,
             HasPrevious: request.Page > 1
