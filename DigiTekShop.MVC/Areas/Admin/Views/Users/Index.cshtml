@@ -3,7 +3,6 @@
     ViewData["Title"] = "مدیریت کاربران";
 }
 
-
 <div class="page-body">
     <div class="row">
         <div class="col-xs-12 col-md-12">
@@ -22,42 +21,67 @@
                         </a>
                     </div>
                 </div>
-                <div class="widget-body no-padding">
-                    <!-- فیلترها -->
-                    <form id="userFilterForm" class="row gy-2 align-items-end mb-3">
-                        <div class="col-md-4">
-                            <label for="search" class="form-label">جستجو</label>
-                            <input type="text" id="search" name="search" class="form-control" placeholder="نام، موبایل یا ایمیل" />
-                        </div>
-                        <div class="col-md-3">
-                            <label for="status" class="form-label">وضعیت</label>
-                            <select id="status" name="status" class="form-select">
-                                <option value="">همه وضعیت‌ها</option>
-                                <option value="Active">فعال</option>
-                                <option value="Locked">قفل شده</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="pageSize" class="form-label">تعداد در صفحه</label>
-                            <select id="pageSize" name="pageSize" class="form-select">
-                                <option value="10">10</option>
-                                <option value="20" selected>20</option>
-                                <option value="50">50</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3 text-end">
-                            <button type="submit" class="btn btn-primary mt-3 mt-md-0">
-                                <i class="fa fa-search ms-1"></i>
-                                اعمال فیلتر
-                            </button>
-                        </div>
-                    </form>
 
+                <div class="widget-body">
+
+                    <!-- نوار فیلتر بالا -->
+                    <div class="table-toolbar admin-users-filter">
+                        <form id="userFilterForm" class="row" style="margin:0;">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="search" class="control-label">جستجو</label>
+                                    <input type="text"
+                                           id="search"
+                                           name="search"
+                                           class="form-control input-sm"
+                                           placeholder="نام، موبایل یا ایمیل" />
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="status" class="control-label">وضعیت</label>
+                                    <select id="status"
+                                            name="status"
+                                            class="form-control input-sm">
+                                        <option value="">همه وضعیت‌ها</option>
+                                        <option value="Active">فعال</option>
+                                        <option value="Locked">قفل شده</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label for="pageSize" class="control-label">تعداد در صفحه</label>
+                                    <select id="pageSize"
+                                            name="pageSize"
+                                            class="form-control input-sm">
+                                        <option value="10">10</option>
+                                        <option value="20" selected>20</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3 text-right">
+                                <div class="form-group admin-users-filter-btn">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fa fa-search"></i>
+                                        اعمال فیلتر
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- جدول کاربران -->
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover table-striped" id="usersTable">
                             <thead class="bordered-darkorange">
-                                <tr>
+                                <tr role="row">
                                     <th>کاربر</th>
+                                    <th>شماره تماس</th>
                                     <th>ایمیل</th>
                                     <th>نقش‌ها</th>
                                     <th>وضعیت</th>
@@ -66,22 +90,41 @@
                                     <th class="text-center">عملیات</th>
                                 </tr>
                             </thead>
+
+                    
+
                             <tbody></tbody>
                         </table>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3">
-                        <span id="usersCount" class="text-muted"></span>
-                        <div class="d-flex align-items-center gap-3">
-                            <div id="paginationInfo" class="text-muted"></div>
-                            <ul class="pagination mb-0" id="pagination"></ul>
+                    <!-- بخش شمارنده و صفحه‌بندی -->
+                    <!-- بخش شمارنده و صفحه‌بندی -->
+                    <div class="admin-users-footer">
+                        <div class="row">
+                            <!-- ستون چپ: تعداد کاربران -->
+                            <div class="col-sm-4 col-xs-12 text-left">
+                                <span id="usersCount" class="text-muted"></span>
+                            </div>
+
+                            <!-- ستون وسط: صفحه‌بندی (دقیقاً وسط ردیف) -->
+                            <div class="col-sm-4 col-xs-12 text-center">
+                                <ul class="pagination pagination-sm admin-pagination" id="pagination"></ul>
+                            </div>
+
+                            <!-- ستون راست: اطلاعات صفحه -->
+                            <div class="col-sm-4 col-xs-12 text-right">
+                                <div id="paginationInfo" class="text-muted"></div>
+                            </div>
                         </div>
                     </div>
+
+
                 </div> <!-- /widget-body -->
             </div> <!-- /widget -->
         </div>
     </div>
 </div>
+
 @section Scripts {
     <script type="module" src="~/admin/js/users-index.js" asp-append-version="true"></script>
 }

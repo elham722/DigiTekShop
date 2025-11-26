@@ -141,7 +141,7 @@ async function loadUsers() {
 }
 
 // ---------------------
-// Render Table (کاملاً هماهنگ با thead)
+// Render Table (هماهنگ با thead)
 // ---------------------
 function renderTable(data) {
     const tbody = document.querySelector("#usersTable tbody");
@@ -153,7 +153,7 @@ function renderTable(data) {
     if (!data || !Array.isArray(data.items) || data.items.length === 0) {
         const tr = document.createElement("tr");
         const td = document.createElement("td");
-        td.colSpan = 7; // ✅ چون 7 ستون داریم
+        td.colSpan = 8; // ✅ چون 8 ستون داریم
         td.className = "text-center text-muted py-4";
         td.textContent = "هیچ کاربری یافت نشد";
         tr.appendChild(td);
@@ -177,20 +177,16 @@ function renderTable(data) {
         const statusHtml = renderStatusBadge(user.isLocked);
         const phoneConfirmHtml = renderPhoneConfirmBadge(user.isPhoneConfirmed);
 
-        // ✅ دقیقاً 7 ستون مطابق thead
+
         tr.innerHTML = `
             <td>
                 <div class="d-flex flex-column">
                     <span class="fw-bold">${displayName}</span>
-                    <small class="text-muted">
-                        موبایل:
-                        <span class="fa-num">${phoneFormatted}</span>
-                        ${hasName
-                ? ""
-                : `<span class="badge badge-warning ms-1">نام ثبت نشده</span>`
-            }
-                    </small>
+                 
                 </div>
+            </td>
+            <td>
+                <span class="fa-num">${phoneFormatted}</span>
             </td>
             <td>${email}</td>
             <td>${rolesHtml}</td>
@@ -200,15 +196,9 @@ function renderTable(data) {
             </td>
             <td><span class="fa-num">${createdAt}</span></td>
             <td><span class="fa-num">${lastLogin}</span></td>
-            <td class="text-center">
-                <div class="btn-group btn-group-sm" role="group">
-                    <button class="btn btn-outline-primary" data-user-id="${user.id}" data-action="details">
-                        جزئیات
-                    </button>
-                    <button class="btn btn-outline-warning" data-user-id="${user.id}" data-action="toggle-lock">
-                        ${user.isLocked ? "آنلاک" : "لاک"}
-                    </button>
-                </div>
+            <td class="center text-center">
+                 <a href="#" data-user-id="${user.id}" class="btn btn-info btn-xs edit" data-action="details"><i class="fa fa-edit"></i> جزئیات</a>
+                 <a href="#" data-user-id="${user.id}" class="btn btn-danger btn-xs delete" data-action="toggle-lock"><i class="fa fa-lock"></i>  ${user.isLocked ? "آنلاک" : "لاک"}</a>
             </td>
         `;
 

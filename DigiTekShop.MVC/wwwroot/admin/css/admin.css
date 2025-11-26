@@ -1,0 +1,60 @@
+﻿@font-face {
+    font-family: 'WYekan';
+    src: url('/admin/fonts/BYekan.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* نوار فیلتر بالای جدول */
+.admin-users-filter {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    background-color: #fcfcfc;
+}
+
+    .admin-users-filter .form-group {
+        margin-bottom: 0;
+    }
+
+    .admin-users-filter .control-label {
+        font-weight: 600;
+        margin-bottom: 3px;
+    }
+
+.admin-users-filter-btn {
+    margin-top: 22px; /* دکمه هم‌ارتفاع فیلدها شود */
+}
+
+/* جدول خواناتر */
+#usersTable th,
+#usersTable td {
+    vertical-align: middle;
+}
+
+/* فوتر صفحه‌بندی */
+.admin-users-footer {
+    padding: 10px 15px 15px;
+    border-top: 1px solid #eee;
+}
+
+/* خود لیست صفحه‌بندی */
+.admin-pagination {
+    margin: 0;
+    display: inline-block; /* تا در text-center دقیقاً وسط قرار بگیرد */
+}
+
+    /* برای اطمینان، liها float نگیرند (در Bootstrap 3 معمولاً float دارند) */
+    .admin-pagination > li {
+        float: none;
+        display: inline-block;
+    }
+
+/* در موبایل همه چیز وسط شود */
+@media (max-width: 767px) {
+    .admin-users-footer .text-left,
+    .admin-users-footer .text-right {
+        text-align: center;
+        margin-top: 5px;
+    }
+}
+
