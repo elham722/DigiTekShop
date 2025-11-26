@@ -23,7 +23,7 @@ public sealed class AdminUserReadService : IAdminUserReadService
         var pagedRequest = new PagedRequest(
             Page: query.Page,
             Size: query.PageSize,
-            SortBy: null,        
+            SortBy: null,
             Ascending: true,
             SearchTerm: query.Search
         ).Normalize();
@@ -35,32 +35,32 @@ public sealed class AdminUserReadService : IAdminUserReadService
         {
             var rawSearch = query.Search.Trim();
 
-           
+
             if (Normalization.TryNormalizePhoneIranE164(rawSearch, out var e164) && e164 is not null)
             {
-                var last10 = e164[^10..]; 
+                var last10 = e164[^10..];
 
                 usersQuery = usersQuery.Where(u =>
                     u.PhoneNumber != null &&
                     (
-                        u.PhoneNumber == e164 ||                             
-                        EF.Functions.Like(u.PhoneNumber, e164 + "%") ||     
-                        EF.Functions.Like(u.PhoneNumber, "%" + last10 + "%") 
+                        u.PhoneNumber == e164 ||
+                        EF.Functions.Like(u.PhoneNumber, e164 + "%") ||
+                        EF.Functions.Like(u.PhoneNumber, "%" + last10 + "%")
                     ));
             }
             else
             {
-                
+
                 var digits = Normalization.StripNonDigits(
                     Normalization.ToLatinDigits(rawSearch)
                 );
 
                 if (!string.IsNullOrEmpty(digits) && digits.Length >= 3)
                 {
-                   
+
                     var digitsNoZero = digits;
                     if (digitsNoZero.StartsWith("09"))
-                        digitsNoZero = digitsNoZero[1..]; 
+                        digitsNoZero = digitsNoZero[1..];
 
                     usersQuery = usersQuery.Where(u =>
                         u.PhoneNumber != null &&
@@ -109,8 +109,9 @@ public sealed class AdminUserReadService : IAdminUserReadService
                 IsPhoneConfirmed = u.PhoneNumberConfirmed,
                 IsLocked = u.LockoutEnd.HasValue && u.LockoutEnd > DateTimeOffset.UtcNow,
                 CreatedAtUtc = u.CreatedAtUtc.UtcDateTime,
-                LastLoginAtUtc = u.LastLoginAtUtc!.Value.UtcDateTime,
-                Roles = Array.Empty<string>() 
+                LastLoginAtUtc = u.LastLoginAtUtc.HasValue
+                ? u.LastLoginAtUtc.Value.UtcDateTime : (DateTime?)null,
+                Roles = Array.Empty<string>()
             });
 
         var paged = await projectedQuery.ToPagedResponseAsync(pagedRequest, ct);

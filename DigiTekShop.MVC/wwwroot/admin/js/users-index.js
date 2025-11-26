@@ -89,14 +89,33 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // 🔍 سرچ لایو با debounce
+    const MIN_SEARCH_LENGTH = 3;
+
     if (searchInput) {
         const debouncedSearch = debounce(() => {
+            const term = searchInput.value.trim();
+
+            // ۱) اگر کلاً خالی شد → یعنی سرچ پاک شده → کل لیست رو بیار
+            if (term.length === 0) {
+                currentPage = 1;
+                loadUsers();
+                return;
+            }
+
+            // ۲) اگر کمتر از ۳ کاراکتر بود → هیچ درخواستی نفرست
+            if (term.length < MIN_SEARCH_LENGTH) {
+                // اینجا عمداً هیچ کاری نمی‌کنیم
+                return;
+            }
+
+            // ۳) از ۳ به بالا → سرچ کن
             currentPage = 1;
             loadUsers();
         }, 400);
 
         searchInput.addEventListener("input", debouncedSearch);
     }
+
 
     // تغییر وضعیت
     statusSelect?.addEventListener("change", () => {
@@ -124,7 +143,8 @@ async function loadUsers() {
     const searchEl = document.getElementById("search");
     const statusEl = document.getElementById("status");
 
-    const searchValue = searchEl?.value.trim() ?? "";
+    const searchValueRaw = searchEl?.value ?? "";
+    const searchValue = searchValueRaw.trim();
     const statusValue = statusEl?.value ?? "";
 
     const params = new URLSearchParams({
@@ -132,10 +152,14 @@ async function loadUsers() {
         pageSize: pageSize
     });
 
-    if (searchValue.length > 0) params.set("search", searchValue);
+    // فقط وقتی سرچ رو بفرست که یا خالیه (بالا هندل کردیم) یا طولش >= 3 باشه
+    if (searchValue.length >= 3) {
+        params.set("search", searchValue);
+    }
+
     if (statusValue) params.set("status", statusValue);
 
-    // 🔥 درخواست قبلی را cancel کن
+    // بقیه همون کدی که خودت نوشتی 👇
     if (controller) controller.abort();
     controller = new AbortController();
 
@@ -158,10 +182,8 @@ async function loadUsers() {
         renderTable(data);
         renderPagination(data);
         updateInfo(data);
-
     } catch (error) {
         if (error.name === "AbortError") {
-            // درخواست قدیمی کنسل شده، مشکلی نیست
             return;
         }
         console.error("Error loading users", error);
