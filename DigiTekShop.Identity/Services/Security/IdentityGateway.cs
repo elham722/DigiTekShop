@@ -21,7 +21,7 @@ public sealed class IdentityGateway : IIdentityGateway
         if (string.IsNullOrWhiteSpace(login)) return null;
         if (login.Contains('@'))
         {
-            var email = Normalization.Normalize(login);
+            var email = Normalization.NormalizeTrim(login);
             var u = await _users.FindByEmailAsync(email);
             return u is null ? null : Map(u);
         }

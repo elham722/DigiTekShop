@@ -49,11 +49,11 @@ public sealed class SecurityEvent
         var redactedMetadata = JsonRedactor.RedactSensitiveFields(metadataJson);
 
         // Normalize and truncate string fields
-        var normalizedIp = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
-        var normalizedUserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
-        var normalizedDeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128);
-        var normalizedCorrelationId = StringNormalizer.NormalizeAndTruncate(correlationId, 128);
-        var normalizedRequestId = StringNormalizer.NormalizeAndTruncate(requestId, 128);
+        var normalizedIp = Normalization.NormalizeAndTruncate(ipAddress, 45);
+        var normalizedUserAgent = Normalization.NormalizeAndTruncate(userAgent, 1024);
+        var normalizedDeviceId = Normalization.NormalizeAndTruncate(deviceId, 128);
+        var normalizedCorrelationId = Normalization.NormalizeAndTruncate(correlationId, 128);
+        var normalizedRequestId = Normalization.NormalizeAndTruncate(requestId, 128);
 
         return new SecurityEvent
         {
@@ -117,8 +117,8 @@ public sealed class SecurityEvent
 
         IsResolved = true;
         ResolvedAt = DateTimeOffset.UtcNow;
-        ResolvedBy = StringNormalizer.NormalizeAndTruncate(resolvedBy, 256);
-        ResolutionNotes = StringNormalizer.NormalizeAndTruncate(resolutionNotes, 2000);
+        ResolvedBy = Normalization.NormalizeAndTruncate(resolvedBy, 256);
+        ResolutionNotes = Normalization.NormalizeAndTruncate(resolutionNotes, 2000);
     }
 
     public void Unresolve()

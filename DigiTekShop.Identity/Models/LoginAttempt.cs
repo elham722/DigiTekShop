@@ -52,12 +52,12 @@ public sealed class LoginAttempt
         }
 
         // Normalize and truncate string fields
-        var normalizedIp = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
-        var normalizedUserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
-        var normalizedDeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128);
-        var normalizedCorrelationId = StringNormalizer.NormalizeAndTruncate(correlationId, 128);
-        var normalizedRequestId = StringNormalizer.NormalizeAndTruncate(requestId, 128);
-        var normalizedLoginName = StringNormalizer.NormalizeAndTruncate(trimmedLogin, 256);
+        var normalizedIp = Normalization.NormalizeAndTruncate(ipAddress, 45);
+        var normalizedUserAgent = Normalization.NormalizeAndTruncate(userAgent, 1024);
+        var normalizedDeviceId = Normalization.NormalizeAndTruncate(deviceId, 128);
+        var normalizedCorrelationId = Normalization.NormalizeAndTruncate(correlationId, 128);
+        var normalizedRequestId = Normalization.NormalizeAndTruncate(requestId, 128);
+        var normalizedLoginName = Normalization.NormalizeAndTruncate(trimmedLogin, 256);
 
         return new LoginAttempt
         {

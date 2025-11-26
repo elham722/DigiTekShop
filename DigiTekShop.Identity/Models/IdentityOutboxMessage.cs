@@ -34,10 +34,10 @@ public sealed class IdentityOutboxMessage
         Guard.AgainstNullOrEmpty(payload, nameof(payload));
 
         // Normalize and truncate string fields
-        var normalizedType = StringNormalizer.NormalizeAndTruncate(type, 512);
-        var normalizedMessageKey = StringNormalizer.NormalizeAndTruncate(messageKey, 256);
-        var normalizedCorrelationId = StringNormalizer.NormalizeAndTruncate(correlationId, 128);
-        var normalizedCausationId = StringNormalizer.NormalizeAndTruncate(causationId, 128);
+        var normalizedType = Normalization.NormalizeAndTruncate(type, 512);
+        var normalizedMessageKey = Normalization.NormalizeAndTruncate(messageKey, 256);
+        var normalizedCorrelationId = Normalization.NormalizeAndTruncate(correlationId, 128);
+        var normalizedCausationId = Normalization.NormalizeAndTruncate(causationId, 128);
 
         return new IdentityOutboxMessage
         {
@@ -58,7 +58,7 @@ public sealed class IdentityOutboxMessage
         Guard.AgainstNullOrEmpty(lockedBy, nameof(lockedBy));
 
         Status = OutboxStatus.Processing;
-        LockedBy = StringNormalizer.NormalizeAndTruncate(lockedBy, 128);
+        LockedBy = Normalization.NormalizeAndTruncate(lockedBy, 128);
         LockedUntilUtc = DateTimeOffset.UtcNow.Add(ttl);
     }
 
@@ -74,7 +74,7 @@ public sealed class IdentityOutboxMessage
     {
         Attempts++; // Model increments itself
         Status = nextRetryUtc.HasValue ? OutboxStatus.Pending : OutboxStatus.Failed;
-        Error = StringNormalizer.NormalizeAndTruncate(error, 1024);
+        Error = Normalization.NormalizeAndTruncate(error, 1024);
         NextRetryUtc = nextRetryUtc;
         LockedBy = null;
         LockedUntilUtc = null;

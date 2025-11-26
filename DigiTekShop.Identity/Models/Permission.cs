@@ -22,8 +22,8 @@ public class Permission
         Guard.AgainstNullOrEmpty(name, nameof(name));
 
         // Normalize and truncate string fields
-        var normalizedName = StringNormalizer.NormalizeAndTruncate(name, 256);
-        var normalizedDescription = StringNormalizer.NormalizeAndTruncate(description, 1000);
+        var normalizedName = Normalization.NormalizeAndTruncate(name, 256);
+        var normalizedDescription = Normalization.NormalizeAndTruncate(description, 1000);
 
         return new Permission()
         {
@@ -35,7 +35,7 @@ public class Permission
 
     public void UpdateDescription(string? description)
     {
-        Description = StringNormalizer.NormalizeAndTruncate(description, 1000);
+        Description = Normalization.NormalizeAndTruncate(description, 1000);
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

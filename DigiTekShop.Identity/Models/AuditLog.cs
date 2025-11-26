@@ -58,15 +58,15 @@ public sealed class AuditLog
         var redactedNewJson = JsonRedactor.RedactSensitiveFields(newValueJson);
 
         // Normalize and truncate string fields
-        var normalizedTargetName = StringNormalizer.NormalizeAndTruncate(targetEntityName, 256);
-        var normalizedTargetId = StringNormalizer.NormalizeAndTruncate(targetEntityId, 256);
-        var normalizedIp = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
-        var normalizedUserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
-        var normalizedDeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128);
-        var normalizedError = StringNormalizer.NormalizeAndTruncate(errorMessage, 1024);
-        var normalizedCorrelationId = StringNormalizer.NormalizeAndTruncate(correlationId, 128);
-        var normalizedRequestId = StringNormalizer.NormalizeAndTruncate(requestId, 128);
-        var normalizedSessionId = StringNormalizer.NormalizeAndTruncate(sessionId, 128);
+        var normalizedTargetName = Normalization.NormalizeAndTruncate(targetEntityName, 256);
+        var normalizedTargetId = Normalization.NormalizeAndTruncate(targetEntityId, 256);
+        var normalizedIp = Normalization.NormalizeAndTruncate(ipAddress, 45);
+        var normalizedUserAgent = Normalization.NormalizeAndTruncate(userAgent, 1024);
+        var normalizedDeviceId = Normalization.NormalizeAndTruncate(deviceId, 128);
+        var normalizedError = Normalization.NormalizeAndTruncate(errorMessage, 1024);
+        var normalizedCorrelationId = Normalization.NormalizeAndTruncate(correlationId, 128);
+        var normalizedRequestId = Normalization.NormalizeAndTruncate(requestId, 128);
+        var normalizedSessionId = Normalization.NormalizeAndTruncate(sessionId, 128);
 
         var finalSeverity = severity ?? (isSuccess ? AuditSeverity.Info : AuditSeverity.Warning);
         
@@ -96,7 +96,7 @@ public sealed class AuditLog
     public void UpdateResult(bool isSuccess, string? errorMessage = null, AuditSeverity? severity = null)
     {
         IsSuccess = isSuccess;
-        ErrorMessage = StringNormalizer.NormalizeAndTruncate(errorMessage, 1024);
+        ErrorMessage = Normalization.NormalizeAndTruncate(errorMessage, 1024);
         Severity = severity ?? (isSuccess ? AuditSeverity.Info : AuditSeverity.Warning);
     }
 }

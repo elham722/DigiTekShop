@@ -65,7 +65,7 @@ public sealed class EmailConfirmationService : IEmailConfirmationService
         var raw = request.Email?.Trim();
         if (string.IsNullOrWhiteSpace(raw)) return Result.Success();
 
-        var normalized = Normalization.Normalize(raw);
+        var normalized = Normalization.NormalizeTrim(raw);
         var normLookup = _users.NormalizeEmail(normalized) ?? normalized.ToUpperInvariant();
 
         var user = await _users.Users

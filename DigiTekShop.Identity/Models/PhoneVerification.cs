@@ -76,11 +76,11 @@ public class PhoneVerification
             Attempts = 0,
             // CreatedAtUtc will be set by DB via HasDefaultValueSql("SYSUTCDATETIME()")
             ExpiresAtUtc = expiresAtUtc,
-            PhoneNumber = StringNormalizer.NormalizeAndTruncate(phoneNumber, 32),
+            PhoneNumber = Normalization.NormalizeAndTruncate(phoneNumber, 32),
             PhoneNumberNormalized = normalizedPhone,
-            IpAddress = StringNormalizer.NormalizeAndTruncate(ipAddress, 45),
-            UserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024),
-            DeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128),
+            IpAddress = Normalization.NormalizeAndTruncate(ipAddress, 45),
+            UserAgent = Normalization.NormalizeAndTruncate(userAgent, 1024),
+            DeviceId = Normalization.NormalizeAndTruncate(deviceId, 128),
             Purpose = purpose,
             Channel = channel
         };
@@ -114,7 +114,7 @@ public class PhoneVerification
         // Normalize phone number to E.164 format
         if (!string.IsNullOrWhiteSpace(phoneNumber))
         {
-            PhoneNumber = StringNormalizer.NormalizeAndTruncate(phoneNumber, 32);
+            PhoneNumber = Normalization.NormalizeAndTruncate(phoneNumber, 32);
             if (Normalization.TryNormalizePhoneIranE164(phoneNumber, out var e164))
             {
                 PhoneNumberNormalized = e164;
@@ -125,9 +125,9 @@ public class PhoneVerification
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
-        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
-        if (!string.IsNullOrWhiteSpace(deviceId)) DeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128);
+        if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = Normalization.NormalizeAndTruncate(ipAddress, 45);
+        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = Normalization.NormalizeAndTruncate(userAgent, 1024);
+        if (!string.IsNullOrWhiteSpace(deviceId)) DeviceId = Normalization.NormalizeAndTruncate(deviceId, 128);
     }
 
     public bool TryIncrementAttempts(int maxAttempts = DefaultMaxAttempts, TimeSpan? lockDuration = null)
@@ -160,8 +160,8 @@ public class PhoneVerification
 
     public void UpdateRequestInfo(string? ipAddress = null, string? userAgent = null)
     {
-        if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = StringNormalizer.NormalizeAndTruncate(ipAddress, 45);
-        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = StringNormalizer.NormalizeAndTruncate(userAgent, 1024);
+        if (!string.IsNullOrWhiteSpace(ipAddress)) IpAddress = Normalization.NormalizeAndTruncate(ipAddress, 45);
+        if (!string.IsNullOrWhiteSpace(userAgent)) UserAgent = Normalization.NormalizeAndTruncate(userAgent, 1024);
     }
 
     public bool IsExpired(DateTimeOffset nowUtc) => nowUtc >= ExpiresAtUtc;

@@ -144,7 +144,7 @@ public sealed class LoginAttemptService : ILoginAttemptService
 
         try
         {
-            var norm = Normalization.Normalize(loginNameOrEmail)!;
+            var norm = Normalization.NormalizeTrim(loginNameOrEmail)!;
             var take = SafeLimit(limit, _opts.MaxListLimit);
 
             var list = new List<LoginAttemptDto>(take);

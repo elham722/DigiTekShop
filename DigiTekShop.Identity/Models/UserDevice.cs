@@ -45,13 +45,13 @@ public class UserDevice
         return new UserDevice
         {
             UserId = userId,
-            DeviceId = StringNormalizer.NormalizeAndTruncate(deviceId, 128)!,
-            DeviceName = StringNormalizer.NormalizeAndTruncate(deviceName, 100)!,
-            DeviceFingerprint = StringNormalizer.NormalizeAndTruncate(fingerprint, 256),
+            DeviceId = Normalization.NormalizeAndTruncate(deviceId, 128)!,
+            DeviceName = Normalization.NormalizeAndTruncate(deviceName, 100)!,
+            DeviceFingerprint = Normalization.NormalizeAndTruncate(fingerprint, 256),
             // FirstSeenUtc and LastSeenUtc will be set by DB via HasDefaultValueSql("SYSUTCDATETIME()")
-            LastIp = StringNormalizer.NormalizeAndTruncate(ip, 45),
-            BrowserInfo = StringNormalizer.NormalizeAndTruncate(browser, 512),
-            OperatingSystem = StringNormalizer.NormalizeAndTruncate(os, 64),
+            LastIp = Normalization.NormalizeAndTruncate(ip, 45),
+            BrowserInfo = Normalization.NormalizeAndTruncate(browser, 512),
+            OperatingSystem = Normalization.NormalizeAndTruncate(os, 64),
             IsActive = true
         };
     }
@@ -61,9 +61,9 @@ public class UserDevice
         // Ensure LastSeenUtc >= FirstSeenUtc to satisfy CHECK constraint
         // This can happen if nowUtc is slightly before FirstSeenUtc due to clock differences
         LastSeenUtc = nowUtc >= FirstSeenUtc ? nowUtc : FirstSeenUtc;
-        if (!string.IsNullOrWhiteSpace(ip)) LastIp = StringNormalizer.NormalizeAndTruncate(ip, 45);
-        if (!string.IsNullOrWhiteSpace(browser)) BrowserInfo = StringNormalizer.NormalizeAndTruncate(browser, 512);
-        if (!string.IsNullOrWhiteSpace(os)) OperatingSystem = StringNormalizer.NormalizeAndTruncate(os, 64);
+        if (!string.IsNullOrWhiteSpace(ip)) LastIp = Normalization.NormalizeAndTruncate(ip, 45);
+        if (!string.IsNullOrWhiteSpace(browser)) BrowserInfo = Normalization.NormalizeAndTruncate(browser, 512);
+        if (!string.IsNullOrWhiteSpace(os)) OperatingSystem = Normalization.NormalizeAndTruncate(os, 64);
         IsActive = true;
     }
 
@@ -71,7 +71,7 @@ public class UserDevice
     {
         if (!string.IsNullOrWhiteSpace(name))
         {
-            DeviceName = StringNormalizer.NormalizeAndTruncate(name, 100)!;
+            DeviceName = Normalization.NormalizeAndTruncate(name, 100)!;
         }
     }
 

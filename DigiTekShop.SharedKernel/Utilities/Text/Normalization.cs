@@ -6,33 +6,78 @@ namespace DigiTekShop.SharedKernel.Utilities.Text;
 
 public static class Normalization
 {
-    public static string? Normalize(string? s)
+    // ---------------------------
+    // ۱. نرمال‌سازی عمومی رشته‌ها
+    // ---------------------------
+
+    /// <summary>
+    /// Trim + تبدیل به lower + اگر خالی شد → null
+    /// </summary>
+    public static string? NormalizeLower(string? s)
         => string.IsNullOrWhiteSpace(s) ? null : s.Trim().ToLowerInvariant();
 
+    /// <summary>
+    /// فقط Trim، اگر خالی شد → null
+    /// </summary>
+    public static string? NormalizeTrim(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
 
+        var trimmed = value.Trim();
+        return trimmed.Length == 0 ? null : trimmed;
+    }
+
+    /// <summary>
+    /// Trim + cut to maxLength، اگر خالی شد → null
+    /// </summary>
+    public static string? NormalizeAndTruncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0)
+            return null;
+
+        return trimmed.Length > maxLength ? trimmed[..maxLength] : trimmed;
+    }
+
+    // ---------------------------
+    // ۲. موبایل ایران - فرمت E164 (+98912...)
+    // ---------------------------
+
+    /// <summary>
+    /// نرمال‌سازی شماره موبایل ایران به E164 (مثل +98912xxxxxxx)
+    /// برای ورودی نامعتبر ValidationException می‌دهد.
+    /// </summary>
     public static string NormalizePhoneIranE164(string? phone)
     {
         if (string.IsNullOrWhiteSpace(phone))
             throw new ValidationException("شماره موبایل خالی است.");
 
-      
         var s = ToLatinDigits(phone);
-
         s = StripNonDigits(s);
 
+        // پیش‌شماره‌های مختلف
         if (s.StartsWith("0098")) s = s[4..];
         else if (s.StartsWith("098")) s = s[3..];
         else if (s.StartsWith("98")) s = s[2..];
 
+        // 09xxxxxxxxx → 9xxxxxxxxx
         if (s.Length == 11 && s.StartsWith("0"))
             s = s[1..];
 
+        // باید 10 رقم و با 9 شروع شود
         if (s.Length != 10 || !s.StartsWith("9"))
             throw new ValidationException("فرمت شماره موبایل معتبر نیست. مثال درست: 0935xxxxxxx");
 
         return "+98" + s;
     }
 
+    /// <summary>
+    /// نسخه safe برای جاهایی مثل سرچ (بدون استثنا)
+    /// </summary>
     public static bool TryNormalizePhoneIranE164(string? phone, out string? e164)
     {
         e164 = null;
@@ -47,32 +92,38 @@ public static class Normalization
         }
     }
 
+    /// <summary>
+    /// برای سازگاری؛ فعلاً فقط ایران را پوشش می‌دهیم.
+    /// </summary>
     public static string? NormalizePhone(string? phone)
         => NormalizePhoneIranE164(phone);
 
-  
+    // ---------------------------
+    // ۳. UserAgent / IP / DeviceId
+    // ---------------------------
+
     public static string? UserAgent(string? s, int maxLen = 512)
     {
-        if (string.IsNullOrWhiteSpace(s)) return null;
-        var v = s.Trim();
+        var v = NormalizeTrim(s);
+        if (v is null) return null;
         return v.Length <= maxLen ? v : v[..maxLen];
     }
 
     public static string? Ip(string? s, int maxLen = 45)
     {
-        if (string.IsNullOrWhiteSpace(s)) return null;
-        var v = s.Trim();
+        var v = NormalizeTrim(s);
+        if (v is null) return null;
         return v.Length <= maxLen ? v : v[..maxLen];
     }
 
     public static string? DeviceId(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return null;
-        return s.Trim();
-    }
+        => NormalizeTrim(s);
 
-  
-    private static string ToLatinDigits(string input)
+    // ---------------------------
+    // ۴. Helpers داخلی: اعداد فارسی → لاتین و حذف غیررقمی
+    // ---------------------------
+
+    public static string ToLatinDigits(string input)
     {
         if (string.IsNullOrEmpty(input)) return input;
 
@@ -109,7 +160,7 @@ public static class Normalization
         return sb.ToString();
     }
 
-    private static string StripNonDigits(string s)
+    public static string StripNonDigits(string s)
     {
         if (string.IsNullOrEmpty(s)) return s;
         var sb = new StringBuilder(s.Length);

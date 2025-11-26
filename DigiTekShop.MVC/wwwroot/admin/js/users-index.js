@@ -20,29 +20,22 @@ function normalizePhone(phone) {
 function formatPhone(phone) {
     const normalized = normalizePhone(phone);
     if (!normalized) return '—';
-
-    // فعلاً ساده
     return normalized;
-
-    // اگر خواستی بعداً خوشگل‌ترش کنی:
-    // return normalized.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1 $2 $3');
 }
 
 // ---------------------
 // Helpers: Badges & Date
 // ---------------------
 function renderStatusBadge(isLocked) {
-    if (isLocked) {
-        return `<span class="badge badge-danger">قفل شده</span>`;
-    }
-    return `<span class="badge badge-success">فعال</span>`;
+    return isLocked
+        ? `<span class="badge badge-danger">قفل شده</span>`
+        : `<span class="badge badge-success">فعال</span>`;
 }
 
 function renderPhoneConfirmBadge(isConfirmed) {
-    if (isConfirmed) {
-        return `<span class="badge badge-success ms-1">تأیید شده</span>`;
-    }
-    return `<span class="badge badge-warning ms-1">تأیید نشده</span>`;
+    return isConfirmed
+        ? `<span class="badge badge-success ms-1">تأیید شده</span>`
+        : `<span class="badge badge-warning ms-1">تأیید نشده</span>`;
 }
 
 function renderRolesBadges(roles) {
@@ -75,54 +68,87 @@ const API_URL = "/api/v1/admin/users";
 let currentPage = 1;
 let pageSize = 20;
 
-document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("userFilterForm");
-    const pageSizeSelect = document.getElementById("pageSize");
+// debounce helper
+function debounce(fn, delay) {
+    let timerId;
+    return function (...args) {
+        clearTimeout(timerId);
+        timerId = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
 
+document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("search");
+    const statusSelect = document.getElementById("status");
+    const pageSizeSelect = document.getElementById("pageSize");
+    const form = document.getElementById("userFilterForm");
+
+    // جلوگیری از submit فرم (برای Enter)
     form?.addEventListener("submit", (event) => {
         event.preventDefault();
+    });
+
+    // 🔍 سرچ لایو با debounce
+    if (searchInput) {
+        const debouncedSearch = debounce(() => {
+            currentPage = 1;
+            loadUsers();
+        }, 400);
+
+        searchInput.addEventListener("input", debouncedSearch);
+    }
+
+    // تغییر وضعیت
+    statusSelect?.addEventListener("change", () => {
         currentPage = 1;
         loadUsers();
     });
 
+    // تغییر pageSize
     pageSizeSelect?.addEventListener("change", () => {
         pageSize = Number(pageSizeSelect.value) || 20;
         currentPage = 1;
         loadUsers();
     });
 
+    // اولین بار
     loadUsers();
 });
 
 // ---------------------
 // Load Users from API
 // ---------------------
+let controller = null;
+
 async function loadUsers() {
-    const searchValue = document.getElementById("search")?.value.trim();
-    const statusValue = document.getElementById("status")?.value;
+    const searchEl = document.getElementById("search");
+    const statusEl = document.getElementById("status");
+
+    const searchValue = searchEl?.value.trim() ?? "";
+    const statusValue = statusEl?.value ?? "";
 
     const params = new URLSearchParams({
-        page: currentPage.toString(),
-        pageSize: pageSize.toString()
+        page: currentPage,
+        pageSize: pageSize
     });
 
-    if (searchValue) params.set("search", searchValue);
+    if (searchValue.length > 0) params.set("search", searchValue);
     if (statusValue) params.set("status", statusValue);
+
+    // 🔥 درخواست قبلی را cancel کن
+    if (controller) controller.abort();
+    controller = new AbortController();
 
     try {
         const response = await fetch(`${API_URL}?${params.toString()}`, {
             method: "GET",
             credentials: "same-origin",
-            headers: {
-                "X-Requested-With": "XMLHttpRequest"
-            }
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            signal: controller.signal
         });
 
         if (!response.ok) {
-            console.error("Failed to load users", response.status);
-            renderTable();
-            renderPagination();
-            updateInfo();
+            console.error("Load failed", response.status);
             return;
         }
 
@@ -132,16 +158,18 @@ async function loadUsers() {
         renderTable(data);
         renderPagination(data);
         updateInfo(data);
+
     } catch (error) {
+        if (error.name === "AbortError") {
+            // درخواست قدیمی کنسل شده، مشکلی نیست
+            return;
+        }
         console.error("Error loading users", error);
-        renderTable();
-        renderPagination();
-        updateInfo();
     }
 }
 
 // ---------------------
-// Render Table (هماهنگ با thead)
+// Render Table
 // ---------------------
 function renderTable(data) {
     const tbody = document.querySelector("#usersTable tbody");
@@ -149,11 +177,10 @@ function renderTable(data) {
 
     tbody.innerHTML = "";
 
-    // حالت بدون داده
     if (!data || !Array.isArray(data.items) || data.items.length === 0) {
         const tr = document.createElement("tr");
         const td = document.createElement("td");
-        td.colSpan = 8; // ✅ چون 8 ستون داریم
+        td.colSpan = 8;
         td.className = "text-center text-muted py-4";
         td.textContent = "هیچ کاربری یافت نشد";
         tr.appendChild(td);
@@ -177,17 +204,13 @@ function renderTable(data) {
         const statusHtml = renderStatusBadge(user.isLocked);
         const phoneConfirmHtml = renderPhoneConfirmBadge(user.isPhoneConfirmed);
 
-
         tr.innerHTML = `
             <td>
                 <div class="d-flex flex-column">
                     <span class="fw-bold">${displayName}</span>
-                 
                 </div>
             </td>
-            <td>
-                <span class="fa-num">${phoneFormatted}</span>
-            </td>
+            <td><span class="fa-num">${phoneFormatted}</span></td>
             <td>${email}</td>
             <td>${rolesHtml}</td>
             <td>
@@ -197,8 +220,12 @@ function renderTable(data) {
             <td><span class="fa-num">${createdAt}</span></td>
             <td><span class="fa-num">${lastLogin}</span></td>
             <td class="center text-center">
-                 <a href="#" data-user-id="${user.id}" class="btn btn-info btn-xs edit" data-action="details"><i class="fa fa-edit"></i> جزئیات</a>
-                 <a href="#" data-user-id="${user.id}" class="btn btn-danger btn-xs delete" data-action="toggle-lock"><i class="fa fa-lock"></i>  ${user.isLocked ? "آنلاک" : "لاک"}</a>
+                 <a href="#" data-user-id="${user.id}" class="btn btn-info btn-xs edit" data-action="details">
+                    <i class="fa fa-edit"></i> جزئیات
+                 </a>
+                 <a href="#" data-user-id="${user.id}" class="btn btn-danger btn-xs delete" data-action="toggle-lock">
+                    <i class="fa fa-lock"></i> ${user.isLocked ? "آنلاک" : "لاک"}
+                 </a>
             </td>
         `;
 

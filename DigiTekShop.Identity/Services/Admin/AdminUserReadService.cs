@@ -33,12 +33,52 @@ public sealed class AdminUserReadService : IAdminUserReadService
         //  search
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
-            var like = $"%{query.Search.Trim()}%";
-            usersQuery = usersQuery.Where(u =>
-                (u.UserName != null && EF.Functions.Like(u.UserName, like)) ||
-                (u.PhoneNumber != null && EF.Functions.Like(u.PhoneNumber, like)) ||
-                (u.Email != null && EF.Functions.Like(u.Email, like)));
+            var rawSearch = query.Search.Trim();
+
+           
+            if (Normalization.TryNormalizePhoneIranE164(rawSearch, out var e164) && e164 is not null)
+            {
+                var last10 = e164[^10..]; 
+
+                usersQuery = usersQuery.Where(u =>
+                    u.PhoneNumber != null &&
+                    (
+                        u.PhoneNumber == e164 ||                             
+                        EF.Functions.Like(u.PhoneNumber, e164 + "%") ||     
+                        EF.Functions.Like(u.PhoneNumber, "%" + last10 + "%") 
+                    ));
+            }
+            else
+            {
+                
+                var digits = Normalization.StripNonDigits(
+                    Normalization.ToLatinDigits(rawSearch)
+                );
+
+                if (!string.IsNullOrEmpty(digits) && digits.Length >= 3)
+                {
+                   
+                    var digitsNoZero = digits;
+                    if (digitsNoZero.StartsWith("09"))
+                        digitsNoZero = digitsNoZero[1..]; 
+
+                    usersQuery = usersQuery.Where(u =>
+                        u.PhoneNumber != null &&
+                        (
+                            EF.Functions.Like(u.PhoneNumber, "%" + digits + "%") ||
+                            EF.Functions.Like(u.PhoneNumber, "%" + digitsNoZero + "%")
+                        ));
+                }
+                else
+                {
+                    var like = $"%{rawSearch}%";
+                    usersQuery = usersQuery.Where(u =>
+                        (u.UserName != null && EF.Functions.Like(u.UserName, like)) ||
+                        (u.Email != null && EF.Functions.Like(u.Email, like)));
+                }
+            }
         }
+
 
         //  status filter
         if (!string.IsNullOrWhiteSpace(query.Status))

@@ -19,7 +19,7 @@ public sealed class Role : IdentityRole<Guid>
        
 
         // Normalize and truncate string fields
-        var normalizedName = StringNormalizer.NormalizeAndTruncate(roleName, 256);
+        var normalizedName = Normalization.NormalizeAndTruncate(roleName, 256);
         Guard.AgainstNullOrEmpty(normalizedName, nameof(normalizedName));
 
         return new Role
@@ -35,7 +35,7 @@ public sealed class Role : IdentityRole<Guid>
         Guard.AgainstNullOrEmpty(newName, nameof(newName));
 
         // Normalize and truncate string fields
-        var normalizedName = StringNormalizer.NormalizeAndTruncate(newName, 256);
+        var normalizedName = Normalization.NormalizeAndTruncate(newName, 256);
         Guard.AgainstNullOrEmpty(normalizedName, nameof(normalizedName));
 
         Name = normalizedName;
