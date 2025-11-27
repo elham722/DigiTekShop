@@ -248,9 +248,7 @@ function renderTable(data) {
                  <a href="#" data-user-id="${user.id}" class="btn btn-info btn-xs" data-action="details">
                     <i class="fa fa-edit"></i> جزئیات
                  </a>
-                 <a href="#" data-user-id="${user.id}" class="btn btn-warning btn-xs" data-action="logs">
-                    <i class="fa fa-list"></i> لاگ
-                 </a>
+             
                  <a href="#" data-user-id="${user.id}" class="btn btn-danger btn-xs" data-action="toggle-lock">
                     <i class="fa fa-lock"></i> ${user.isLocked ? "آنلاک" : "لاک"}
                  </a>
