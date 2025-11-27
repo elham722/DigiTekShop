@@ -119,7 +119,11 @@ public sealed class UserSearchService : IUserSearchService
     {
         try
         {
-            var response = await _client.IndexAsync(document, _options.UsersIndex, d => d.Id(document.Id), ct);
+            var response = await _client.IndexAsync(
+                document,
+                document.Id,
+                d => d.Index(_options.UsersIndex),
+                ct);
 
             if (!response.IsValidResponse)
             {

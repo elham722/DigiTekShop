@@ -338,15 +338,26 @@ public sealed class OtpAuthService : IAuthService
 
         var now = DateTimeOffset.UtcNow;
         pv.MarkAsVerified(now);
+        
+        // بررسی اینکه آیا تلفن قبلاً تأیید شده بود یا نه
+        var wasPhoneConfirmedBefore = user.PhoneNumberConfirmed;
         user.SetPhoneNumber(phone, confirmed: true);
         user.RecordLogin(now);
 
+        // Event را قبل از SaveChangesAsync raise کن تا در Outbox ذخیره شود
+        // Event فقط برای کاربران جدید که تلفنشان برای اولین بار تأیید می‌شود
         var shouldRaiseUserRegistered =
-            user.PhoneNumberConfirmed == true &&
-            user.CustomerId is null;
+            !wasPhoneConfirmedBefore &&  // قبلاً تأیید نشده بود
+            user.PhoneNumberConfirmed == true &&  // الان تأیید شد
+            user.CustomerId is null;  // هنوز Customer ساخته نشده
+
+        _log.LogInformation(
+            "[VerifyOtp] User {UserId}, wasPhoneConfirmed={WasConfirmed}, nowConfirmed={NowConfirmed}, customerId={CustomerId}, shouldRaise={ShouldRaise}",
+            user.Id, wasPhoneConfirmedBefore, user.PhoneNumberConfirmed, user.CustomerId, shouldRaiseUserRegistered);
 
         if (shouldRaiseUserRegistered)
         {
+            _log.LogInformation("[VerifyOtp] Raising UserRegisteredDomainEvent for user {UserId}", user.Id);
             _sink.Raise(new UserRegisteredDomainEvent(
                 UserId: user.Id,
                 Email: user.Email ?? string.Empty,
@@ -361,6 +372,7 @@ public sealed class OtpAuthService : IAuthService
         }
 
         await _db.SaveChangesAsync(ct);
+        _log.LogInformation("[VerifyOtp] SaveChangesAsync completed for user {UserId}", user.Id);
 
         await _devices.UpsertAsync(user.Id, deviceId, ua, ip, ct);
         if (_phoneOpts.TrustDeviceDays > 0)

@@ -38,6 +38,10 @@ public sealed class IdentityOutboxPublisherService : BackgroundService
                     .Take(50)
                     .ToListAsync(ct);
 
+                if (ids.Count > 0)
+                {
+                    _log.LogInformation("[IdentityOutboxPublisher] Found {Count} pending messages", ids.Count);
+                }
 
                 if (ids.Count == 0)
                 {
@@ -54,11 +58,13 @@ public sealed class IdentityOutboxPublisherService : BackgroundService
 
                     try
                     {
+                        _log.LogInformation("[IdentityOutboxPublisher] Publishing message {Id}, Type={Type}", msg.Id, msg.Type);
                         await busRetry.ExecuteAsync(async () =>
                         {
                             await bus.PublishAsync(msg.Type, msg.Payload, ct);
                         });
 
+                        _log.LogInformation("[IdentityOutboxPublisher] ✅ Successfully published message {Id}, Type={Type}", msg.Id, msg.Type);
                         // Use model method for success
                         msg.MarkAsSucceeded();
                         await db.SaveChangesAsync(ct);

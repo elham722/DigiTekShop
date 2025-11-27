@@ -139,7 +139,9 @@ public sealed class RabbitIntegrationEventConsumer : BackgroundService
                 var type = doc.RootElement.GetProperty("type").GetString()!;
                 var payload = doc.RootElement.GetProperty("payload").GetRawText();
 
+                _log.LogInformation("[RMQ] Received message. Type={Type}", type);
                 await _dispatcher.DispatchAsync(type, payload, ct);
+                _log.LogInformation("[RMQ] ✅ Dispatched message. Type={Type}", type);
 
                 if (_ch is not null)
                     await _ch.BasicAckAsync(ea.DeliveryTag, multiple: false, cancellationToken: ct);

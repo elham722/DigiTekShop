@@ -67,8 +67,18 @@ namespace DigiTekShop.Identity.Interceptors
                 return;
             }
 
+            foreach (var de in domainEvents)
+            {
+                Console.WriteLine($"[IdentityOutbox] Domain event type: {de.GetType().FullName}");
+            }
+
             var integrationEvents = _mapper.MapDomainEventsToIntegrationEvents(domainEvents).ToList();
             Console.WriteLine($"[IdentityOutbox] Mapped to {integrationEvents.Count} integration events");
+            
+            foreach (var ie in integrationEvents)
+            {
+                Console.WriteLine($"[IdentityOutbox] Integration event type: {ie.GetType().FullName}");
+            }
             
             var set = ctx.Set<DigiTekShop.Identity.Models.IdentityOutboxMessage>();
 
