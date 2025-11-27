@@ -51,7 +51,8 @@ public sealed class ElasticsearchIndexManager : IElasticsearchIndexManager
                 return Result.Success();
             }
 
-            // ایجاد ایندکس با mapping ساده - Elasticsearch به صورت خودکار mapping را تشخیص می‌دهد
+            // ایجاد ایندکس - Elasticsearch به صورت خودکار mapping را تشخیص می‌دهد
+            // برای جستجوی بهتر، می‌توانیم بعداً mapping را با PUT mapping API به‌روز کنیم
             var response = await _client.Indices.CreateAsync(indexName, c => c
                 .Settings(s => s
                     .NumberOfShards(1)
@@ -69,7 +70,7 @@ public sealed class ElasticsearchIndexManager : IElasticsearchIndexManager
             return Result.Success();
         }
         catch (Exception ex)
-        {
+        { 
             _logger.LogError(ex, "Exception while creating index {IndexName}", indexName);
             return Result.Failure(ErrorCodes.Search.INDEX_CREATION_FAILED);
         }
