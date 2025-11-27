@@ -35,6 +35,10 @@ public sealed class UserSearchService : IUserSearchService
     {
         try
         {
+            // نرمال‌سازی page و pageSize
+            if (page <= 0) page = 1;
+            if (pageSize <= 0) pageSize = 10;
+
             var from = (page - 1) * pageSize;
             var hasQuery = !string.IsNullOrWhiteSpace(query);
 
@@ -49,20 +53,20 @@ public sealed class UserSearchService : IUserSearchService
                     .Should(sh => sh
                         .MultiMatch(mm => mm
                             .Query(query)
-                            .Fields(new[] { "fullName^2", "email", "phone" })
+                            .Fields(new[] { "FullName^2", "Email", "Phone" })
                             .Fuzziness(new Fuzziness("AUTO"))
                             .Type(TextQueryType.BestFields)
                         ),
                         sh => sh
                         .MatchPhrase(mp => mp
-                            .Field("fullName")
+                            .Field("FullName")
                             .Query(query)
                             .Boost(3.0f)
                         )
                     )
                     .MinimumShouldMatch(1)
                     .Filter(f => f
-                        .Term(t => t.Field("isDeleted").Value(false))
+                        .Term(t => t.Field("IsDeleted").Value(false))
                     )
                 ));
             }
@@ -70,14 +74,14 @@ public sealed class UserSearchService : IUserSearchService
             {
                 searchDescriptor = searchDescriptor.Query(q => q.Bool(b => b
                     .Filter(f => f
-                        .Term(t => t.Field("isDeleted").Value(false))
+                        .Term(t => t.Field("IsDeleted").Value(false))
                     )
                 ));
             }
 
             searchDescriptor = searchDescriptor.Sort(sort => sort
                 .Score(sc => sc.Order(SortOrder.Desc))
-                .Field("createdAtUtc", f => f.Order(SortOrder.Desc))
+                .Field("CreatedAtUtc", f => f.Order(SortOrder.Desc))
             );
 
             var searchResponse = await _client.SearchAsync<UserSearchDocument>(searchDescriptor, ct);
@@ -89,8 +93,8 @@ public sealed class UserSearchService : IUserSearchService
             }
 
             var items = searchResponse.Documents.ToList();
-            
-            // در Elasticsearch client v9، Total یک long است
+
+            // 👈 همین کافیه
             var totalCount = (int)searchResponse.Total;
 
             var result = new UserSearchResult
@@ -102,6 +106,7 @@ public sealed class UserSearchService : IUserSearchService
             };
 
             return Result<UserSearchResult>.Success(result);
+
         }
         catch (Exception ex)
         {
