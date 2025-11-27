@@ -1,6 +1,9 @@
 ﻿using DigiTekShop.Contracts.Abstractions.Paging;
 using DigiTekShop.Contracts.DTOs.Admin.Users;
 using DigiTekShop.Identity.Extensions;
+using DigiTekShop.SharedKernel.Errors;
+using DigiTekShop.SharedKernel.Results;
+using Microsoft.EntityFrameworkCore;
 
 namespace DigiTekShop.Identity.Services.Admin;
 
@@ -117,6 +120,48 @@ public sealed class AdminUserReadService : IAdminUserReadService
         var paged = await projectedQuery.ToPagedResponseAsync(pagedRequest, ct);
 
         return Result<PagedResponse<AdminUserListItemDto>>.Success(paged);
+    }
+
+    public async Task<Result<AdminUserDetailsDto>> GetUserDetailsAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        if (user is null)
+            return Result<AdminUserDetailsDto>.Failure(ErrorCodes.Identity.USER_NOT_FOUND);
+
+        // گرفتن نقش‌ها
+        var userRoles = await _dbContext.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Join(
+                _dbContext.Roles,
+                ur => ur.RoleId,
+                r => r.Id,
+                (ur, r) => r.Name
+            )
+            .ToArrayAsync(ct);
+
+        var lockoutEnd = user.LockoutEnd;
+        var isLocked = lockoutEnd.HasValue && lockoutEnd.Value > DateTimeOffset.UtcNow;
+
+        var dto = new AdminUserDetailsDto
+        {
+            Id = user.Id,
+            FullName = user.UserName,
+            Phone = user.PhoneNumber ?? string.Empty,
+            Email = user.Email,
+            IsPhoneConfirmed = user.PhoneNumberConfirmed,
+            IsLocked = isLocked,
+            IsDeleted = user.IsDeleted,
+            CreatedAtUtc = user.CreatedAtUtc.UtcDateTime,
+            LastLoginAtUtc = user.LastLoginAtUtc?.UtcDateTime,
+            Roles = userRoles,
+            LockoutEnd = lockoutEnd,
+            AccessFailedCount = user.AccessFailedCount
+        };
+
+        return Result<AdminUserDetailsDto>.Success(dto);
     }
 
 }

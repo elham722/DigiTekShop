@@ -132,6 +132,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // اولین بار
     loadUsers();
+
+    // Setup action handlers
+    setupRowActions();
 });
 
 // ---------------------
@@ -242,16 +245,146 @@ function renderTable(data) {
             <td><span class="fa-num">${createdAt}</span></td>
             <td><span class="fa-num">${lastLogin}</span></td>
             <td class="center text-center">
-                 <a href="#" data-user-id="${user.id}" class="btn btn-info btn-xs edit" data-action="details">
+                 <a href="#" data-user-id="${user.id}" class="btn btn-info btn-xs" data-action="details">
                     <i class="fa fa-edit"></i> جزئیات
                  </a>
-                 <a href="#" data-user-id="${user.id}" class="btn btn-danger btn-xs delete" data-action="toggle-lock">
+                 <a href="#" data-user-id="${user.id}" class="btn btn-warning btn-xs" data-action="logs">
+                    <i class="fa fa-list"></i> لاگ
+                 </a>
+                 <a href="#" data-user-id="${user.id}" class="btn btn-danger btn-xs" data-action="toggle-lock">
                     <i class="fa fa-lock"></i> ${user.isLocked ? "آنلاک" : "لاک"}
                  </a>
             </td>
         `;
 
         tbody.appendChild(tr);
+    }
+}
+
+// ---------------------
+// Setup Row Actions
+// ---------------------
+function setupRowActions() {
+    const table = document.getElementById("usersTable");
+    if (!table) return;
+
+    table.addEventListener("click", async (event) => {
+        const link = event.target.closest("a[data-action]");
+        if (!link) return;
+
+        event.preventDefault();
+
+        const userId = link.getAttribute("data-user-id");
+        const action = link.getAttribute("data-action");
+
+        if (!userId || !action) return;
+
+        if (action === "details") {
+            await openUserDetailsModal(userId);
+        } else if (action === "toggle-lock") {
+            await toggleUserLock(userId, link);
+        }
+    });
+}
+
+// ---------------------
+// Open User Details Modal
+// ---------------------
+async function openUserDetailsModal(userId) {
+    const modalBody = document.getElementById("userDetailsContent");
+    if (!modalBody) return;
+
+    modalBody.innerHTML = `<p class="text-muted">در حال بارگذاری...</p>`;
+
+    try {
+        const response = await fetch(`/api/v1/admin/users/${userId}`, {
+            method: "GET",
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+
+        if (!response.ok) {
+            modalBody.innerHTML = `<p class="text-danger">خطا در دریافت اطلاعات کاربر</p>`;
+            $("#userDetailsModal").modal("show");
+            return;
+        }
+
+        const payload = await response.json();
+        const data = payload.data ?? payload;
+
+        const createdAt = formatDate(data.createdAtUtc);
+        const lastLogin = data.lastLoginAtUtc ? formatDate(data.lastLoginAtUtc) : "—";
+        const phone = formatPhone(data.phone);
+        const rolesHtml = renderRolesBadges(data.roles);
+
+        modalBody.innerHTML = `
+            <dl class="dl-horizontal">
+                <dt>نام کاربر</dt>
+                <dd>${data.fullName || "—"}</dd>
+
+                <dt>شماره موبایل</dt>
+                <dd><span class="fa-num">${phone}</span></dd>
+
+                <dt>ایمیل</dt>
+                <dd>${data.email || "—"}</dd>
+
+                <dt>نقش‌ها</dt>
+                <dd>${rolesHtml}</dd>
+
+                <dt>تأیید موبایل</dt>
+                <dd>${data.isPhoneConfirmed ? "بله" : "خیر"}</dd>
+
+                <dt>وضعیت قفل</dt>
+                <dd>${data.isLocked ? "قفل شده" : "فعال"}</dd>
+
+                <dt>تاریخ ایجاد</dt>
+                <dd><span class="fa-num">${createdAt}</span></dd>
+
+                <dt>آخرین ورود</dt>
+                <dd><span class="fa-num">${lastLogin}</span></dd>
+            </dl>
+        `;
+
+        $("#userDetailsModal").modal("show");
+    } catch (err) {
+        console.error(err);
+        modalBody.innerHTML = `<p class="text-danger">خطای غیرمنتظره</p>`;
+        $("#userDetailsModal").modal("show");
+    }
+}
+
+// ---------------------
+// Toggle User Lock/Unlock
+// ---------------------
+async function toggleUserLock(userId, buttonEl) {
+    const isCurrentlyLocked = buttonEl.textContent.includes("آنلاک");
+
+    const url = isCurrentlyLocked
+        ? `/api/v1/admin/users/${userId}/unlock`
+        : `/api/v1/admin/users/${userId}/lock`;
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: "{}"
+        });
+
+        if (!response.ok) {
+            console.error("Lock/unlock failed", response.status);
+            alert("عملیات قفل/باز کردن کاربر با خطا مواجه شد.");
+            return;
+        }
+
+        // رفرش جدول برای آپدیت وضعیت
+        await loadUsers();
+    } catch (err) {
+        console.error(err);
+        alert("خطای غیرمنتظره در قفل/باز کردن کاربر.");
     }
 }
 
