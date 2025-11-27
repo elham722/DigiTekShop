@@ -440,39 +440,13 @@ async function toggleUserLock(userId, buttonEl) {
         ? "آیا مطمئن هستید که می‌خواهید قفل این کاربر را باز کنید؟"
         : "آیا مطمئن هستید که می‌خواهید این کاربر را قفل کنید؟";
 
-    // نمایش confirmation dialog با SweetAlert
-    let confirmResult;
-    if (window.DigiTekNotification && window.DigiTekNotification.showConfirm) {
-        confirmResult = await window.DigiTekNotification.showConfirm(
-            actionText,
-            confirmText,
-            {
-                confirmButtonText: 'بله، ادامه بده',
-                cancelButtonText: 'انصراف',
-                confirmButtonColor: isCurrentlyLocked ? '#28a745' : '#dc3545',
-                icon: isCurrentlyLocked ? 'question' : 'warning'
-            }
-        );
-    } else if (window.Swal) {
-        // Fallback به SweetAlert2 مستقیم
-        confirmResult = await window.Swal.fire({
-            title: actionText,
-            text: confirmText,
-            icon: isCurrentlyLocked ? 'question' : 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'بله، ادامه بده',
-            cancelButtonText: 'انصراف',
-            confirmButtonColor: isCurrentlyLocked ? '#28a745' : '#dc3545',
-            cancelButtonColor: '#6c757d',
-            reverseButtons: true
-        });
-    } else {
-        // Fallback به confirm ساده
-        if (!confirm(confirmText)) {
-            return;
-        }
-        confirmResult = { isConfirmed: true };
-    }
+    // نمایش confirmation dialog با Custom Popup
+    const confirmResult = await CustomPopup.confirm(
+        actionText,
+        confirmText,
+        'بله، ادامه بده',
+        'انصراف'
+    );
 
     // اگر کاربر انصراف داد
     if (!confirmResult || !confirmResult.isConfirmed) {
@@ -504,36 +478,15 @@ async function toggleUserLock(userId, buttonEl) {
             buttonEl.disabled = false;
             buttonEl.innerHTML = originalText;
             
-            // نمایش خطا با SweetAlert
-            if (window.DigiTekNotification && window.DigiTekNotification.showError) {
-                await window.DigiTekNotification.showError("خطا", "عملیات قفل/باز کردن کاربر با خطا مواجه شد.");
-            } else if (window.Swal) {
-                await window.Swal.fire({
-                    icon: 'error',
-                    title: 'خطا',
-                    text: 'عملیات قفل/باز کردن کاربر با خطا مواجه شد.'
-                });
-            } else {
-                alert("عملیات قفل/باز کردن کاربر با خطا مواجه شد.");
-            }
+            // نمایش خطا با Toast (غیرمزاحم)
+            await showToastFromApiResponse(response, {
+                errorMessage: "عملیات قفل/باز کردن کاربر با خطا مواجه شد."
+            });
             return;
         }
 
-        // نمایش پیام موفقیت
-        if (window.DigiTekNotification && window.DigiTekNotification.showSuccess) {
-            await window.DigiTekNotification.showSuccess(
-                "موفق",
-                `کاربر با موفقیت ${isCurrentlyLocked ? 'باز شد' : 'قفل شد'}.`
-            );
-        } else if (window.Swal) {
-            await window.Swal.fire({
-                icon: 'success',
-                title: 'موفق',
-                text: `کاربر با موفقیت ${isCurrentlyLocked ? 'باز شد' : 'قفل شد'}.`,
-                timer: 2000,
-                showConfirmButton: false
-            });
-        }
+        // نمایش پیام موفقیت با Toast (غیرمزاحم)
+        Toast.success(`کاربر با موفقیت ${isCurrentlyLocked ? 'باز شد' : 'قفل شد'}.`);
 
         // به‌روزرسانی مستقیم ردیف کاربر از API (بدون refresh کامل)
         // این سریع‌تر است و نیازی به sync Elasticsearch ندارد
@@ -545,18 +498,8 @@ async function toggleUserLock(userId, buttonEl) {
         buttonEl.disabled = false;
         buttonEl.innerHTML = originalText;
         
-        // نمایش خطا با SweetAlert
-        if (window.DigiTekNotification && window.DigiTekNotification.showError) {
-            await window.DigiTekNotification.showError("خطا", "خطای غیرمنتظره در قفل/باز کردن کاربر.");
-        } else if (window.Swal) {
-            await window.Swal.fire({
-                icon: 'error',
-                title: 'خطا',
-                text: 'خطای غیرمنتظره در قفل/باز کردن کاربر.'
-            });
-        } else {
-            alert("خطای غیرمنتظره در قفل/باز کردن کاربر.");
-        }
+        // نمایش خطا با Toast (غیرمزاحم)
+        Toast.error("خطای غیرمنتظره در قفل/باز کردن کاربر.");
     }
 }
 

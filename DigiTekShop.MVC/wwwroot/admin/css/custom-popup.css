@@ -1,0 +1,199 @@
+﻿/* ============================================
+   Modern Premium Popup – Minimal & Clean Style
+   ============================================ */
+
+/* Overlay */
+.custom-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity .25s ease;
+    z-index: 9999;
+    padding: 20px;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+    .custom-popup-overlay.show {
+        opacity: 1;
+    }
+
+/* Container */
+.custom-popup-container {
+    background: #ffffff;
+    border-radius: 18px;
+    width: 100%;
+    max-width: 420px;
+    overflow: hidden;
+    transform: scale(.9);
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+    margin: 0;
+    flex-shrink: 0;
+    align-self: center;
+    justify-self: center;
+}
+
+.custom-popup-overlay.show .custom-popup-container {
+    transform: scale(1);
+}
+
+
+/* Header – clean & minimal */
+.custom-popup-header {
+    padding: 26px 20px 12px;
+    text-align: center;
+    position: relative;
+}
+
+.custom-popup-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+/* Icon */
+.custom-popup-icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+    animation: scaleIn .4s ease;
+}
+
+@keyframes scaleIn {
+    0% {
+        transform: scale(.6);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Header color themes */
+.custom-popup-header.success .custom-popup-icon {
+    color: #0ea76b;
+}
+
+.custom-popup-header.error .custom-popup-icon {
+    color: #e11d48;
+}
+
+.custom-popup-header.warning .custom-popup-icon {
+    color: #f59e0b;
+}
+
+.custom-popup-header.info .custom-popup-icon {
+    color: #3b82f6;
+}
+
+/* Body */
+.custom-popup-body {
+    padding: 18px 26px 10px;
+    text-align: center;
+}
+
+.custom-popup-message {
+    color: #4b5563;
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+/* Footer – modern centered buttons */
+.custom-popup-footer {
+    padding: 18px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* Buttons */
+.custom-popup-btn {
+    padding: 10px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 50px; /* مدرن و گرد */
+    border: none;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+/* Button types */
+.custom-popup-btn-primary {
+    background: #3b82f6;
+    color: white;
+    box-shadow: 0 3px 12px rgba(59, 130, 246, .35);
+}
+
+    .custom-popup-btn-primary:hover {
+        background: #2563eb;
+    }
+
+.custom-popup-btn-danger {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 3px 12px rgba(239, 68, 68, .35);
+}
+
+    .custom-popup-btn-danger:hover {
+        background: #dc2626;
+    }
+
+.custom-popup-btn-secondary {
+    background: #e5e7eb;
+    color: #1f2937;
+}
+
+    .custom-popup-btn-secondary:hover {
+        background: #d1d5db;
+    }
+
+/* Close button */
+.custom-popup-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+    .custom-popup-close:hover {
+        background: #e5e7eb;
+    }
+
+/* Responsive */
+@media (max-width: 480px) {
+    .custom-popup-container {
+        max-width: 90%;
+    }
+
+    .custom-popup-footer {
+        flex-direction: column;
+    }
+
+    .custom-popup-btn {
+        width: 100%;
+    }
+}
