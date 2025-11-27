@@ -32,6 +32,7 @@ public sealed class UserSearchService : IUserSearchService
         string query,
         int page = 1,
         int pageSize = 10,
+        string? status = null,
         CancellationToken ct = default)
     {
         try
@@ -43,8 +44,20 @@ public sealed class UserSearchService : IUserSearchService
             var from = (page - 1) * pageSize;
             var hasQuery = !string.IsNullOrWhiteSpace(query);
             
-            _logger.LogDebug("[UserSearch] Searching with query='{Query}', page={Page}, pageSize={PageSize}", 
-                query, page, pageSize);
+            // Parse status filter
+            bool? isLockedFilter = null;
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var statusLower = status.Trim().ToLowerInvariant();
+                if (statusLower == "active")
+                    isLockedFilter = false;
+                else if (statusLower == "locked")
+                    isLockedFilter = true;
+                // اگر مقدار دیگری باشد، isLockedFilter null می‌ماند و همه را نشان می‌دهد
+            }
+            
+            _logger.LogDebug("[UserSearch] Searching with query='{Query}', page={Page}, pageSize={PageSize}, status={Status}, isLockedFilter={IsLockedFilter}", 
+                query, page, pageSize, status, isLockedFilter);
 
             SearchRequestDescriptor<UserSearchDocument> searchDescriptor = new SearchRequestDescriptor<UserSearchDocument>()
                 .Indices(_options.UsersIndex)
@@ -189,20 +202,40 @@ public sealed class UserSearchService : IUserSearchService
                     )
                 );
                 
+                // ساخت فیلترها
+                var filters = new List<Action<QueryDescriptor<UserSearchDocument>>>();
+                
+                // فیلتر IsDeleted
+                filters.Add(f => f.Term(t => t.Field("IsDeleted").Value(false)));
+                
+                // فیلتر Status (IsLocked)
+                if (isLockedFilter.HasValue)
+                {
+                    filters.Add(f => f.Term(t => t.Field("IsLocked").Value(isLockedFilter.Value)));
+                }
+                
                 searchDescriptor = searchDescriptor.Query(q => q.Bool(b => b
                     .Should(shouldQueries.ToArray())
                     .MinimumShouldMatch(1)
-                    .Filter(f => f
-                        .Term(t => t.Field("IsDeleted").Value(false))
-                    )
+                    .Filter(filters.ToArray())
                 ));
             }
             else
             {
+                // ساخت فیلترها
+                var filters = new List<Action<QueryDescriptor<UserSearchDocument>>>();
+                
+                // فیلتر IsDeleted
+                filters.Add(f => f.Term(t => t.Field("IsDeleted").Value(false)));
+                
+                // فیلتر Status (IsLocked)
+                if (isLockedFilter.HasValue)
+                {
+                    filters.Add(f => f.Term(t => t.Field("IsLocked").Value(isLockedFilter.Value)));
+                }
+                
                 searchDescriptor = searchDescriptor.Query(q => q.Bool(b => b
-                    .Filter(f => f
-                        .Term(t => t.Field("IsDeleted").Value(false))
-                    )
+                    .Filter(filters.ToArray())
                 ));
             }
 

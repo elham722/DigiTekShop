@@ -8,6 +8,7 @@ public interface IUserSearchService
         string query,
         int page = 1,
         int pageSize = 10,
+        string? status = null,
         CancellationToken ct = default);
 
     Task<Result> IndexUserAsync(UserSearchDocument document, CancellationToken ct = default);

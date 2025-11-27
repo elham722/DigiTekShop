@@ -23,9 +23,10 @@ public sealed class GetAdminUserListQueryHandler
         var page = q.Page <= 0 ? 1 : q.Page;
         var pageSize = q.PageSize <= 0 ? 20 : q.PageSize;
         var searchTerm = q.Search ?? string.Empty;
+        var status = q.Status; // "active", "locked", or null
 
         // جستجو در Elasticsearch
-        var searchResult = await _userSearchService.SearchAsync(searchTerm, page, pageSize, ct);
+        var searchResult = await _userSearchService.SearchAsync(searchTerm, page, pageSize, status, ct);
 
         if (!searchResult.IsSuccess)
         {
