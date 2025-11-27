@@ -19,14 +19,10 @@ public sealed class GetAdminUserListQueryHandler
         GetAdminUserListQuery request,
         CancellationToken ct)
     {
-        var q = request.Filters;
-        var page = q.Page <= 0 ? 1 : q.Page;
-        var pageSize = q.PageSize <= 0 ? 20 : q.PageSize;
-        var searchTerm = q.Search ?? string.Empty;
-        var status = q.Status; // "active", "locked", or null
+        // تمام نرمال‌سازی داخل ToCriteria()
+        var criteria = request.Filters.ToCriteria();
 
-        // جستجو در Elasticsearch
-        var searchResult = await _userSearchService.SearchAsync(searchTerm, page, pageSize, status, ct);
+        var searchResult = await _userSearchService.SearchAsync(criteria, ct);
 
         if (!searchResult.IsSuccess)
         {
@@ -37,25 +33,19 @@ public sealed class GetAdminUserListQueryHandler
 
         var data = searchResult.Value;
 
-        // Map از UserSearchDocument → AdminUserListItemDto
-        var items = data.Items.Select(u => new AdminUserListItemDto
-        {
-            Id = Guid.Parse(u.Id),
-            FullName = u.FullName,
-            Phone = u.Phone,
-            Email = u.Email,
-            IsPhoneConfirmed = u.IsPhoneConfirmed,
-            IsLocked = u.IsLocked,
-            CreatedAtUtc = u.CreatedAtUtc,
-            LastLoginAtUtc = u.LastLoginAtUtc,
-            Roles = u.Roles ?? Array.Empty<string>()
-        }).ToList();
+        // Map از UserSearchDocument → AdminUserListItemDto با Mapster
+        var items = data.Items.Adapt<List<AdminUserListItemDto>>();
 
         // ساخت PagedResponse
         var paged = PagedResponse<AdminUserListItemDto>.Create(
             items,
             data.TotalCount,
-            new PagedRequest(page, pageSize, SortBy: null, Ascending: true, SearchTerm: searchTerm));
+            new PagedRequest(
+                criteria.Page,
+                criteria.PageSize,
+                SortBy: null,
+                Ascending: true,
+                SearchTerm: criteria.Search));
 
         return Result<PagedResponse<AdminUserListItemDto>>.Success(paged);
     }

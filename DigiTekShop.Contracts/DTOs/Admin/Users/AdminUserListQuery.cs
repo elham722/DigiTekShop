@@ -13,8 +13,26 @@ public sealed class AdminUserListQuery
     public string? Search { get; init; }
 
     /// <summary>
-    /// Accepted values: Active, Locked or null/empty for all.
+    /// Accepted values: "active", "locked" or null/empty for all.
     /// </summary>
     public string? Status { get; init; }
+
+    /// <summary>
+    /// Converts this query to normalized search criteria.
+    /// Normalizes page, pageSize, and search term.
+    /// </summary>
+    public AdminUserSearchCriteria ToCriteria()
+    {
+        var page = Page <= 0 ? 1 : Page;
+        var pageSize = PageSize <= 0 ? 20 : PageSize;
+        var search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim();
+
+        return new AdminUserSearchCriteria(
+            Search: search,
+            Status: Status,
+            Page: page,
+            PageSize: pageSize
+        );
+    }
 }
 

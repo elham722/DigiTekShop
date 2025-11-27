@@ -59,19 +59,20 @@ public sealed class LockoutService : ILockoutService
         var requestedEnd = req.LockoutEnd ?? now.Add(_opts.DefaultDuration);
         var end = ClampLockoutEnd(requestedEnd, now);
 
+        // Raise domain event BEFORE SetLockoutEndDateAsync (which calls SaveChangesAsync)
+        // تا event در Outbox ذخیره شود
+        _sink.Raise(new UserLockedDomainEvent(
+            userId: user.Id,
+            lockoutEnd: end,
+            occurredOn: _time.UtcNow
+        ));
+
         var setRes = await _users.SetLockoutEndDateAsync(user, end);
         if (!setRes.Succeeded)
             return Result<LockUserResponseDto>.Failure(setRes.Errors.Select(e => e.Description), ErrorCodes.Common.INTERNAL_ERROR);
 
         _log.LogWarning(Events.Lock, "User locked. userId={UserId}, until={Until:o}, prevEnd={PrevEnd:o}",
             user.Id, end, prevEnd);
-
-        // Raise domain event for Elasticsearch sync
-        _sink.Raise(new UserLockedDomainEvent(
-            userId: user.Id,
-            lockoutEnd: end,
-            occurredOn: _time.UtcNow
-        ));
 
         var dto = new LockUserResponseDto(user.Id, true, end, prevEnd, "User locked");
         return dto;
@@ -91,6 +92,13 @@ public sealed class LockoutService : ILockoutService
 
         var now = _time.UtcNow;
 
+        // Raise domain event BEFORE SetLockoutEndDateAsync (which calls SaveChangesAsync)
+        // تا event در Outbox ذخیره شود
+        _sink.Raise(new UserUnlockedDomainEvent(
+            userId: user.Id,
+            occurredOn: _time.UtcNow
+        ));
+
         // unlock = set lockout end to now
         var setRes = await _users.SetLockoutEndDateAsync(user, now);
         if (!setRes.Succeeded)
@@ -102,12 +110,6 @@ public sealed class LockoutService : ILockoutService
         var end = await _users.GetLockoutEndDateAsync(user);
 
         _log.LogInformation(Events.Unlock, "User unlocked. userId={UserId}, at={Now:o}", user.Id, now);
-
-        // Raise domain event for Elasticsearch sync
-        _sink.Raise(new UserUnlockedDomainEvent(
-            userId: user.Id,
-            occurredOn: _time.UtcNow
-        ));
 
         var dto = new UnlockUserResponseDto(user.Id, false, end, "User unlocked");
         return dto;

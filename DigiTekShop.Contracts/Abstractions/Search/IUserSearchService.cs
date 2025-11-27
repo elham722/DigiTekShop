@@ -1,3 +1,4 @@
+using DigiTekShop.Contracts.DTOs.Admin.Users;
 using DigiTekShop.Contracts.DTOs.Search;
 
 namespace DigiTekShop.Contracts.Abstractions.Search;
@@ -5,10 +6,7 @@ namespace DigiTekShop.Contracts.Abstractions.Search;
 public interface IUserSearchService
 {
     Task<Result<UserSearchResult>> SearchAsync(
-        string query,
-        int page = 1,
-        int pageSize = 10,
-        string? status = null,
+        AdminUserSearchCriteria criteria,
         CancellationToken ct = default);
 
     Task<Result> IndexUserAsync(UserSearchDocument document, CancellationToken ct = default);

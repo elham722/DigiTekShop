@@ -130,11 +130,11 @@ document.addEventListener("DOMContentLoaded", () => {
         loadUsers();
     });
 
+    // Setup action handlers (event delegation - یکبار)
+    setupRowActions();
+
     // اولین بار
     loadUsers();
-
-    // Setup action handlers
-    setupRowActions();
 });
 
 // ---------------------
@@ -249,8 +249,8 @@ function renderTable(data) {
                     <i class="fa fa-edit"></i> جزئیات
                  </a>
              
-                 <a href="#" data-user-id="${user.id}" class="btn btn-danger btn-xs" data-action="toggle-lock">
-                    <i class="fa fa-lock"></i> ${user.isLocked ? "آنلاک" : "لاک"}
+                 <a href="#" data-user-id="${user.id}" data-is-locked="${user.isLocked}" class="btn btn-danger btn-xs" data-action="toggle-lock">
+                    <i class="fa ${user.isLocked ? 'fa-unlock' : 'fa-lock'}"></i> ${user.isLocked ? "آنلاک" : "لاک"}
                  </a>
             </td>
         `;
@@ -260,12 +260,13 @@ function renderTable(data) {
 }
 
 // ---------------------
-// Setup Row Actions
+// Setup Row Actions (Event Delegation)
 // ---------------------
 function setupRowActions() {
     const table = document.getElementById("usersTable");
     if (!table) return;
 
+    // Event delegation: یکبار setup می‌شود و برای همه ردیف‌ها کار می‌کند
     table.addEventListener("click", async (event) => {
         const link = event.target.closest("a[data-action]");
         if (!link) return;
@@ -283,6 +284,81 @@ function setupRowActions() {
             await toggleUserLock(userId, link);
         }
     });
+}
+
+// ---------------------
+// Update User Row Directly (after lock/unlock)
+// ---------------------
+async function updateUserRowDirectly(userId, buttonEl) {
+    try {
+        // گرفتن اطلاعات به‌روز شده کاربر از API
+        const response = await fetch(`/api/v1/admin/users/${userId}`, {
+            method: "GET",
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+
+        if (!response.ok) {
+            console.warn("Failed to fetch updated user, refreshing full table...");
+            // Fallback: refresh کامل جدول
+            await loadUsers();
+            return;
+        }
+
+        const payload = await response.json();
+        const user = payload?.data ?? payload;
+
+        // پیدا کردن ردیف کاربر در جدول
+        const row = document.querySelector(`#usersTable tbody tr a[data-user-id="${userId}"]`)?.closest('tr');
+        if (!row) {
+            console.warn("User row not found, refreshing full table...");
+            await loadUsers();
+            return;
+        }
+
+        // به‌روزرسانی محتوای ردیف
+        const phoneFormatted = formatPhone(user.phone);
+        const hasName = !!user.fullName;
+        const displayName = hasName
+            ? user.fullName
+            : (phoneFormatted !== "—" ? phoneFormatted : "کاربر بدون نام");
+
+        const email = user.email || "—";
+        const rolesHtml = renderRolesBadges(user.roles);
+        const createdAt = formatDate(user.createdAtUtc);
+        const lastLogin = user.lastLoginAtUtc ? formatDate(user.lastLoginAtUtc) : "—";
+        const statusHtml = renderStatusBadge(user.isLocked);
+        const phoneConfirmHtml = renderPhoneConfirmBadge(user.isPhoneConfirmed);
+
+        // به‌روزرسانی سلول‌های ردیف
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 8) {
+            cells[0].innerHTML = `
+                <div class="d-flex flex-column">
+                    <span class="fw-bold">${displayName}</span>
+                </div>
+            `;
+            cells[1].innerHTML = `<span class="fa-num">${phoneFormatted}</span>`;
+            cells[2].textContent = email;
+            cells[3].innerHTML = rolesHtml;
+            cells[4].innerHTML = `${statusHtml} ${phoneConfirmHtml}`;
+            cells[5].innerHTML = `<span class="fa-num">${createdAt}</span>`;
+            cells[6].innerHTML = `<span class="fa-num">${lastLogin}</span>`;
+            cells[7].innerHTML = `
+                 <a href="#" data-user-id="${user.id}" class="btn btn-info btn-xs" data-action="details">
+                    <i class="fa fa-edit"></i> جزئیات
+                 </a>
+             
+                 <a href="#" data-user-id="${user.id}" data-is-locked="${user.isLocked}" class="btn btn-danger btn-xs" data-action="toggle-lock">
+                    <i class="fa ${user.isLocked ? 'fa-unlock' : 'fa-lock'}"></i> ${user.isLocked ? "آنلاک" : "لاک"}
+                 </a>
+            `;
+        }
+    } catch (err) {
+        console.error("Error updating user row directly:", err);
+        // Fallback: refresh کامل جدول
+        await loadUsers();
+    }
 }
 
 // ---------------------
@@ -355,7 +431,58 @@ async function openUserDetailsModal(userId) {
 // Toggle User Lock/Unlock
 // ---------------------
 async function toggleUserLock(userId, buttonEl) {
-    const isCurrentlyLocked = buttonEl.textContent.includes("آنلاک");
+    // استفاده از data attribute به جای textContent
+    const isCurrentlyLocked = buttonEl.getAttribute("data-is-locked") === "true";
+    
+    const action = isCurrentlyLocked ? "باز کردن قفل" : "قفل کردن";
+    const actionText = isCurrentlyLocked ? "باز کردن قفل کاربر" : "قفل کردن کاربر";
+    const confirmText = isCurrentlyLocked 
+        ? "آیا مطمئن هستید که می‌خواهید قفل این کاربر را باز کنید؟"
+        : "آیا مطمئن هستید که می‌خواهید این کاربر را قفل کنید؟";
+
+    // نمایش confirmation dialog با SweetAlert
+    let confirmResult;
+    if (window.DigiTekNotification && window.DigiTekNotification.showConfirm) {
+        confirmResult = await window.DigiTekNotification.showConfirm(
+            actionText,
+            confirmText,
+            {
+                confirmButtonText: 'بله، ادامه بده',
+                cancelButtonText: 'انصراف',
+                confirmButtonColor: isCurrentlyLocked ? '#28a745' : '#dc3545',
+                icon: isCurrentlyLocked ? 'question' : 'warning'
+            }
+        );
+    } else if (window.Swal) {
+        // Fallback به SweetAlert2 مستقیم
+        confirmResult = await window.Swal.fire({
+            title: actionText,
+            text: confirmText,
+            icon: isCurrentlyLocked ? 'question' : 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'بله، ادامه بده',
+            cancelButtonText: 'انصراف',
+            confirmButtonColor: isCurrentlyLocked ? '#28a745' : '#dc3545',
+            cancelButtonColor: '#6c757d',
+            reverseButtons: true
+        });
+    } else {
+        // Fallback به confirm ساده
+        if (!confirm(confirmText)) {
+            return;
+        }
+        confirmResult = { isConfirmed: true };
+    }
+
+    // اگر کاربر انصراف داد
+    if (!confirmResult || !confirmResult.isConfirmed) {
+        return;
+    }
+
+    // Disable button during operation
+    const originalText = buttonEl.innerHTML;
+    buttonEl.disabled = true;
+    buttonEl.innerHTML = '<i class="fa fa-spinner fa-spin"></i> در حال انجام...';
 
     const url = isCurrentlyLocked
         ? `/api/v1/admin/users/${userId}/unlock`
@@ -374,15 +501,62 @@ async function toggleUserLock(userId, buttonEl) {
 
         if (!response.ok) {
             console.error("Lock/unlock failed", response.status);
-            alert("عملیات قفل/باز کردن کاربر با خطا مواجه شد.");
+            buttonEl.disabled = false;
+            buttonEl.innerHTML = originalText;
+            
+            // نمایش خطا با SweetAlert
+            if (window.DigiTekNotification && window.DigiTekNotification.showError) {
+                await window.DigiTekNotification.showError("خطا", "عملیات قفل/باز کردن کاربر با خطا مواجه شد.");
+            } else if (window.Swal) {
+                await window.Swal.fire({
+                    icon: 'error',
+                    title: 'خطا',
+                    text: 'عملیات قفل/باز کردن کاربر با خطا مواجه شد.'
+                });
+            } else {
+                alert("عملیات قفل/باز کردن کاربر با خطا مواجه شد.");
+            }
             return;
         }
 
-        // رفرش جدول برای آپدیت وضعیت
-        await loadUsers();
+        // نمایش پیام موفقیت
+        if (window.DigiTekNotification && window.DigiTekNotification.showSuccess) {
+            await window.DigiTekNotification.showSuccess(
+                "موفق",
+                `کاربر با موفقیت ${isCurrentlyLocked ? 'باز شد' : 'قفل شد'}.`
+            );
+        } else if (window.Swal) {
+            await window.Swal.fire({
+                icon: 'success',
+                title: 'موفق',
+                text: `کاربر با موفقیت ${isCurrentlyLocked ? 'باز شد' : 'قفل شد'}.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+
+        // به‌روزرسانی مستقیم ردیف کاربر از API (بدون refresh کامل)
+        // این سریع‌تر است و نیازی به sync Elasticsearch ندارد
+        await updateUserRowDirectly(userId, buttonEl);
+        
+        // Re-enable button (will be re-rendered by updateUserRowDirectly)
     } catch (err) {
         console.error(err);
-        alert("خطای غیرمنتظره در قفل/باز کردن کاربر.");
+        buttonEl.disabled = false;
+        buttonEl.innerHTML = originalText;
+        
+        // نمایش خطا با SweetAlert
+        if (window.DigiTekNotification && window.DigiTekNotification.showError) {
+            await window.DigiTekNotification.showError("خطا", "خطای غیرمنتظره در قفل/باز کردن کاربر.");
+        } else if (window.Swal) {
+            await window.Swal.fire({
+                icon: 'error',
+                title: 'خطا',
+                text: 'خطای غیرمنتظره در قفل/باز کردن کاربر.'
+            });
+        } else {
+            alert("خطای غیرمنتظره در قفل/باز کردن کاربر.");
+        }
     }
 }
 

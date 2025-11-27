@@ -1,4 +1,5 @@
 using DigiTekShop.Contracts.Abstractions.Search;
+using DigiTekShop.Contracts.DTOs.Admin.Users;
 using DigiTekShop.Contracts.DTOs.Search;
 using DigiTekShop.Contracts.Options.Search;
 using DigiTekShop.SharedKernel.Errors;
@@ -29,20 +30,19 @@ public sealed class UserSearchService : IUserSearchService
     }
 
     public async Task<Result<UserSearchResult>> SearchAsync(
-        string query,
-        int page = 1,
-        int pageSize = 10,
-        string? status = null,
+        AdminUserSearchCriteria criteria,
         CancellationToken ct = default)
     {
         try
         {
-            // نرمال‌سازی page و pageSize
-            if (page <= 0) page = 1;
-            if (pageSize <= 0) pageSize = 10;
+            // Criteria already normalized, but ensure safety
+            var page = criteria.Page <= 0 ? 1 : criteria.Page;
+            var pageSize = criteria.PageSize <= 0 ? 10 : criteria.PageSize;
+            var search = criteria.Search;
+            var status = criteria.Status;
 
             var from = (page - 1) * pageSize;
-            var hasQuery = !string.IsNullOrWhiteSpace(query);
+            var hasQuery = !string.IsNullOrWhiteSpace(search);
             
             // Parse status filter
             bool? isLockedFilter = null;
@@ -57,7 +57,7 @@ public sealed class UserSearchService : IUserSearchService
             }
             
             _logger.LogDebug("[UserSearch] Searching with query='{Query}', page={Page}, pageSize={PageSize}, status={Status}, isLockedFilter={IsLockedFilter}", 
-                query, page, pageSize, status, isLockedFilter);
+                search, page, pageSize, status, isLockedFilter);
 
             SearchRequestDescriptor<UserSearchDocument> searchDescriptor = new SearchRequestDescriptor<UserSearchDocument>()
                 .Indices(_options.UsersIndex)
@@ -67,7 +67,7 @@ public sealed class UserSearchService : IUserSearchService
             if (hasQuery)
             {
                 // Normalize query: trim for better matching
-                var normalizedQuery = query.Trim();
+                var normalizedQuery = search!.Trim();
                 
                 // برای Phone: اگر query شبیه شماره تلفن است، چند فرمت مختلف را امتحان کنیم
                 var phoneQueries = new List<string> { normalizedQuery };
@@ -258,7 +258,7 @@ public sealed class UserSearchService : IUserSearchService
             var totalCount = (int)searchResponse.Total;
             
             _logger.LogInformation("[UserSearch] Query='{Query}' → Found {Count} results (Total={Total})", 
-                query, items.Count, totalCount);
+                search, items.Count, totalCount);
             
             if (items.Count > 0)
             {
@@ -279,7 +279,7 @@ public sealed class UserSearchService : IUserSearchService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception during search: {Query}", query);
+            _logger.LogError(ex, "Exception during search: {Query}", criteria.Search);
             return Result<UserSearchResult>.Failure(ErrorCodes.Search.SEARCH_FAILED);
         }
     }
