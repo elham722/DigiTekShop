@@ -1,8 +1,8 @@
 ﻿using DigiTekShop.API.Common.Api;
 using DigiTekShop.API.ResultMapping;
-using DigiTekShop.API.Services.Search;
 using DigiTekShop.Application.Admin.Users.Queries.GetAdminUserList;
 using DigiTekShop.Contracts.Abstractions.Paging;
+using DigiTekShop.Contracts.Abstractions.Search;
 using DigiTekShop.Contracts.DTOs.Admin.Users;
 
 namespace DigiTekShop.API.Controllers.Admin.V1;
@@ -15,23 +15,24 @@ namespace DigiTekShop.API.Controllers.Admin.V1;
 public sealed class UsersController : ControllerBase
 {
     private readonly ISender _sender;
-    private readonly UserSearchIndexingService _userSearchIndexingService;
+    private readonly IUserSearchIndexingService _userSearchIndexingService;
 
     public UsersController(
         ISender sender,
-        UserSearchIndexingService userSearchIndexingService)
+        IUserSearchIndexingService userSearchIndexingService)
     {
         _sender = sender;
         _userSearchIndexingService = userSearchIndexingService;
     }
 
-    // الان آدرس نهایی میشه:
-    // POST /api/v1/admin/users/reindex-search
+   
     [HttpPost("reindex-search")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ReindexUsers(CancellationToken ct)
     {
-        await _userSearchIndexingService.ReindexAllUsersAsync(ct);
-        return Ok(new { message = "Reindex started/completed" });
+        var result = await _userSearchIndexingService.ReindexAllUsersAsync(ct);
+        return this.ToActionResult(result);
     }
 
     [HttpGet]

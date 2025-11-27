@@ -8,6 +8,7 @@ using DigiTekShop.Infrastructure.Background;
 using DigiTekShop.Infrastructure.Caching;
 using DigiTekShop.Infrastructure.DomainEvents;
 using DigiTekShop.Infrastructure.Messaging;
+using DigiTekShop.Infrastructure.Search;
 using DigiTekShop.Infrastructure.Time;
 using DigiTekShop.Persistence.Events;
 using DigiTekShop.SharedKernel.DomainShared.Events;
@@ -93,6 +94,12 @@ public static class InfrastructureRegistration
 
         #endregion
 
+
+        #region Search
+
+        services.AddDigiTekElasticsearch(config, env);
+
+        #endregion
 
         return services;
     }

@@ -1,6 +1,4 @@
 ﻿using DigiTekShop.API.Extensions.Telemetry;
-using DigiTekShop.API.Middleware;
-using DigiTekShop.API.Services.Search;
 using DigiTekShop.Infrastructure.Search;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -87,10 +85,6 @@ builder.Services
 
 builder.Services.AddExternalServices(builder.Configuration);
 builder.Services.ConfigureApplicationCore();
-
-builder.Services.AddDigiTekElasticsearch(builder.Configuration);
-builder.Services.AddScoped<UserSearchIndexingService>();
-
 
 #endregion
 

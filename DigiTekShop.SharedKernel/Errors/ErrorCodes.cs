@@ -62,4 +62,13 @@ public static class ErrorCodes
         public const string OTP_ALREADY_VERIFIED = "OTP_ALREADY_VERIFIED";    // 409
         public const string OTP_NOT_REQUESTED = "OTP_NOT_REQUESTED";       // 422 (یا 400)
     }
+
+    public static class Search
+    {
+        public const string INDEX_CREATION_FAILED = "SEARCH_INDEX_CREATION_FAILED";
+        public const string INDEX_DELETION_FAILED = "SEARCH_INDEX_DELETION_FAILED";
+        public const string INDEXING_FAILED = "SEARCH_INDEXING_FAILED";
+        public const string SEARCH_FAILED = "SEARCH_FAILED";
+        public const string ELASTICSEARCH_UNAVAILABLE = "ELASTICSEARCH_UNAVAILABLE";
+    }
 }

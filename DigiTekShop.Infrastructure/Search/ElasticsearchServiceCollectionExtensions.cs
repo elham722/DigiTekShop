@@ -1,7 +1,10 @@
-﻿using Elastic.Clients.Elasticsearch;
+﻿using DigiTekShop.Contracts.Abstractions.Search;
+using DigiTekShop.Contracts.Options.Search;
+using Elastic.Clients.Elasticsearch;
 using Elastic.Transport;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace DigiTekShop.Infrastructure.Search;
 
@@ -9,18 +12,39 @@ public static class ElasticsearchServiceCollectionExtensions
 {
     public static IServiceCollection AddDigiTekElasticsearch(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        var url = configuration.GetSection("Elasticsearch")["Url"]
-                  ?? throw new InvalidOperationException("Elasticsearch:Url is not configured.");
+        services.Configure<ElasticsearchOptions>(configuration.GetSection("Elasticsearch"));
 
-        var settings = new ElasticsearchClientSettings(new Uri(url))
-            .PrettyJson()
-            .DefaultFieldNameInferrer(p => p); // اسم پراپرتی‌ها همونی که هست بمونه
+        var options = configuration.GetSection("Elasticsearch").Get<ElasticsearchOptions>()
+                      ?? throw new InvalidOperationException("Elasticsearch configuration is not valid.");
+
+        var settings = new ElasticsearchClientSettings(new Uri(options.Url))
+            .DefaultFieldNameInferrer(p => p)
+            .RequestTimeout(TimeSpan.FromSeconds(options.RequestTimeoutSeconds));
+
+        if (environment.IsDevelopment() && options.PrettyJson)
+        {
+            settings = settings.PrettyJson();
+        }
 
         var client = new ElasticsearchClient(settings);
-
         services.AddSingleton(client);
+
+        services.AddScoped<IElasticsearchIndexManager, ElasticsearchIndexManager>();
+        services.AddScoped<IUserSearchService, UserSearchService>();
+        services.AddScoped<IUserSearchIndexingService, UserSearchIndexingService>();
+
+        if (options.EnableHealthCheck)
+        {
+            services.AddHealthChecks()
+                .AddCheck<ElasticsearchHealthCheck>(
+                    name: "elasticsearch",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+                    tags: new[] { "elasticsearch", "infrastructure" },
+                    timeout: TimeSpan.FromSeconds(5));
+        }
 
         return services;
     }

@@ -86,6 +86,7 @@ public static class IdentityServicesRegistration
 
         services.AddScoped<IMeService, MeService>();
         services.AddScoped<IAdminUserReadService, AdminUserReadService>();
+        services.AddScoped<DigiTekShop.Contracts.Abstractions.Search.IUserDataProvider, DigiTekShop.Identity.Services.Search.UserDataProvider>();
 
 
         #endregion
