@@ -36,6 +36,16 @@ public static class ElasticsearchServiceCollectionExtensions
         services.AddScoped<IUserSearchService, UserSearchService>();
         services.AddScoped<IUserSearchIndexingService, UserSearchIndexingService>();
 
+        // Register Elasticsearch event handlers
+        services.AddScoped<DigiTekShop.SharedKernel.DomainShared.Events.IIntegrationEventHandler<DigiTekShop.Contracts.Integration.Events.Identity.UserUpdatedIntegrationEvent>, 
+            DigiTekShop.Infrastructure.Search.Handlers.UserUpdatedElasticsearchHandler>();
+        services.AddScoped<DigiTekShop.SharedKernel.DomainShared.Events.IIntegrationEventHandler<DigiTekShop.Contracts.Integration.Events.Identity.UserLockedIntegrationEvent>, 
+            DigiTekShop.Infrastructure.Search.Handlers.UserLockedElasticsearchHandler>();
+        services.AddScoped<DigiTekShop.SharedKernel.DomainShared.Events.IIntegrationEventHandler<DigiTekShop.Contracts.Integration.Events.Identity.UserUnlockedIntegrationEvent>, 
+            DigiTekShop.Infrastructure.Search.Handlers.UserUnlockedElasticsearchHandler>();
+        services.AddScoped<DigiTekShop.SharedKernel.DomainShared.Events.IIntegrationEventHandler<DigiTekShop.Contracts.Integration.Events.Identity.UserRolesChangedIntegrationEvent>, 
+            DigiTekShop.Infrastructure.Search.Handlers.UserRolesChangedElasticsearchHandler>();
+
         if (options.EnableHealthCheck)
         {
             services.AddHealthChecks()

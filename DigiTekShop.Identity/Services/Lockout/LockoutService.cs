@@ -1,5 +1,7 @@
 ﻿using DigiTekShop.Contracts.DTOs.Auth.Lockout;
 using DigiTekShop.Contracts.Options.Auth;
+using DigiTekShop.Identity.Events;
+using DigiTekShop.SharedKernel.DomainShared.Events;
 
 namespace DigiTekShop.Identity.Services.Lockout;
 
@@ -17,17 +19,20 @@ public sealed class LockoutService : ILockoutService
     private readonly IDateTimeProvider _time;
     private readonly IdentityLockoutOptions _opts;
     private readonly ILogger<LockoutService> _log;
+    private readonly IDomainEventSink _sink;
 
     public LockoutService(
         UserManager<User> users,
         IDateTimeProvider time,
         IOptions<IdentityLockoutOptions> opts,
-        ILogger<LockoutService> log)
+        ILogger<LockoutService> log,
+        IDomainEventSink sink)
     {
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _time = time ?? throw new ArgumentNullException(nameof(time));
         _opts = opts?.Value ?? new IdentityLockoutOptions();
         _log = log ?? throw new ArgumentNullException(nameof(log));
+        _sink = sink ?? throw new ArgumentNullException(nameof(sink));
     }
 
     public async Task<Result<LockUserResponseDto>> LockUserAsync(LockUserRequestDto req, CancellationToken ct = default)
@@ -61,6 +66,13 @@ public sealed class LockoutService : ILockoutService
         _log.LogWarning(Events.Lock, "User locked. userId={UserId}, until={Until:o}, prevEnd={PrevEnd:o}",
             user.Id, end, prevEnd);
 
+        // Raise domain event for Elasticsearch sync
+        _sink.Raise(new UserLockedDomainEvent(
+            userId: user.Id,
+            lockoutEnd: end,
+            occurredOn: _time.UtcNow
+        ));
+
         var dto = new LockUserResponseDto(user.Id, true, end, prevEnd, "User locked");
         return dto;
     }
@@ -90,6 +102,12 @@ public sealed class LockoutService : ILockoutService
         var end = await _users.GetLockoutEndDateAsync(user);
 
         _log.LogInformation(Events.Unlock, "User unlocked. userId={UserId}, at={Now:o}", user.Id, now);
+
+        // Raise domain event for Elasticsearch sync
+        _sink.Raise(new UserUnlockedDomainEvent(
+            userId: user.Id,
+            occurredOn: _time.UtcNow
+        ));
 
         var dto = new UnlockUserResponseDto(user.Id, false, end, "User unlocked");
         return dto;

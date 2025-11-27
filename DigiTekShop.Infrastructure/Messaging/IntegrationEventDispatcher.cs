@@ -77,6 +77,90 @@ namespace DigiTekShop.Infrastructure.Messaging
                     }
                     break;
                 }
+                case "DigiTekShop.Contracts.Integration.Events.Identity.UserUpdatedIntegrationEvent":
+                {
+                    var evt = JsonSerializer.Deserialize<UserUpdatedIntegrationEvent>(payload)!;
+                    using var scope = _sp.CreateScope();
+                    var handlers = scope.ServiceProvider.GetServices<IIntegrationEventHandler<UserUpdatedIntegrationEvent>>();
+                    foreach (var h in handlers)
+                    {
+                        try
+                        {
+                            await h.HandleAsync(evt, ct);
+                            _log.LogInformation("✅ Dispatched UserUpdatedIntegrationEvent to {Handler} for UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.LogError(ex, "❌ Handler {Handler} failed for UserUpdatedIntegrationEvent UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                    }
+                    break;
+                }
+                case "DigiTekShop.Contracts.Integration.Events.Identity.UserLockedIntegrationEvent":
+                {
+                    var evt = JsonSerializer.Deserialize<UserLockedIntegrationEvent>(payload)!;
+                    using var scope = _sp.CreateScope();
+                    var handlers = scope.ServiceProvider.GetServices<IIntegrationEventHandler<UserLockedIntegrationEvent>>();
+                    foreach (var h in handlers)
+                    {
+                        try
+                        {
+                            await h.HandleAsync(evt, ct);
+                            _log.LogInformation("✅ Dispatched UserLockedIntegrationEvent to {Handler} for UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.LogError(ex, "❌ Handler {Handler} failed for UserLockedIntegrationEvent UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                    }
+                    break;
+                }
+                case "DigiTekShop.Contracts.Integration.Events.Identity.UserUnlockedIntegrationEvent":
+                {
+                    var evt = JsonSerializer.Deserialize<UserUnlockedIntegrationEvent>(payload)!;
+                    using var scope = _sp.CreateScope();
+                    var handlers = scope.ServiceProvider.GetServices<IIntegrationEventHandler<UserUnlockedIntegrationEvent>>();
+                    foreach (var h in handlers)
+                    {
+                        try
+                        {
+                            await h.HandleAsync(evt, ct);
+                            _log.LogInformation("✅ Dispatched UserUnlockedIntegrationEvent to {Handler} for UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.LogError(ex, "❌ Handler {Handler} failed for UserUnlockedIntegrationEvent UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                    }
+                    break;
+                }
+                case "DigiTekShop.Contracts.Integration.Events.Identity.UserRolesChangedIntegrationEvent":
+                {
+                    var evt = JsonSerializer.Deserialize<UserRolesChangedIntegrationEvent>(payload)!;
+                    using var scope = _sp.CreateScope();
+                    var handlers = scope.ServiceProvider.GetServices<IIntegrationEventHandler<UserRolesChangedIntegrationEvent>>();
+                    foreach (var h in handlers)
+                    {
+                        try
+                        {
+                            await h.HandleAsync(evt, ct);
+                            _log.LogInformation("✅ Dispatched UserRolesChangedIntegrationEvent to {Handler} for UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.LogError(ex, "❌ Handler {Handler} failed for UserRolesChangedIntegrationEvent UserId {UserId}",
+                                h.GetType().Name, evt.UserId);
+                        }
+                    }
+                    break;
+                }
 
                 default:
                     _log.LogWarning("No handler for integration event type {Type}", type);
