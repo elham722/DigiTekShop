@@ -1,21 +1,8 @@
 namespace DigiTekShop.SharedKernel.Authorization;
 
-/// <summary>
-/// Central permission constants for DigiTekShop.
-/// All permission strings are domain-oriented and follow the pattern: "Module.Action"
-/// </summary>
-/// <remarks>
-/// These constants are used in:
-/// - JWT Claims (permission type)
-/// - [RequirePermission] attribute
-/// - UI permission checks
-/// - Database seeding
-/// </remarks>
+
 public static class Permissions
 {
-    /// <summary>
-    /// The claim type used for permissions in JWT tokens
-    /// </summary>
     public const string ClaimType = "permission";
 
     #region Admin
@@ -152,9 +139,7 @@ public static class Permissions
 
     #endregion
 
-    /// <summary>
-    /// Gets all defined permissions for seeding
-    /// </summary>
+   
     public static IReadOnlyList<(string Name, string Description)> GetAll()
     {
         return new List<(string, string)>
@@ -238,13 +223,12 @@ public static class Permissions
         };
     }
 
-    /// <summary>
-    /// Gets default role-permission mappings for seeding
-    /// </summary>
+   
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> GetRolePermissions()
     {
         return new Dictionary<string, IReadOnlyList<string>>
         {
+            
             ["SuperAdmin"] = GetAll().Select(p => p.Name).ToList(),
 
             ["Admin"] = new[]
