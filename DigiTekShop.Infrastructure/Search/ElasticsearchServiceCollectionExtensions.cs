@@ -1,8 +1,4 @@
-﻿using DigiTekShop.Contracts.Abstractions.Search;
-using DigiTekShop.Contracts.Integration.Events.Identity;
-using DigiTekShop.Contracts.Options.Search;
-using DigiTekShop.Infrastructure.Search.Handlers;
-using DigiTekShop.SharedKernel.DomainShared.Events;
+﻿using DigiTekShop.Contracts.Options.Search;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Transport;
 using Microsoft.Extensions.Configuration;
@@ -35,16 +31,10 @@ public static class ElasticsearchServiceCollectionExtensions
         var client = new ElasticsearchClient(settings);
         services.AddSingleton(client);
 
-        services.AddScoped<IElasticsearchIndexManager, ElasticsearchIndexManager>();
-        services.AddScoped<IUserSearchService, UserSearchService>();
-        services.AddScoped<IUserSearchIndexingService, UserSearchIndexingService>();
+        services.AddScoped<ElasticsearchIndexManager>();
 
-        // Register Elasticsearch event handlers
-        services.AddScoped<IIntegrationEventHandler<UserRegisteredIntegrationEvent>, UserRegisteredElasticsearchHandler>();
-        services.AddScoped<IIntegrationEventHandler<UserUpdatedIntegrationEvent>, UserUpdatedElasticsearchHandler>();
-        services.AddScoped<IIntegrationEventHandler<UserLockedIntegrationEvent>, UserLockedElasticsearchHandler>();
-        services.AddScoped<IIntegrationEventHandler<UserUnlockedIntegrationEvent>, UserUnlockedElasticsearchHandler>();
-        services.AddScoped<IIntegrationEventHandler<UserRolesChangedIntegrationEvent>, UserRolesChangedElasticsearchHandler>();
+        // Note: User Search services removed - Admin panel now uses EF Core directly
+        // Elasticsearch is reserved for future use cases like Product Search
 
         if (options.EnableHealthCheck)
         {

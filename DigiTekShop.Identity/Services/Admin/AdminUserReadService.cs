@@ -100,24 +100,53 @@ public sealed class AdminUserReadService : IAdminUserReadService
             }
         }
 
-        //  projection
-        var projectedQuery = usersQuery
+        // Get users with pagination first
+        var usersWithRoles = await usersQuery
             .OrderByDescending(u => u.CreatedAtUtc)
-            .Select(u => new AdminUserListItemDto
+            .Select(u => new
             {
-                Id = u.Id,
-                FullName = u.UserName,
-                Phone = u.PhoneNumber ?? string.Empty,
-                Email = u.Email,
-                IsPhoneConfirmed = u.PhoneNumberConfirmed,
-                IsLocked = u.LockoutEnd.HasValue && u.LockoutEnd > DateTimeOffset.UtcNow,
-                CreatedAtUtc = u.CreatedAtUtc.UtcDateTime,
-                LastLoginAtUtc = u.LastLoginAtUtc.HasValue
-                ? u.LastLoginAtUtc.Value.UtcDateTime : (DateTime?)null,
-                Roles = Array.Empty<string>()
-            });
+                User = u,
+                UserId = u.Id
+            })
+            .ToPagedResponseAsync(pagedRequest, ct);
 
-        var paged = await projectedQuery.ToPagedResponseAsync(pagedRequest, ct);
+        // Get all user IDs from the current page
+        var userIds = usersWithRoles.Items.Select(x => x.UserId).ToList();
+
+        // Load roles for all users in one query (avoiding N+1)
+        var userRolesDict = await _dbContext.UserRoles
+            .Where(ur => userIds.Contains(ur.UserId))
+            .Join(
+                _dbContext.Roles,
+                ur => ur.RoleId,
+                r => r.Id,
+                (ur, r) => new { ur.UserId, RoleName = r.Name }
+            )
+            .GroupBy(x => x.UserId)
+            .ToDictionaryAsync(
+                g => g.Key,
+                g => g.Select(x => x.RoleName).ToArray(),
+                ct);
+
+        // Map to DTOs with roles
+        var items = usersWithRoles.Items.Select(x => new AdminUserListItemDto
+        {
+            Id = x.User.Id,
+            FullName = x.User.UserName,
+            Phone = x.User.PhoneNumber ?? string.Empty,
+            Email = x.User.Email,
+            IsPhoneConfirmed = x.User.PhoneNumberConfirmed,
+            IsLocked = x.User.LockoutEnd.HasValue && x.User.LockoutEnd > DateTimeOffset.UtcNow,
+            CreatedAtUtc = x.User.CreatedAtUtc.UtcDateTime,
+            LastLoginAtUtc = x.User.LastLoginAtUtc.HasValue
+                ? x.User.LastLoginAtUtc.Value.UtcDateTime : (DateTime?)null,
+            Roles = userRolesDict.GetValueOrDefault(x.UserId, Array.Empty<string>())
+        }).ToList();
+
+        var paged = PagedResponse<AdminUserListItemDto>.Create(
+            items,
+            usersWithRoles.TotalCount,
+            pagedRequest);
 
         return Result<PagedResponse<AdminUserListItemDto>>.Success(paged);
     }

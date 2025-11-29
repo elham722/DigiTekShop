@@ -17,22 +17,5 @@ public sealed class AdminUserListQuery
     /// </summary>
     public string? Status { get; init; }
 
-    /// <summary>
-    /// Converts this query to normalized search criteria.
-    /// Normalizes page, pageSize, and search term.
-    /// </summary>
-    public AdminUserSearchCriteria ToCriteria()
-    {
-        var page = Page <= 0 ? 1 : Page;
-        var pageSize = PageSize <= 0 ? 20 : PageSize;
-        var search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim();
-
-        return new AdminUserSearchCriteria(
-            Search: search,
-            Status: Status,
-            Page: page,
-            PageSize: pageSize
-        );
-    }
 }
 

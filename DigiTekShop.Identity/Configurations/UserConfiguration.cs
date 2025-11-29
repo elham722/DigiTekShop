@@ -68,6 +68,17 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
             .HasFilter("[IsDeleted] = 0 AND [NormalizedPhoneNumber] IS NOT NULL")
             .HasDatabaseName("UX_Users_NormalizedPhone_Active");
 
+        // Indexes for admin panel queries
+        b.HasIndex(u => u.CreatedAtUtc)
+            .HasDatabaseName("IX_Users_CreatedAtUtc");
 
+        // Composite index for common admin queries: filtering by IsDeleted and sorting by CreatedAtUtc
+        b.HasIndex(u => new { u.IsDeleted, u.CreatedAtUtc })
+            .HasDatabaseName("IX_Users_IsDeleted_CreatedAtUtc");
+
+        // Index for LockoutEnd queries (used to determine IsLocked status)
+        b.HasIndex(u => u.LockoutEnd)
+            .HasFilter("[LockoutEnd] IS NOT NULL")
+            .HasDatabaseName("IX_Users_LockoutEnd_Active");
     }
 }

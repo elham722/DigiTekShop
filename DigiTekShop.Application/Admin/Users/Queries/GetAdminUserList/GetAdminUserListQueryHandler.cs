@@ -1,53 +1,25 @@
+using DigiTekShop.Contracts.Abstractions.Identity.Admin;
 using DigiTekShop.Contracts.Abstractions.Paging;
-using DigiTekShop.Contracts.Abstractions.Search;
 using DigiTekShop.Contracts.DTOs.Admin.Users;
-using DigiTekShop.Contracts.DTOs.Search;
 
 namespace DigiTekShop.Application.Admin.Users.Queries.GetAdminUserList;
 
 public sealed class GetAdminUserListQueryHandler
     : IQueryHandler<GetAdminUserListQuery, PagedResponse<AdminUserListItemDto>>
 {
-    private readonly IUserSearchService _userSearchService;
+    private readonly IAdminUserReadService _adminUserReadService;
 
-    public GetAdminUserListQueryHandler(IUserSearchService userSearchService)
+    public GetAdminUserListQueryHandler(IAdminUserReadService adminUserReadService)
     {
-        _userSearchService = userSearchService;
+        _adminUserReadService = adminUserReadService;
     }
 
     public async Task<Result<PagedResponse<AdminUserListItemDto>>> Handle(
         GetAdminUserListQuery request,
         CancellationToken ct)
     {
-        // تمام نرمال‌سازی داخل ToCriteria()
-        var criteria = request.Filters.ToCriteria();
-
-        var searchResult = await _userSearchService.SearchAsync(criteria, ct);
-
-        if (!searchResult.IsSuccess)
-        {
-            return Result<PagedResponse<AdminUserListItemDto>>.Failure(
-                searchResult.Errors,
-                searchResult.ErrorCode);
-        }
-
-        var data = searchResult.Value;
-
-        // Map از UserSearchDocument → AdminUserListItemDto با Mapster
-        var items = data.Items.Adapt<List<AdminUserListItemDto>>();
-
-        // ساخت PagedResponse
-        var paged = PagedResponse<AdminUserListItemDto>.Create(
-            items,
-            data.TotalCount,
-            new PagedRequest(
-                criteria.Page,
-                criteria.PageSize,
-                SortBy: null,
-                Ascending: true,
-                SearchTerm: criteria.Search));
-
-        return Result<PagedResponse<AdminUserListItemDto>>.Success(paged);
+        var result = await _adminUserReadService.GetUsersAsync(request.Filters, ct);
+        return result;
     }
 }
 

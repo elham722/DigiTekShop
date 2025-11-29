@@ -6,7 +6,6 @@ using DigiTekShop.Application.Admin.Users.Queries.GetAdminUserDetails;
 using DigiTekShop.Application.Admin.Users.Queries.GetAdminUserList;
 using DigiTekShop.Application.Authorization;
 using DigiTekShop.Contracts.Abstractions.Paging;
-using DigiTekShop.Contracts.Abstractions.Search;
 using DigiTekShop.Contracts.DTOs.Admin.Users;
 using DigiTekShop.Contracts.DTOs.Auth.Lockout;
 using DigiTekShop.SharedKernel.Authorization;
@@ -26,28 +25,10 @@ namespace DigiTekShop.API.Controllers.Admin.V1;
 public sealed class UsersController : ControllerBase
 {
     private readonly ISender _sender;
-    private readonly IUserSearchIndexingService _userSearchIndexingService;
 
-    public UsersController(
-        ISender sender,
-        IUserSearchIndexingService userSearchIndexingService)
+    public UsersController(ISender sender)
     {
         _sender = sender;
-        _userSearchIndexingService = userSearchIndexingService;
-    }
-
-    /// <summary>
-    /// Reindex all users in Elasticsearch (Admin only)
-    /// </summary>
-    [HttpPost("reindex-search")]
-    [RequirePermission(Permissions.Admin.UsersManage)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> ReindexUsers(CancellationToken ct)
-    {
-        var result = await _userSearchIndexingService.ReindexAllUsersAsync(ct);
-        return this.ToActionResult(result);
     }
 
     /// <summary>
