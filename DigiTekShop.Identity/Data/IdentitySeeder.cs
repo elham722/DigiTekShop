@@ -5,23 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DigiTekShop.Identity.Data;
 
-/// <summary>
-/// Seeder for initial Identity setup (SuperAdmin user)
-/// </summary>
 public static class IdentitySeeder
 {
-    /// <summary>
-    /// Phone number of the SuperAdmin user (in E.164 format)
-    /// </summary>
+   
     private const string SuperAdminPhone = "+989355403605";
 
-    /// <summary>
-    /// Seeds the SuperAdmin user with SuperAdmin role.
-    /// This user will have all permissions via the SuperAdmin role.
-    /// </summary>
-    /// <param name="userManager">UserManager instance</param>
-    /// <param name="roleManager">RoleManager instance</param>
-    /// <param name="logger">Optional logger</param>
     public static async Task SeedSuperAdminAsync(
         UserManager<User> userManager,
         RoleManager<Role> roleManager,
@@ -29,7 +17,6 @@ public static class IdentitySeeder
     {
         logger?.LogInformation("Starting SuperAdmin seeding...");
 
-        // Normalize phone number
         var normalizedPhone = Normalization.NormalizePhoneIranE164(SuperAdminPhone);
         if (string.IsNullOrWhiteSpace(normalizedPhone))
         {
@@ -37,11 +24,14 @@ public static class IdentitySeeder
             return;
         }
 
-        // 1) Ensure SuperAdmin role exists
         var superAdminRole = await roleManager.FindByNameAsync("SuperAdmin");
         if (superAdminRole is null)
         {
-            superAdminRole = Role.Create("SuperAdmin");
+            superAdminRole = Role.Create(
+                "SuperAdmin",
+                description: "دسترسی کامل به تمام بخش‌های سیستم. این نقش قابل حذف نیست.",
+                isSystemRole: true,
+                isDefaultForNewUsers: false);
             var roleResult = await roleManager.CreateAsync(superAdminRole);
 
             if (!roleResult.Succeeded)
@@ -54,14 +44,14 @@ public static class IdentitySeeder
             logger?.LogInformation("SuperAdmin role created");
         }
 
-        // 2) Find or create user by normalized phone number
+        
         var user = await userManager.Users
-            .IgnoreQueryFilters() // Include deleted users for check
+            .IgnoreQueryFilters() 
             .FirstOrDefaultAsync(u => u.NormalizedPhoneNumber == normalizedPhone);
 
         if (user is null)
         {
-            // Create new user
+            
             user = User.CreateFromPhone(SuperAdminPhone, customerId: null, phoneConfirmed: true);
             user.UserName = normalizedPhone;
 
@@ -77,7 +67,7 @@ public static class IdentitySeeder
         }
         else
         {
-            // User exists - ensure not deleted
+           
             if (user.IsDeleted)
             {
                 logger?.LogWarning("SuperAdmin user exists but is deleted. Phone: {Phone}", normalizedPhone);
@@ -87,7 +77,7 @@ public static class IdentitySeeder
             logger?.LogInformation("SuperAdmin user already exists with phone {Phone}", normalizedPhone);
         }
 
-        // 3) Assign SuperAdmin role if not already assigned
+        
         if (!await userManager.IsInRoleAsync(user, "SuperAdmin"))
         {
             var addRoleResult = await userManager.AddToRoleAsync(user, "SuperAdmin");

@@ -11,22 +11,31 @@ public sealed class Role : IdentityRole<Guid>
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset? UpdatedAt { get; private set; }
 
+    public bool IsSystemRole { get; private set; }
+
+    public bool IsDefaultForNewUsers { get; private set; }
+
+    public string? Description { get; private set; }
+
     private Role() { }
 
-    public static Role Create(string roleName)
+    public static Role Create(string roleName, string? description = null, bool isSystemRole = false, bool isDefaultForNewUsers = false)
     {
         Guard.AgainstNullOrEmpty(roleName, nameof(roleName));
        
 
-        // Normalize and truncate string fields
         var normalizedName = Normalization.NormalizeAndTruncate(roleName, 256);
         Guard.AgainstNullOrEmpty(normalizedName, nameof(normalizedName));
 
+        var normalizedDescription = Normalization.NormalizeAndTruncate(description, 1000);
+
         return new Role
         {
-            // CreatedAt will be set by DB via HasDefaultValueSql("SYSUTCDATETIME()")
             Name = normalizedName,
-            NormalizedName = normalizedName.ToUpperInvariant()
+            NormalizedName = normalizedName.ToUpperInvariant(),
+            Description = normalizedDescription,
+            IsSystemRole = isSystemRole,
+            IsDefaultForNewUsers = isDefaultForNewUsers
         };
     }
 
@@ -39,7 +48,34 @@ public sealed class Role : IdentityRole<Guid>
         Guard.AgainstNullOrEmpty(normalizedName, nameof(normalizedName));
 
         Name = normalizedName;
-        NormalizedName = normalizedName.ToUpperInvariant();
+        NormalizedName = normalizedName!.ToUpperInvariant();
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void UpdateDescription(string? description)
+    {
+        Description = Normalization.NormalizeAndTruncate(description, 1000);
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void MarkAsSystemRole()
+    {
+        if (IsSystemRole) return;
+        IsSystemRole = true;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void UnmarkAsSystemRole()
+    {
+        if (!IsSystemRole) return;
+        IsSystemRole = false;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetDefaultForNewUsers(bool isDefault)
+    {
+        if (IsDefaultForNewUsers == isDefault) return;
+        IsDefaultForNewUsers = isDefault;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

@@ -8,16 +8,15 @@ public static class PermissionSeeder
     {
         logger?.LogInformation("Starting permission seeding...");
 
-        // 1) خواندن همه permissionها از کلاس Permissions و پاک‌سازی نام‌ها
         var defaults = Permissions.GetAll()
             .Select(p => new
             {
-                RawName = p.Name,                                 // همون چیزی که تعریف کردیم
-                CleanName = p.Name?.Trim(),                      // trim
+                RawName = p.Name,                                
+                CleanName = p.Name?.Trim(),                    
                 p.Description
             })
             .Where(p => !string.IsNullOrWhiteSpace(p.CleanName))
-            .GroupBy(p => p.CleanName!, StringComparer.OrdinalIgnoreCase)  // اگر دوبار با یک نام تعریف شده، یکی باقی می‌ماند
+            .GroupBy(p => p.CleanName!, StringComparer.OrdinalIgnoreCase)  
             .Select(g => g.First())
             .ToList();
 
@@ -25,19 +24,18 @@ public static class PermissionSeeder
             .Select(p => p.CleanName!)
             .ToList();
 
-        // 2) خواندن Permissionهای موجود از DB بر اساس نام تمیز شده
         var existing = await context.Permissions
-            .Where(p => cleanNames.Contains(p.Name)) // این هنوز در SQL اجرا می‌شود
+            .Where(p => cleanNames.Contains(p.Name)) 
             .Select(p => p.Name)
             .ToListAsync();
 
-        // 3) یک HashSet تمیز و Case-Insensitive از نام‌هایی که در DB داریم
+      
         var existingSet = existing
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .Select(n => n.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // 4) فقط آن permissionهایی که بعد از Trim/Case-Insensitive در DB نیستند، اضافه شوند
+     
         var toInsert = defaults
             .Where(p => !existingSet.Contains(p.CleanName!))
             .Select(p => Permission.Create(p.CleanName!, p.Description))
@@ -61,29 +59,36 @@ public static class PermissionSeeder
     {
         logger?.LogInformation("Starting role seeding...");
 
-        // Use centralized Permissions class
+        
         var rolesMap = Permissions.GetRolePermissions();
         var roleNames = rolesMap.Keys.ToList();
 
-        // نقش‌های موجود
         var roles = await context.Roles
             .Where(r => roleNames.Contains(r.Name))
             .ToListAsync();
 
-        // ایجاد نقش‌های جدید
         var missingRoles = roleNames.Except(roles.Select(r => r.Name)).ToList();
         foreach (var name in missingRoles)
-            context.Roles.Add(Role.Create(name));
+        {
+           
+            var isSystemRole = name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) ||
+                              name.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+            
+            var isDefaultForNewUsers = name.Equals("Customer", StringComparison.OrdinalIgnoreCase);
+
+            var description = GetRoleDescription(name);
+            context.Roles.Add(Role.Create(name, description, isSystemRole, isDefaultForNewUsers));
+        }
 
         if (missingRoles.Any())
             await context.SaveChangesAsync();
 
-        // دوباره همه نقش‌ها را واکشی کن تا Id داشته باشند
+       
         roles = await context.Roles
             .Where(r => roleNames.Contains(r.Name))
             .ToListAsync();
 
-        // همه‌ی Permissionها یکجا (با normalization برای جلوگیری از duplicate)
+        
         var allPermNames = rolesMap.Values
             .SelectMany(v => v)
             .Select(n => n?.Trim())
@@ -91,7 +96,7 @@ public static class PermissionSeeder
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         
-        // خواندن از DB و ساخت HashSet برای مقایسه case-insensitive
+       
         var allPermsFromDb = await context.Permissions
             .Where(p => allPermNames.Contains(p.Name))
             .ToListAsync();
@@ -104,7 +109,6 @@ public static class PermissionSeeder
         
         var allPerms = allPermsSet;
 
-        // RolePermissionهای موجود یکجا
         var roleIds = roles.Select(r => r.Id).ToList();
         var rolePermsExisting = await context.RolePermissions
             .Where(rp => roleIds.Contains(rp.RoleId))
@@ -120,7 +124,6 @@ public static class PermissionSeeder
             
             foreach (var permName in wanted)
             {
-                // مقایسه case-insensitive برای پیدا کردن permission
                 var perm = allPerms.FirstOrDefault(p => 
                     string.Equals(p.Name?.Trim(), permName, StringComparison.OrdinalIgnoreCase));
                 
@@ -153,6 +156,19 @@ public static class PermissionSeeder
     {
         await SeedPermissionsAsync(context, logger);
         await SeedRolesAsync(context, logger);
+    }
+
+    private static string? GetRoleDescription(string roleName)
+    {
+        return roleName.ToUpperInvariant() switch
+        {
+            "SUPERADMIN" => "دسترسی کامل به تمام بخش‌های سیستم. این نقش قابل حذف نیست.",
+            "ADMIN" => "مدیر سیستم با دسترسی به بخش‌های مدیریتی. این نقش قابل حذف نیست.",
+            "MANAGER" => "مدیر بخش‌های مختلف با دسترسی محدودتر از Admin.",
+            "EMPLOYEE" => "کارمند با دسترسی به بخش‌های عملیاتی.",
+            "CUSTOMER" => "کاربر عادی فروشگاه. این نقش به صورت خودکار به کاربران جدید اختصاص می‌یابد.",
+            _ => null
+        };
     }
 }
 
