@@ -21,17 +21,16 @@ public class Permission
     {
         Guard.AgainstNullOrEmpty(name, nameof(name));
 
-        // Normalize and truncate string fields
         var normalizedName = Normalization.NormalizeAndTruncate(name, 256);
         var normalizedDescription = Normalization.NormalizeAndTruncate(description, 1000);
 
         return new Permission()
         {
-            // CreatedAt will be set by DB via HasDefaultValueSql("SYSUTCDATETIME()")
             Name = normalizedName!,
             Description = normalizedDescription
         };
     }
+
 
     public void UpdateDescription(string? description)
     {
