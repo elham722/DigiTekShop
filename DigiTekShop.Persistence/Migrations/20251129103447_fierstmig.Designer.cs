@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Persistence.Migrations
 {
     [DbContext(typeof(DigiTekShopDbContext))]
-    [Migration("20251111084339_firstmigration")]
-    partial class firstmigration
+    [Migration("20251129103447_fierstmig")]
+    partial class fierstmig
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

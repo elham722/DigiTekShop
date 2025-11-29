@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DigiTekShop.Identity.Migrations
 {
     /// <inheritdoc />
-    public partial class firstmigration : Migration
+    public partial class fierstmig : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -108,6 +108,9 @@ namespace DigiTekShop.Identity.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    IsSystemRole = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    IsDefaultForNewUsers = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -742,6 +745,16 @@ namespace DigiTekShop.Identity.Migrations
                 name: "IX_Roles_CreatedAt",
                 table: "Roles",
                 column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Roles_IsDefaultForNewUsers",
+                table: "Roles",
+                column: "IsDefaultForNewUsers");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Roles_IsSystemRole",
+                table: "Roles",
+                column: "IsSystemRole");
 
             migrationBuilder.CreateIndex(
                 name: "RoleNameIndex",

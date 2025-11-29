@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigiTekShop.Identity.Migrations
 {
     [DbContext(typeof(DigiTekShopIdentityDbContext))]
-    [Migration("20251111084247_firstmigration")]
-    partial class firstmigration
+    [Migration("20251129103332_fierstmig")]
+    partial class fierstmig
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -609,6 +609,20 @@ namespace DigiTekShop.Identity.Migrations
                         .HasColumnType("datetimeoffset")
                         .HasDefaultValueSql("SYSUTCDATETIME()");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsDefaultForNewUsers")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsSystemRole")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -624,6 +638,12 @@ namespace DigiTekShop.Identity.Migrations
 
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("IX_Roles_CreatedAt");
+
+                    b.HasIndex("IsDefaultForNewUsers")
+                        .HasDatabaseName("IX_Roles_IsDefaultForNewUsers");
+
+                    b.HasIndex("IsSystemRole")
+                        .HasDatabaseName("IX_Roles_IsSystemRole");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique()
