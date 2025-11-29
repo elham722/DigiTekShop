@@ -31,6 +31,15 @@ public sealed class LogoutService : ILogoutService
         if (string.IsNullOrWhiteSpace(dto.RefreshToken))
             return Result.Failure(ErrorCodes.Common.VALIDATION_FAILED);
 
+        
+        var currentUserId = _client.AccessTokenSubject;
+        if (currentUserId is null || currentUserId != dto.UserId)
+        {
+            _logger.LogWarning("Security violation: User {CurrentUserId} attempted to logout user {RequestedUserId} | ip={Ip}",
+                currentUserId, dto.UserId, _client.IpAddress ?? "n/a");
+            return Result.Failure(ErrorCodes.Common.FORBIDDEN, "You can only logout your own account.");
+        }
+
         var revoke = await _tokens.RevokeAsync(dto.RefreshToken!, dto.UserId, ct);
         if (revoke.IsFailure)
             return Result.Failure(revoke.Errors!, revoke.ErrorCode!);
@@ -49,6 +58,15 @@ public sealed class LogoutService : ILogoutService
     {
         if (dto.UserId == Guid.Empty)
             return Result.Failure(ErrorCodes.Common.VALIDATION_FAILED);
+
+       
+        var currentUserId = _client.AccessTokenSubject;
+        if (currentUserId is null || currentUserId != dto.UserId)
+        {
+            _logger.LogWarning("Security violation: User {CurrentUserId} attempted to logout all sessions for user {RequestedUserId} | ip={Ip}",
+                currentUserId, dto.UserId, _client.IpAddress ?? "n/a");
+            return Result.Failure(ErrorCodes.Common.FORBIDDEN, "You can only logout your own account.");
+        }
 
         var revoke = await _tokens.RevokeAllAsync(dto.UserId, ct);
         if (revoke.IsFailure)
