@@ -31,6 +31,15 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
                   ?? context.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
                   ?? "unknown";
 
+   
+        if (context.User.IsInRole("SuperAdmin"))
+        {
+            _logger.LogDebug("Authorization succeeded: User {UserId} is SuperAdmin (God Mode) for permission {Permission}", 
+                userId, requirement.Permission);
+            context.Succeed(requirement);
+            return Task.CompletedTask;
+        }
+
         
         var userPermissions = GetUserPermissions(context.User);
 
