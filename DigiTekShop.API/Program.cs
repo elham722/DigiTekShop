@@ -1,5 +1,7 @@
 ﻿using DigiTekShop.API.Extensions.Telemetry;
 using DigiTekShop.Infrastructure.Search;
+using DigiTekShop.Identity.Models;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -190,16 +192,25 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<DigiTekShopIdentityDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var services = scope.ServiceProvider;
+    var db = services.GetRequiredService<DigiTekShopIdentityDbContext>();
+    var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+    var logger = loggerFactory.CreateLogger("Seed");
+    
     try
     {
+        // 1) Seed Permissions and Roles
         await PermissionSeeder.SeedAllAsync(db, logger);
         logger.LogInformation("✅ Permissions and Roles seeded successfully");
+
+        // 2) Seed SuperAdmin user
+        var userManager = services.GetRequiredService<UserManager<User>>();
+        var roleManager = services.GetRequiredService<RoleManager<Role>>();
+        await IdentitySeeder.SeedSuperAdminAsync(userManager, roleManager, logger);
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ Error seeding permissions");
+        logger.LogError(ex, "❌ Error during seeding");
     }
 }
 

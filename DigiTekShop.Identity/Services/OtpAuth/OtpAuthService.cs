@@ -96,6 +96,7 @@ public sealed class OtpAuthService : IAuthService
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.NormalizedPhoneNumber == phone && !u.IsDeleted, ct);
 
+        var isNewUser = false;
         if (user is null)
         {
             user = User.CreateFromPhone(phone, customerId: null, phoneConfirmed: false);
@@ -107,6 +108,10 @@ public sealed class OtpAuthService : IAuthService
                     phone, string.Join(", ", create.Errors.Select(e => $"{e.Code}:{e.Description}")));
                 return Result.Failure(ErrorCodes.Common.OPERATION_FAILED);
             }
+            isNewUser = true;
+
+            // Assign Customer role to new users (default role for all new registrations)
+            await AssignCustomerRoleIfNewAsync(user, isNewUser);
         }
 
         // 5) Resend cooldown
@@ -270,6 +275,9 @@ public sealed class OtpAuthService : IAuthService
                 return Result<LoginResponseDto>.Failure(ErrorCodes.Common.OPERATION_FAILED);
             }
             isNew = true;
+
+            // Assign Customer role to new users (default role for all new registrations)
+            await AssignCustomerRoleIfNewAsync(user, isNew);
         }
 
         if (user.IsLocked)
@@ -481,6 +489,39 @@ public sealed class OtpAuthService : IAuthService
     {
         try { await _attempts.RecordLoginAttemptAsync(userId, status, ip, ua, login, ct); }
         catch { /* no-op */ }
+    }
+
+    /// <summary>
+    /// Assigns Customer role to new users (default role for all new registrations).
+    /// This ensures all new users get the Customer role automatically.
+    /// </summary>
+    private async Task AssignCustomerRoleIfNewAsync(User user, bool isNewUser)
+    {
+        if (!isNewUser)
+            return;
+
+        // Check if user already has any role (shouldn't happen for new users, but safety check)
+        var existingRoles = await _users.GetRolesAsync(user);
+        if (existingRoles.Any())
+        {
+            _log.LogDebug("User {UserId} already has roles: {Roles}. Skipping Customer role assignment.",
+                user.Id, string.Join(", ", existingRoles));
+            return;
+        }
+
+        // Assign Customer role
+        var roleResult = await _users.AddToRoleAsync(user, "Customer");
+        if (!roleResult.Succeeded)
+        {
+            _log.LogWarning("Failed to assign Customer role to new user {UserId}: {Errors}",
+                user.Id, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+            // Don't fail the registration - user is created, just missing role
+            // This can be fixed manually or via seeder
+        }
+        else
+        {
+            _log.LogInformation("Customer role assigned to new user {UserId}", user.Id);
+        }
     }
 
     private static string GenerateNumericCode(int len)

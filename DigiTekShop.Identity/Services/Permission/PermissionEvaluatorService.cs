@@ -163,8 +163,14 @@ public class PermissionEvaluatorService : IPermissionEvaluatorService
 
             var result = effectivePermissions.AsEnumerable();
 
-            // Cache the result
-            _memoryCache.Set(cacheKey, result, CacheExpiration);
+            // Cache the result with Size (required when SizeLimit is set)
+            var cacheOptions = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = CacheExpiration,
+                Size = effectivePermissions.Count > 0 ? effectivePermissions.Count : 1  // Minimum size = 1
+            };
+            _memoryCache.Set(cacheKey, result, cacheOptions);
+            
             _logger.LogDebug("Cached effective permissions for user {UserId}: {Count} permissions", 
                 userId, effectivePermissions.Count);
 
@@ -342,7 +348,13 @@ public class PermissionEvaluatorService : IPermissionEvaluatorService
 
     private void CachePermissionResult(string cacheKey, bool result)
     {
-        _memoryCache.Set(cacheKey, result, CacheExpiration);
+        // Cache with Size (required when SizeLimit is set)
+        var cacheOptions = new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = CacheExpiration,
+            Size = 1  // Boolean result = size 1
+        };
+        _memoryCache.Set(cacheKey, result, cacheOptions);
     }
 
     #endregion

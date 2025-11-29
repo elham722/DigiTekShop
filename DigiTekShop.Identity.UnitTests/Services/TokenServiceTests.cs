@@ -1,5 +1,7 @@
+using DigiTekShop.Contracts.Abstractions.Identity.Permission;
 using DigiTekShop.Contracts.DTOs.Auth.Token;
 using DigiTekShop.Identity.UnitTests.Helpers;
+using DigiTekShop.SharedKernel.Results;
 
 namespace DigiTekShop.Identity.UnitTests.Services;
 
@@ -11,6 +13,7 @@ public sealed class TokenServiceTests
     private readonly FakeDateTimeProvider _timeProvider;
     private readonly FakeCurrentClient _currentClient;
     private readonly ITokenBlacklistService _blacklist;
+    private readonly IPermissionEvaluatorService _permissionEvaluator;
     private readonly ILogger<TokenService> _logger;
     private readonly JwtSettings _jwtSettings;
     private readonly IOptions<JwtSettings> _jwtOptions;
@@ -21,7 +24,13 @@ public sealed class TokenServiceTests
         _timeProvider = new FakeDateTimeProvider();
         _currentClient = new FakeCurrentClient();
         _blacklist = Substitute.For<ITokenBlacklistService>();
+        _permissionEvaluator = Substitute.For<IPermissionEvaluatorService>();
         _logger = Substitute.For<ILogger<TokenService>>();
+        
+        // Mock GetEffectivePermissionsAsync to return empty list by default
+        _permissionEvaluator
+            .GetEffectivePermissionsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IEnumerable<string>>.Success(Enumerable.Empty<string>()));
         
         _jwtSettings = new JwtSettings
         {
@@ -505,6 +514,7 @@ public sealed class TokenServiceTests
             _jwtOptions,
             _blacklist,
             _currentClient,
+            _permissionEvaluator,
             _logger);
     }
 

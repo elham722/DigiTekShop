@@ -1,3 +1,5 @@
+using DigiTekShop.SharedKernel.Authorization;
+
 namespace DigiTekShop.Identity.Data;
 
 public static class PermissionSeeder
@@ -6,17 +8,39 @@ public static class PermissionSeeder
     {
         logger?.LogInformation("Starting permission seeding...");
 
-        var defaults = GetDefaultPermissions();
-        var names = defaults.Select(p => p.Name).ToList();
+        // 1) خواندن همه permissionها از کلاس Permissions و پاک‌سازی نام‌ها
+        var defaults = Permissions.GetAll()
+            .Select(p => new
+            {
+                RawName = p.Name,                                 // همون چیزی که تعریف کردیم
+                CleanName = p.Name?.Trim(),                      // trim
+                p.Description
+            })
+            .Where(p => !string.IsNullOrWhiteSpace(p.CleanName))
+            .GroupBy(p => p.CleanName!, StringComparer.OrdinalIgnoreCase)  // اگر دوبار با یک نام تعریف شده، یکی باقی می‌ماند
+            .Select(g => g.First())
+            .ToList();
 
+        var cleanNames = defaults
+            .Select(p => p.CleanName!)
+            .ToList();
+
+        // 2) خواندن Permissionهای موجود از DB بر اساس نام تمیز شده
         var existing = await context.Permissions
-            .Where(p => names.Contains(p.Name))
+            .Where(p => cleanNames.Contains(p.Name)) // این هنوز در SQL اجرا می‌شود
             .Select(p => p.Name)
             .ToListAsync();
 
+        // 3) یک HashSet تمیز و Case-Insensitive از نام‌هایی که در DB داریم
+        var existingSet = existing
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // 4) فقط آن permissionهایی که بعد از Trim/Case-Insensitive در DB نیستند، اضافه شوند
         var toInsert = defaults
-            .Where(p => !existing.Contains(p.Name))
-            .Select(p => Permission.Create(p.Name, p.Description))
+            .Where(p => !existingSet.Contains(p.CleanName!))
+            .Select(p => Permission.Create(p.CleanName!, p.Description))
             .ToList();
 
         if (toInsert.Count > 0)
@@ -37,7 +61,8 @@ public static class PermissionSeeder
     {
         logger?.LogInformation("Starting role seeding...");
 
-        var rolesMap = GetDefaultRolesWithPermissions();
+        // Use centralized Permissions class
+        var rolesMap = Permissions.GetRolePermissions();
         var roleNames = rolesMap.Keys.ToList();
 
         // نقش‌های موجود
@@ -58,11 +83,26 @@ public static class PermissionSeeder
             .Where(r => roleNames.Contains(r.Name))
             .ToListAsync();
 
-        // همه‌ی Permissionها یکجا
-        var allPermNames = rolesMap.Values.SelectMany(v => v).Distinct().ToList();
-        var allPerms = await context.Permissions
+        // همه‌ی Permissionها یکجا (با normalization برای جلوگیری از duplicate)
+        var allPermNames = rolesMap.Values
+            .SelectMany(v => v)
+            .Select(n => n?.Trim())
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        
+        // خواندن از DB و ساخت HashSet برای مقایسه case-insensitive
+        var allPermsFromDb = await context.Permissions
             .Where(p => allPermNames.Contains(p.Name))
             .ToListAsync();
+        
+        var allPermsSet = allPermsFromDb
+            .Select(p => new { Perm = p, CleanName = p.Name?.Trim() })
+            .GroupBy(p => p.CleanName, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First().Perm)
+            .ToList();
+        
+        var allPerms = allPermsSet;
 
         // RolePermissionهای موجود یکجا
         var roleIds = roles.Select(r => r.Id).ToList();
@@ -73,10 +113,17 @@ public static class PermissionSeeder
         var toAdd = new List<RolePermission>();
         foreach (var role in roles)
         {
-            var wanted = rolesMap[role.Name];
+            var wanted = rolesMap[role.Name!]
+                .Select(n => n?.Trim())
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .ToList();
+            
             foreach (var permName in wanted)
             {
-                var perm = allPerms.FirstOrDefault(p => p.Name == permName);
+                // مقایسه case-insensitive برای پیدا کردن permission
+                var perm = allPerms.FirstOrDefault(p => 
+                    string.Equals(p.Name?.Trim(), permName, StringComparison.OrdinalIgnoreCase));
+                
                 if (perm == null)
                 {
                     logger?.LogWarning("Permission '{Perm}' not found for role '{Role}'", permName, role.Name);
@@ -99,206 +146,6 @@ public static class PermissionSeeder
         {
             logger?.LogInformation("No new role-permissions to assign.");
         }
-    }
-
-    private static List<(string Name, string Description)> GetDefaultPermissions()
-    {
-        return new List<(string, string)>
-        {
-            // Admin Permissions
-            ("Admin.Roles.Manage", "Manage roles (CRUD)"),
-            ("Admin.Users.Manage", "Manage users (CRUD, assign roles)"),
-            ("Admin.Permissions.Manage", "Manage permissions (CRUD, assign to roles/users)"),
-            ("Admin.Permissions.View", "View all permissions"),
-            ("Admin.System.Configure", "Configure system settings"),
-
-            // Products Permissions
-            ("Products.View", "View products"),
-            ("Products.Create", "Create new products"),
-            ("Products.Edit", "Edit existing products"),
-            ("Products.Delete", "Delete products"),
-            ("Products.ViewInventory", "View product inventory details (sensitive)"),
-            ("Products.ManageInventory", "Manage product inventory"),
-
-            // Orders Permissions
-            ("Orders.View", "View own orders"),
-            ("Orders.ViewAll", "View all orders (admin/manager)"),
-            ("Orders.Create", "Create new orders"),
-            ("Orders.UpdateStatus", "Update order status"),
-            ("Orders.Cancel", "Cancel orders"),
-            ("Orders.Delete", "Delete orders (admin only)"),
-            ("Orders.ViewFinancials", "View order financial details (sensitive)"),
-
-            // Customers Permissions
-            ("Customers.View", "View customers"),
-            ("Customers.Create", "Create new customers"),
-            ("Customers.Edit", "Edit customer information"),
-            ("Customers.Delete", "Delete customers"),
-            ("Customers.ViewSensitive", "View sensitive customer data (payment info, etc.)"),
-
-            // Reports Permissions
-            ("Reports.View", "View reports"),
-            ("Reports.ViewSales", "View sales reports"),
-            ("Reports.ViewFinancial", "View financial reports"),
-            ("Reports.Export", "Export reports"),
-
-            // Security & Audit Permissions
-            ("Security.ViewLogs", "View security logs"),
-            ("Security.ViewAuditTrail", "View audit trail"),
-            ("Security.ManageDevices", "Manage user devices"),
-            ("Security.ManageSessions", "Manage user sessions"),
-
-            // Settings Permissions
-            ("Settings.View", "View settings"),
-            ("Settings.Edit", "Edit settings"),
-        };
-    }
-
-   
-    private static Dictionary<string, List<string>> GetDefaultRolesWithPermissions()
-    {
-        return new Dictionary<string, List<string>>
-        {
-            // SuperAdmin - تمام دسترسی‌ها
-            {
-                "SuperAdmin",
-                new List<string>
-                {
-                    // Admin
-                    "Admin.Roles.Manage",
-                    "Admin.Users.Manage",
-                    "Admin.Permissions.Manage",
-                    "Admin.Permissions.View",
-                    "Admin.System.Configure",
-
-                    // Products
-                    "Products.View",
-                    "Products.Create",
-                    "Products.Edit",
-                    "Products.Delete",
-                    "Products.ViewInventory",
-                    "Products.ManageInventory",
-
-                    // Orders
-                    "Orders.View",
-                    "Orders.ViewAll",
-                    "Orders.Create",
-                    "Orders.UpdateStatus",
-                    "Orders.Cancel",
-                    "Orders.Delete",
-                    "Orders.ViewFinancials",
-
-                    // Customers
-                    "Customers.View",
-                    "Customers.Create",
-                    "Customers.Edit",
-                    "Customers.Delete",
-                    "Customers.ViewSensitive",
-
-                    // Reports
-                    "Reports.View",
-                    "Reports.ViewSales",
-                    "Reports.ViewFinancial",
-                    "Reports.Export",
-
-                    // Security
-                    "Security.ViewLogs",
-                    "Security.ViewAuditTrail",
-                    "Security.ManageDevices",
-                    "Security.ManageSessions",
-
-                    // Settings
-                    "Settings.View",
-                    "Settings.Edit",
-                }
-            },
-
-            // Admin - دسترسی‌های مدیریتی (بدون تنظیمات حساس)
-            {
-                "Admin",
-                new List<string>
-                {
-                    "Admin.Users.Manage",
-                    "Admin.Roles.Manage",
-                    "Admin.Permissions.View",
-
-                    "Products.View",
-                    "Products.Create",
-                    "Products.Edit",
-                    "Products.ViewInventory",
-                    "Products.ManageInventory",
-
-                    "Orders.ViewAll",
-                    "Orders.UpdateStatus",
-                    "Orders.Cancel",
-                    "Orders.ViewFinancials",
-
-                    "Customers.View",
-                    "Customers.Create",
-                    "Customers.Edit",
-
-                    "Reports.View",
-                    "Reports.ViewSales",
-                    "Reports.ViewFinancial",
-                    "Reports.Export",
-
-                    "Security.ViewLogs",
-                }
-            },
-
-            // Manager - مدیریت عملیاتی
-            {
-                "Manager",
-                new List<string>
-                {
-                    "Products.View",
-                    "Products.Create",
-                    "Products.Edit",
-                    "Products.ViewInventory",
-
-                    "Orders.ViewAll",
-                    "Orders.UpdateStatus",
-                    "Orders.Cancel",
-
-                    "Customers.View",
-                    "Customers.Edit",
-
-                    "Reports.View",
-                    "Reports.ViewSales",
-                    "Reports.Export",
-                }
-            },
-
-            // Employee - کارمند عادی
-            {
-                "Employee",
-                new List<string>
-                {
-                    "Products.View",
-                    "Products.Create",
-
-                    "Orders.ViewAll",
-                    "Orders.Create",
-                    "Orders.UpdateStatus",
-
-                    "Customers.View",
-                    "Customers.Create",
-                }
-            },
-
-            // Customer - مشتری
-            {
-                "Customer",
-                new List<string>
-                {
-                    "Products.View",
-
-                    "Orders.View",
-                    "Orders.Create",
-                    "Orders.Cancel",
-                }
-            },
-        };
     }
 
 

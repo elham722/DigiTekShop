@@ -1,5 +1,7 @@
-﻿using DigiTekShop.Contracts.DTOs.Auth.Token;
+﻿using DigiTekShop.Contracts.Abstractions.Identity.Permission;
+using DigiTekShop.Contracts.DTOs.Auth.Token;
 using DigiTekShop.Contracts.Options.Token;
+using DigiTekShop.SharedKernel.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -14,6 +16,7 @@ public sealed class TokenService : ITokenService
     private readonly JwtSettings _jwt;
     private readonly ITokenBlacklistService _blacklist;
     private readonly ICurrentClient _client;
+    private readonly IPermissionEvaluatorService _permissionEvaluator;
     private readonly ILogger<TokenService> _log;
 
     private static class Events
@@ -32,6 +35,7 @@ public sealed class TokenService : ITokenService
         IOptions<JwtSettings> jwt,
         ITokenBlacklistService blacklist,
         ICurrentClient client,
+        IPermissionEvaluatorService permissionEvaluator,
         ILogger<TokenService> log)
     {
         _users = users;
@@ -40,6 +44,7 @@ public sealed class TokenService : ITokenService
         _jwt = jwt.Value;
         _blacklist = blacklist;
         _client = client;
+        _permissionEvaluator = permissionEvaluator;
         _log = log;
     }
 
@@ -73,7 +78,12 @@ public sealed class TokenService : ITokenService
             }
         }
 
-        var (access, accessExp, accessIat, jti) = CreateAccessToken(user);
+        // Get user roles and permissions for JWT claims
+        var roles = await _users.GetRolesAsync(user);
+        var permissionsResult = await _permissionEvaluator.GetEffectivePermissionsAsync(user.Id.ToString(), ct);
+        var permissions = permissionsResult.IsSuccess ? permissionsResult.Value!.ToList() : new List<string>();
+
+        var (access, accessExp, accessIat, jti) = CreateAccessToken(user, roles, permissions);
         var (rawRefresh, refreshHash, refreshExp) = CreateRefreshToken();
 
         var rt = RefreshToken.Create(
@@ -89,7 +99,7 @@ public sealed class TokenService : ITokenService
         _db.RefreshTokens.Add(rt);
         await _db.SaveChangesAsync(ct);
 
-        _log.LogInformation(Events.Issue, "Issued tokens for user={UserId}", user.Id);
+        _log.LogInformation(Events.Issue, "Issued tokens for user={UserId} with {PermCount} permissions", user.Id, permissions.Count);
 
         return Result<RefreshTokenResponse>.Success(new RefreshTokenResponse
         {
@@ -137,7 +147,12 @@ public sealed class TokenService : ITokenService
         token.MarkAsUsed(now);
         token.Revoke("rotated", now);
 
-        var (access, accessExp, accessIat, jti) = CreateAccessToken(token.User);
+        // Get user roles and permissions for JWT claims (refresh = recalculate permissions)
+        var roles = await _users.GetRolesAsync(token.User);
+        var permissionsResult = await _permissionEvaluator.GetEffectivePermissionsAsync(token.User.Id.ToString(), ct);
+        var permissions = permissionsResult.IsSuccess ? permissionsResult.Value!.ToList() : new List<string>();
+
+        var (access, accessExp, accessIat, jti) = CreateAccessToken(token.User, roles, permissions);
         var (rawRefresh, newHash, newExp) = CreateRefreshToken();
 
         var replacement = RefreshToken.Create(
@@ -166,7 +181,7 @@ public sealed class TokenService : ITokenService
             return Result<RefreshTokenResponse>.Failure(ErrorCodes.Common.CONCURRENCY_CONFLICT);
         }
 
-        _log.LogInformation(Events.Refresh, "Rotated refresh token for user={UserId}", token.UserId);
+        _log.LogInformation(Events.Refresh, "Rotated refresh token for user={UserId} with {PermCount} permissions", token.UserId, permissions.Count);
 
         return Result<RefreshTokenResponse>.Success(new RefreshTokenResponse
         {
@@ -267,7 +282,7 @@ public sealed class TokenService : ITokenService
     #region Helpers
 
     private (string token, DateTimeOffset expiresAt, DateTimeOffset issuedAt, string jti)
-        CreateAccessToken(User user)
+        CreateAccessToken(User user, IList<string> roles, IList<string> permissions)
     {
         var now = _time.UtcNow;
         var expires = now.AddMinutes(_jwt.AccessTokenExpirationMinutes);
@@ -285,8 +300,17 @@ public sealed class TokenService : ITokenService
             new(ClaimTypes.Email, user.Email ?? string.Empty)
         };
 
+        // Add device ID if present
         if (!string.IsNullOrWhiteSpace(_client.DeviceId))
             claims.Add(new("did", _client.DeviceId!));
+
+        // Add roles
+        foreach (var role in roles)
+            claims.Add(new(ClaimTypes.Role, role));
+
+        // Add permissions (using centralized claim type)
+        foreach (var permission in permissions)
+            claims.Add(new(Permissions.ClaimType, permission));
 
         var token = new JwtSecurityToken(
             issuer: _jwt.Issuer,
