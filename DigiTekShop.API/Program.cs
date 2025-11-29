@@ -199,14 +199,9 @@ if (app.Environment.IsDevelopment())
     
     try
     {
-        // 1) Seed Permissions and Roles
+    
         await PermissionSeeder.SeedAllAsync(db, logger);
         logger.LogInformation("✅ Permissions and Roles seeded successfully");
-
-        // 2) Seed SuperAdmin user
-        var userManager = services.GetRequiredService<UserManager<User>>();
-        var roleManager = services.GetRequiredService<RoleManager<Role>>();
-        await IdentitySeeder.SeedSuperAdminAsync(userManager, roleManager, logger);
     }
     catch (Exception ex)
     {
