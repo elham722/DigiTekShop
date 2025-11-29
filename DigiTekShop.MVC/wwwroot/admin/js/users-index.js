@@ -514,35 +514,83 @@ function renderPagination(data) {
 
     if (!data || data.totalPages <= 1) return;
 
-    const createItem = (page, text, { active = false, disabled = false } = {}) => {
+    const createItem = (page, text, { active = false, disabled = false, ellipsis = false } = {}) => {
         const li = document.createElement("li");
         li.className = "page-item";
         if (active) li.classList.add("active");
         if (disabled) li.classList.add("disabled");
+        if (ellipsis) li.classList.add("disabled");
 
         const link = document.createElement("a");
         link.className = "page-link";
         link.href = "#";
         link.textContent = text;
 
-        link.addEventListener("click", (event) => {
-            event.preventDefault();
-            if (disabled || page === currentPage) return;
-            currentPage = page;
-            loadUsers();
-        });
+        if (!ellipsis && !disabled) {
+            link.addEventListener("click", (event) => {
+                event.preventDefault();
+                if (page === currentPage) return;
+                currentPage = page;
+                loadUsers();
+            });
+        }
 
         li.appendChild(link);
         return li;
     };
 
+    // دکمه "قبلی"
     pagination.appendChild(createItem(currentPage - 1, "قبلی", { disabled: currentPage === 1 }));
 
-    for (let page = 1; page <= data.totalPages; page += 1) {
-        pagination.appendChild(createItem(page, page.toString(), { active: page === currentPage }));
+    const totalPages = data.totalPages;
+    const current = currentPage;
+    const maxVisible = 7; // حداکثر تعداد دکمه‌های قابل مشاهده
+
+    if (totalPages <= maxVisible) {
+        // اگر صفحات کم هستند، همه را نمایش بده
+        for (let page = 1; page <= totalPages; page += 1) {
+            pagination.appendChild(createItem(page, page.toString(), { active: page === current }));
+        }
+    } else {
+        // صفحات زیاد هستند - pagination هوشمند
+        // همیشه صفحه اول
+        pagination.appendChild(createItem(1, "1", { active: current === 1 }));
+
+        let startPage = Math.max(2, current - 1);
+        let endPage = Math.min(totalPages - 1, current + 1);
+
+        // اگر نزدیک به ابتدا هستیم
+        if (current <= 3) {
+            startPage = 2;
+            endPage = Math.min(5, totalPages - 1);
+        }
+        // اگر نزدیک به انتها هستیم
+        else if (current >= totalPages - 2) {
+            startPage = Math.max(2, totalPages - 4);
+            endPage = totalPages - 1;
+        }
+
+        // اگر بین startPage و صفحه اول فاصله هست، "..." بذار
+        if (startPage > 2) {
+            pagination.appendChild(createItem(null, "...", { ellipsis: true }));
+        }
+
+        // صفحات میانی
+        for (let page = startPage; page <= endPage; page += 1) {
+            pagination.appendChild(createItem(page, page.toString(), { active: page === current }));
+        }
+
+        // اگر بین endPage و صفحه آخر فاصله هست، "..." بذار
+        if (endPage < totalPages - 1) {
+            pagination.appendChild(createItem(null, "...", { ellipsis: true }));
+        }
+
+        // همیشه صفحه آخر
+        pagination.appendChild(createItem(totalPages, totalPages.toString(), { active: current === totalPages }));
     }
 
-    pagination.appendChild(createItem(currentPage + 1, "بعدی", { disabled: currentPage === data.totalPages }));
+    // دکمه "بعدی"
+    pagination.appendChild(createItem(currentPage + 1, "بعدی", { disabled: currentPage === totalPages }));
 }
 
 // ---------------------

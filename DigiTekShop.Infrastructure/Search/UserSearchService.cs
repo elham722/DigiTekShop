@@ -35,7 +35,6 @@ public sealed class UserSearchService : IUserSearchService
     {
         try
         {
-            // Criteria already normalized, but ensure safety
             var page = criteria.Page <= 0 ? 1 : criteria.Page;
             var pageSize = criteria.PageSize <= 0 ? 10 : criteria.PageSize;
             var search = criteria.Search;
@@ -44,7 +43,6 @@ public sealed class UserSearchService : IUserSearchService
             var from = (page - 1) * pageSize;
             var hasQuery = !string.IsNullOrWhiteSpace(search);
             
-            // Parse status filter
             bool? isLockedFilter = null;
             if (!string.IsNullOrWhiteSpace(status))
             {
@@ -53,7 +51,7 @@ public sealed class UserSearchService : IUserSearchService
                     isLockedFilter = false;
                 else if (statusLower == "locked")
                     isLockedFilter = true;
-                // اگر مقدار دیگری باشد، isLockedFilter null می‌ماند و همه را نشان می‌دهد
+               
             }
             
             _logger.LogDebug("[UserSearch] Searching with query='{Query}', page={Page}, pageSize={PageSize}, status={Status}, isLockedFilter={IsLockedFilter}", 
@@ -62,69 +60,66 @@ public sealed class UserSearchService : IUserSearchService
             SearchRequestDescriptor<UserSearchDocument> searchDescriptor = new SearchRequestDescriptor<UserSearchDocument>()
                 .Indices(_options.UsersIndex)
                 .From(from)
-                .Size(pageSize);
+                .Size(pageSize)
+                .TrackTotalHits(true); 
 
             if (hasQuery)
             {
-                // Normalize query: trim for better matching
+                
                 var normalizedQuery = search!.Trim();
                 
-                // برای Phone: اگر query شبیه شماره تلفن است، چند فرمت مختلف را امتحان کنیم
+                
                 var phoneQueries = new List<string> { normalizedQuery };
                 
-                // اگر query فقط اعداد دارد و طول آن 3 یا بیشتر است، احتمالاً شماره تلفن است
+                
                 var digitsOnly = SharedKernel.Utilities.Text.Normalization.StripNonDigits(SharedKernel.Utilities.Text.Normalization.ToLatinDigits(normalizedQuery));
                 if (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= 3)
                 {
-                    // فرمت‌های مختلف شماره تلفن را اضافه کن
-                    // مثال: "093" -> ["093", "+9893", "9893", "93"]
-                    // مثال: "0935" -> ["0935", "+98935", "98935", "935"]
+                   
                     if (digitsOnly.StartsWith("0"))
                     {
-                        // اگر با 0 شروع می‌شود: "093" یا "0935"
-                        var withoutZero = digitsOnly[1..]; // "93" یا "935"
-                        phoneQueries.Add($"+98{withoutZero}"); // "+9893" یا "+98935"
-                        phoneQueries.Add($"98{withoutZero}"); // "9893" یا "98935"
-                        phoneQueries.Add(withoutZero); // "93" یا "935" (بدون 0)
+                       
+                        var withoutZero = digitsOnly[1..]; 
+                        phoneQueries.Add($"+98{withoutZero}"); 
+                        phoneQueries.Add($"98{withoutZero}"); 
+                        phoneQueries.Add(withoutZero); 
                     }
                     else if (digitsOnly.StartsWith("9") && digitsOnly.Length >= 9)
                     {
-                        // اگر با 9 شروع می‌شود و حداقل 9 رقم دارد: "935403605"
-                        phoneQueries.Add($"+98{digitsOnly}"); // "+98935403605"
-                        phoneQueries.Add($"0{digitsOnly}"); // "0935403605"
-                        phoneQueries.Add($"98{digitsOnly}"); // "98935403605"
+                        
+                        phoneQueries.Add($"+98{digitsOnly}"); 
+                        phoneQueries.Add($"0{digitsOnly}"); 
+                        phoneQueries.Add($"98{digitsOnly}"); 
                     }
                     else if (digitsOnly.StartsWith("98"))
                     {
-                        // اگر با 98 شروع می‌شود: "9893" یا "98935"
-                        phoneQueries.Add($"+{digitsOnly}"); // "+9893" یا "+98935"
-                        var without98 = digitsOnly[2..]; // "93" یا "935"
-                        phoneQueries.Add($"0{without98}"); // "093" یا "0935"
-                        phoneQueries.Add(without98); // "93" یا "935" (بدون 98)
+                        phoneQueries.Add($"+{digitsOnly}"); 
+                        var without98 = digitsOnly[2..]; 
+                        phoneQueries.Add($"0{without98}"); 
+                        phoneQueries.Add(without98); 
                     }
                     else if (digitsOnly.StartsWith("9") && digitsOnly.Length >= 2)
                     {
-                        // اگر با 9 شروع می‌شود و حداقل 2 رقم دارد: "93" یا "91"
-                        phoneQueries.Add($"+98{digitsOnly}"); // "+9893" یا "+9891"
-                        phoneQueries.Add($"0{digitsOnly}"); // "093" یا "091"
-                        phoneQueries.Add($"98{digitsOnly}"); // "9893" یا "9891"
+                        
+                        phoneQueries.Add($"+98{digitsOnly}"); 
+                        phoneQueries.Add($"0{digitsOnly}"); 
+                        phoneQueries.Add($"98{digitsOnly}"); 
                     }
                     
-                    // آخرین 10 رقم (برای جستجوی بدون کد کشور)
+                    
                     if (digitsOnly.Length >= 10)
                     {
                         var last10 = digitsOnly[^10..];
-                        phoneQueries.Add(last10); // "935403605"
+                        phoneQueries.Add(last10);
                     }
                     
-                    // خود digitsOnly را هم اضافه کن (برای جستجوی مستقیم)
+       
                     phoneQueries.Add(digitsOnly);
                 }
                 
-                // ساخت query descriptor
+               
                 var shouldQueries = new List<Action<QueryDescriptor<UserSearchDocument>>>();
-                
-                // 1. Match phrase on FullName (exact phrase match - highest priority)
+               
                 shouldQueries.Add(sh => sh
                     .MatchPhrase(mp => mp
                         .Field("FullName")
@@ -133,14 +128,12 @@ public sealed class UserSearchService : IUserSearchService
                     )
                 );
                 
-                // 2. Phone queries (multiple formats with wildcard)
-                // برای هر فرمت، wildcard query می‌سازیم تا partial match کار کند
+              
                 var distinctPhoneQueries = phoneQueries.Distinct().ToList();
                 _logger.LogDebug("[UserSearch] Phone queries generated: {Queries}", string.Join(", ", distinctPhoneQueries));
                 
                 foreach (var phoneQuery in distinctPhoneQueries)
                 {
-                    // Wildcard برای partial match (مثلاً "0935" در "+98935403605")
                     shouldQueries.Add(sh => sh
                         .Wildcard(w => w
                             .Field("Phone")
@@ -151,7 +144,6 @@ public sealed class UserSearchService : IUserSearchService
                     );
                 }
                 
-                // همچنین Match query برای Phone
                 shouldQueries.Add(sh => sh
                     .Match(m => m
                         .Field("Phone")
@@ -161,7 +153,6 @@ public sealed class UserSearchService : IUserSearchService
                     )
                 );
                 
-                // 3. Match on Email (exact or partial match)
                 shouldQueries.Add(sh => sh
                     .Match(m => m
                         .Field("Email")
@@ -171,7 +162,6 @@ public sealed class UserSearchService : IUserSearchService
                     )
                 );
                 
-                // 4. Multi-match on FullName, Email, Phone (fuzzy search)
                 shouldQueries.Add(sh => sh
                     .MultiMatch(mm => mm
                         .Query(normalizedQuery)
@@ -182,7 +172,6 @@ public sealed class UserSearchService : IUserSearchService
                     )
                 );
                 
-                // 5. Wildcard search for partial matches in FullName
                 shouldQueries.Add(sh => sh
                     .Wildcard(w => w
                         .Field("FullName")
@@ -192,7 +181,6 @@ public sealed class UserSearchService : IUserSearchService
                     )
                 );
                 
-                // 6. Wildcard search for partial matches in Email
                 shouldQueries.Add(sh => sh
                     .Wildcard(w => w
                         .Field("Email")
@@ -202,13 +190,12 @@ public sealed class UserSearchService : IUserSearchService
                     )
                 );
                 
-                // ساخت فیلترها
                 var filters = new List<Action<QueryDescriptor<UserSearchDocument>>>();
                 
-                // فیلتر IsDeleted
+           
                 filters.Add(f => f.Term(t => t.Field("IsDeleted").Value(false)));
                 
-                // فیلتر Status (IsLocked)
+               
                 if (isLockedFilter.HasValue)
                 {
                     filters.Add(f => f.Term(t => t.Field("IsLocked").Value(isLockedFilter.Value)));
@@ -222,13 +209,13 @@ public sealed class UserSearchService : IUserSearchService
             }
             else
             {
-                // ساخت فیلترها
+                
                 var filters = new List<Action<QueryDescriptor<UserSearchDocument>>>();
                 
-                // فیلتر IsDeleted
+                
                 filters.Add(f => f.Term(t => t.Field("IsDeleted").Value(false)));
                 
-                // فیلتر Status (IsLocked)
+               
                 if (isLockedFilter.HasValue)
                 {
                     filters.Add(f => f.Term(t => t.Field("IsLocked").Value(isLockedFilter.Value)));
@@ -254,7 +241,7 @@ public sealed class UserSearchService : IUserSearchService
 
             var items = searchResponse.Documents.ToList();
 
-            // 👈 همین کافیه
+            
             var totalCount = (int)searchResponse.Total;
             
             _logger.LogInformation("[UserSearch] Query='{Query}' → Found {Count} results (Total={Total})", 
@@ -332,7 +319,7 @@ public sealed class UserSearchService : IUserSearchService
 
     public async Task<Result> UpdateUserAsync(UserSearchDocument document, CancellationToken ct = default)
     {
-        // در Elasticsearch، update همان index است (upsert)
+       
         return await IndexUserAsync(document, ct);
     }
 }
