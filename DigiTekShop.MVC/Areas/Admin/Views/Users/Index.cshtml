@@ -54,40 +54,52 @@
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="createdAtFrom" class="control-label">تاریخ ایجاد از</label>
-                                    <input type="date"
+                                    <input type="text"
                                            id="createdAtFrom"
                                            name="createdAtFrom"
-                                           class="form-control input-sm" />
+                                           class="form-control input-sm jalali-date-input"
+                                           placeholder="1403/09/09"
+                                           dir="ltr" />
+                                    <input type="hidden" id="createdAtFromGregorian" />
                                 </div>
                             </div>
 
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="createdAtTo" class="control-label">تاریخ ایجاد تا</label>
-                                    <input type="date"
+                                    <input type="text"
                                            id="createdAtTo"
                                            name="createdAtTo"
-                                           class="form-control input-sm" />
+                                           class="form-control input-sm jalali-date-input"
+                                           placeholder="1403/09/09"
+                                           dir="ltr" />
+                                    <input type="hidden" id="createdAtToGregorian" />
                                 </div>
                             </div>
 
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="lastLoginAtFrom" class="control-label">آخرین ورود از</label>
-                                    <input type="date"
+                                    <input type="text"
                                            id="lastLoginAtFrom"
                                            name="lastLoginAtFrom"
-                                           class="form-control input-sm" />
+                                           class="form-control input-sm jalali-date-input"
+                                           placeholder="1403/09/09"
+                                           dir="ltr" />
+                                    <input type="hidden" id="lastLoginAtFromGregorian" />
                                 </div>
                             </div>
 
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="lastLoginAtTo" class="control-label">آخرین ورود تا</label>
-                                    <input type="date"
+                                    <input type="text"
                                            id="lastLoginAtTo"
                                            name="lastLoginAtTo"
-                                           class="form-control input-sm" />
+                                           class="form-control input-sm jalali-date-input"
+                                           placeholder="1403/09/09"
+                                           dir="ltr" />
+                                    <input type="hidden" id="lastLoginAtToGregorian" />
                                 </div>
                             </div>
 
@@ -175,11 +187,70 @@
 @section Styles {
     <link rel="stylesheet" href="~/admin/css/toast.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/admin/css/custom-popup.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/admin/css/jalali-datepicker.css" asp-append-version="true" />
 }
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/jalaali-js@1.2.7/dist/jalaali.min.js"></script>
+    <script src="~/admin/js/jalali-datepicker.js" asp-append-version="true"></script>
     <script src="~/admin/js/toast.js" asp-append-version="true"></script>
     <script src="~/admin/js/api-toast-helper.js" asp-append-version="true"></script>
     <script src="~/admin/js/custom-popup.js" asp-append-version="true"></script>
+    <script>
+        // Initialize date pickers after DOM ready
+        $(document).ready(function() {
+            // تاریخ ایجاد از
+            JalaliDatePicker.init('#createdAtFrom', {
+                gregorianField: '#createdAtFromGregorian',
+                placeholder: 'انتخاب تاریخ',
+                onSelect: function(jalali, gregorian) {
+                    console.log('Created From:', jalali, '->', gregorian);
+                    if (typeof loadUsers === 'function') {
+                        if (typeof currentPage !== 'undefined') currentPage = 1;
+                        loadUsers();
+                    }
+                }
+            });
+            
+            // تاریخ ایجاد تا
+            JalaliDatePicker.init('#createdAtTo', {
+                gregorianField: '#createdAtToGregorian',
+                placeholder: 'انتخاب تاریخ',
+                onSelect: function(jalali, gregorian) {
+                    console.log('Created To:', jalali, '->', gregorian);
+                    if (typeof loadUsers === 'function') {
+                        if (typeof currentPage !== 'undefined') currentPage = 1;
+                        loadUsers();
+                    }
+                }
+            });
+            
+            // آخرین ورود از
+            JalaliDatePicker.init('#lastLoginAtFrom', {
+                gregorianField: '#lastLoginAtFromGregorian',
+                placeholder: 'انتخاب تاریخ',
+                onSelect: function(jalali, gregorian) {
+                    console.log('Last Login From:', jalali, '->', gregorian);
+                    if (typeof loadUsers === 'function') {
+                        if (typeof currentPage !== 'undefined') currentPage = 1;
+                        loadUsers();
+                    }
+                }
+            });
+            
+            // آخرین ورود تا
+            JalaliDatePicker.init('#lastLoginAtTo', {
+                gregorianField: '#lastLoginAtToGregorian',
+                placeholder: 'انتخاب تاریخ',
+                onSelect: function(jalali, gregorian) {
+                    console.log('Last Login To:', jalali, '->', gregorian);
+                    if (typeof loadUsers === 'function') {
+                        if (typeof currentPage !== 'undefined') currentPage = 1;
+                        loadUsers();
+                    }
+                }
+            });
+        });
+    </script>
     <script type="module" src="~/admin/js/users-index.js" asp-append-version="true"></script>
 }

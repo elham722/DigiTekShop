@@ -77,6 +77,9 @@ function debounce(fn, delay) {
     };
 }
 
+// تاریخ‌ها با jalaali-js در Index.cshtml مدیریت می‌شوند
+// این فایل فقط برای خواندن مقادیر hidden input استفاده می‌شود
+
 document.addEventListener("DOMContentLoaded", () => {
     const searchInput = document.getElementById("search");
     const statusSelect = document.getElementById("status");
@@ -126,14 +129,8 @@ document.addEventListener("DOMContentLoaded", () => {
         loadUsers();
     });
 
-    // تغییر فیلترهای تاریخ
-    const dateInputs = [createdAtFromInput, createdAtToInput, lastLoginAtFromInput, lastLoginAtToInput];
-    dateInputs.forEach(input => {
-        input?.addEventListener("change", () => {
-            currentPage = 1;
-            loadUsers();
-        });
-    });
+    // تغییر فیلترهای تاریخ (از inputهای مخفی که تاریخ میلادی را نگه می‌دارند)
+    // این event listenerها در onSelect date picker تنظیم می‌شوند
 
     // تغییر pageSize
     pageSizeSelect?.addEventListener("change", () => {
@@ -178,18 +175,23 @@ async function loadUsers() {
 
     if (statusValue) params.set("status", statusValue);
 
-    // فیلترهای تاریخ
-    if (createdAtFromEl?.value) {
-        params.set("createdAtFrom", createdAtFromEl.value);
+    // فیلترهای تاریخ (از inputهای مخفی که تاریخ میلادی را نگه می‌دارند)
+    const createdAtFromGregorian = document.getElementById("createdAtFromGregorian");
+    const createdAtToGregorian = document.getElementById("createdAtToGregorian");
+    const lastLoginAtFromGregorian = document.getElementById("lastLoginAtFromGregorian");
+    const lastLoginAtToGregorian = document.getElementById("lastLoginAtToGregorian");
+
+    if (createdAtFromGregorian?.value) {
+        params.set("createdAtFrom", createdAtFromGregorian.value);
     }
-    if (createdAtToEl?.value) {
-        params.set("createdAtTo", createdAtToEl.value);
+    if (createdAtToGregorian?.value) {
+        params.set("createdAtTo", createdAtToGregorian.value);
     }
-    if (lastLoginAtFromEl?.value) {
-        params.set("lastLoginAtFrom", lastLoginAtFromEl.value);
+    if (lastLoginAtFromGregorian?.value) {
+        params.set("lastLoginAtFrom", lastLoginAtFromGregorian.value);
     }
-    if (lastLoginAtToEl?.value) {
-        params.set("lastLoginAtTo", lastLoginAtToEl.value);
+    if (lastLoginAtToGregorian?.value) {
+        params.set("lastLoginAtTo", lastLoginAtToGregorian.value);
     }
 
     // بقیه همون کدی که خودت نوشتی 👇
