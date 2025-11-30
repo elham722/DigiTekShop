@@ -81,6 +81,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchInput = document.getElementById("search");
     const statusSelect = document.getElementById("status");
     const pageSizeSelect = document.getElementById("pageSize");
+    const createdAtFromInput = document.getElementById("createdAtFrom");
+    const createdAtToInput = document.getElementById("createdAtTo");
+    const lastLoginAtFromInput = document.getElementById("lastLoginAtFrom");
+    const lastLoginAtToInput = document.getElementById("lastLoginAtTo");
     const form = document.getElementById("userFilterForm");
 
     // جلوگیری از submit فرم (برای Enter)
@@ -116,11 +120,19 @@ document.addEventListener("DOMContentLoaded", () => {
         searchInput.addEventListener("input", debouncedSearch);
     }
 
-
     // تغییر وضعیت
     statusSelect?.addEventListener("change", () => {
         currentPage = 1;
         loadUsers();
+    });
+
+    // تغییر فیلترهای تاریخ
+    const dateInputs = [createdAtFromInput, createdAtToInput, lastLoginAtFromInput, lastLoginAtToInput];
+    dateInputs.forEach(input => {
+        input?.addEventListener("change", () => {
+            currentPage = 1;
+            loadUsers();
+        });
     });
 
     // تغییر pageSize
@@ -145,6 +157,10 @@ let controller = null;
 async function loadUsers() {
     const searchEl = document.getElementById("search");
     const statusEl = document.getElementById("status");
+    const createdAtFromEl = document.getElementById("createdAtFrom");
+    const createdAtToEl = document.getElementById("createdAtTo");
+    const lastLoginAtFromEl = document.getElementById("lastLoginAtFrom");
+    const lastLoginAtToEl = document.getElementById("lastLoginAtTo");
 
     const searchValueRaw = searchEl?.value ?? "";
     const searchValue = searchValueRaw.trim();
@@ -161,6 +177,20 @@ async function loadUsers() {
     }
 
     if (statusValue) params.set("status", statusValue);
+
+    // فیلترهای تاریخ
+    if (createdAtFromEl?.value) {
+        params.set("createdAtFrom", createdAtFromEl.value);
+    }
+    if (createdAtToEl?.value) {
+        params.set("createdAtTo", createdAtToEl.value);
+    }
+    if (lastLoginAtFromEl?.value) {
+        params.set("lastLoginAtFrom", lastLoginAtFromEl.value);
+    }
+    if (lastLoginAtToEl?.value) {
+        params.set("lastLoginAtTo", lastLoginAtToEl.value);
+    }
 
     // بقیه همون کدی که خودت نوشتی 👇
     if (controller) controller.abort();

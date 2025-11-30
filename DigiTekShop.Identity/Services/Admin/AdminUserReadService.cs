@@ -100,6 +100,31 @@ public sealed class AdminUserReadService : IAdminUserReadService
             }
         }
 
+        //  date filters
+        if (query.CreatedAtFrom.HasValue)
+        {
+            var fromDate = new DateTimeOffset(query.CreatedAtFrom.Value.Date, TimeSpan.Zero);
+            usersQuery = usersQuery.Where(u => u.CreatedAtUtc >= fromDate);
+        }
+
+        if (query.CreatedAtTo.HasValue)
+        {
+            var toDate = new DateTimeOffset(query.CreatedAtTo.Value.Date.AddDays(1).AddTicks(-1), TimeSpan.Zero);
+            usersQuery = usersQuery.Where(u => u.CreatedAtUtc <= toDate);
+        }
+
+        if (query.LastLoginAtFrom.HasValue)
+        {
+            var fromDate = new DateTimeOffset(query.LastLoginAtFrom.Value.Date, TimeSpan.Zero);
+            usersQuery = usersQuery.Where(u => u.LastLoginAtUtc.HasValue && u.LastLoginAtUtc >= fromDate);
+        }
+
+        if (query.LastLoginAtTo.HasValue)
+        {
+            var toDate = new DateTimeOffset(query.LastLoginAtTo.Value.Date.AddDays(1).AddTicks(-1), TimeSpan.Zero);
+            usersQuery = usersQuery.Where(u => u.LastLoginAtUtc.HasValue && u.LastLoginAtUtc <= toDate);
+        }
+
         // Get users with pagination first
         var usersWithRoles = await usersQuery
             .OrderByDescending(u => u.CreatedAtUtc)
