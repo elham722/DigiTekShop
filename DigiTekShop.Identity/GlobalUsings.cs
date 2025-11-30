@@ -65,6 +65,8 @@ global using DigiTekShop.Identity.Services.Logout;
 global using DigiTekShop.Identity.Services.Me;
 global using DigiTekShop.Identity.Services.OtpAuth;
 global using DigiTekShop.Identity.Services.Permission;
+global using DigiTekShop.Identity.Services.Profile;
+global using DigiTekShop.Contracts.Abstractions.Profile;
 global using System.IdentityModel.Tokens.Jwt;
 global using System.Security.Claims;
 

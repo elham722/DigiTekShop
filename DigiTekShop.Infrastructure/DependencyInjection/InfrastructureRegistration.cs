@@ -2,6 +2,7 @@
 using DigiTekShop.Application.Common.Events;
 using DigiTekShop.Application.Common.Messaging;
 using DigiTekShop.Contracts.Abstractions.Caching;
+using DigiTekShop.Contracts.Abstractions.Profile;
 using DigiTekShop.Contracts.Options.RabbitMq;
 using DigiTekShop.Identity.Events.Mapper;
 using DigiTekShop.Infrastructure.Background;
@@ -9,6 +10,7 @@ using DigiTekShop.Infrastructure.Caching;
 using DigiTekShop.Infrastructure.DomainEvents;
 using DigiTekShop.Infrastructure.Messaging;
 using DigiTekShop.Infrastructure.Search;
+using DigiTekShop.Infrastructure.Services;
 using DigiTekShop.Infrastructure.Time;
 using DigiTekShop.Persistence.Events;
 using DigiTekShop.SharedKernel.DomainShared.Events;
@@ -91,6 +93,9 @@ public static class InfrastructureRegistration
         services.AddSingleton<ICacheService, DistributedCacheService>();
 
         services.AddSingleton<IRateLimiter, RedisRateLimiter>();
+
+        // Profile Service (Scoped - uses DbContext)
+        services.AddScoped<IProfileService, ProfileService>();
 
         #endregion
 

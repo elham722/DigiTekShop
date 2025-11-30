@@ -71,4 +71,14 @@ public static class ErrorCodes
         public const string SEARCH_FAILED = "SEARCH_FAILED";
         public const string ELASTICSEARCH_UNAVAILABLE = "ELASTICSEARCH_UNAVAILABLE";
     }
+
+    public static class Profile
+    {
+        public const string PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND";
+        public const string PROFILE_ALREADY_COMPLETE = "PROFILE_ALREADY_COMPLETE";
+        public const string PROFILE_INCOMPLETE = "PROFILE_INCOMPLETE";
+        public const string CUSTOMER_CREATION_FAILED = "CUSTOMER_CREATION_FAILED";
+        public const string CUSTOMER_UPDATE_FAILED = "CUSTOMER_UPDATE_FAILED";
+        public const string INVALID_FULL_NAME = "INVALID_FULL_NAME";
+    }
 }

@@ -87,6 +87,8 @@ public static class IdentityServicesRegistration
         services.AddScoped<IMeService, MeService>();
         services.AddScoped<IAdminUserReadService, AdminUserReadService>();
 
+        // Profile
+        services.AddScoped<IUserProfileReader, UserProfileReader>();
 
         #endregion
 

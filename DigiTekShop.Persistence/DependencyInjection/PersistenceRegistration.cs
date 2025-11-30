@@ -1,4 +1,5 @@
 ﻿using DigiTekShop.Application.Common.Events;
+using DigiTekShop.Contracts.Abstractions.Profile;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
@@ -10,6 +11,7 @@ using DigiTekShop.Persistence.Ef;
 using DigiTekShop.Persistence.Events;
 using DigiTekShop.Persistence.Handlers;
 using DigiTekShop.Persistence.Interceptors;
+using DigiTekShop.Persistence.Repositories;
 using DigiTekShop.Persistence.Repositories.Customer;
 using DigiTekShop.SharedKernel.DomainShared.Events;
 using DigiTekShop.SharedKernel.Time;
@@ -56,6 +58,9 @@ public static class PersistenceRegistration
         // 3. Specific Repositories (Entity-specific)
         services.AddScoped<ICustomerCommandRepository, CustomerCommandRepository>();
         services.AddScoped<ICustomerQueryRepository, CustomerQueryRepository>();
+
+        // Profile Repository
+        services.AddScoped<ICustomerProfileRepository, CustomerProfileRepository>();
 
                // 4. Unit of Work
                services.AddScoped<IUnitOfWork, EfUnitOfWork>();
