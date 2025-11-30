@@ -68,6 +68,14 @@ const API_URL = "/api/v1/admin/users";
 let currentPage = 1;
 let pageSize = 20;
 
+// Getter/Setter for currentPage from window
+Object.defineProperty(window, 'currentPage', {
+    get: function() { return currentPage; },
+    set: function(value) { currentPage = value; }
+});
+
+window.loadUsers = null; // Will be set after function definition
+
 // debounce helper
 function debounce(fn, delay) {
     let timerId;
@@ -181,6 +189,14 @@ async function loadUsers() {
     const lastLoginAtFromGregorian = document.getElementById("lastLoginAtFromGregorian");
     const lastLoginAtToGregorian = document.getElementById("lastLoginAtToGregorian");
 
+    // Debug: نمایش مقادیر تاریخ
+    console.log('Date filters:', {
+        createdAtFrom: createdAtFromGregorian?.value,
+        createdAtTo: createdAtToGregorian?.value,
+        lastLoginAtFrom: lastLoginAtFromGregorian?.value,
+        lastLoginAtTo: lastLoginAtToGregorian?.value
+    });
+
     if (createdAtFromGregorian?.value) {
         params.set("createdAtFrom", createdAtFromGregorian.value);
     }
@@ -193,6 +209,9 @@ async function loadUsers() {
     if (lastLoginAtToGregorian?.value) {
         params.set("lastLoginAtTo", lastLoginAtToGregorian.value);
     }
+    
+    // Debug: نمایش URL نهایی
+    console.log('API URL:', `${API_URL}?${params.toString()}`);
 
     // بقیه همون کدی که خودت نوشتی 👇
     if (controller) controller.abort();
@@ -224,6 +243,9 @@ async function loadUsers() {
         console.error("Error loading users", error);
     }
 }
+
+// Export loadUsers to window for external access
+window.loadUsers = loadUsers;
 
 // ---------------------
 // Render Table

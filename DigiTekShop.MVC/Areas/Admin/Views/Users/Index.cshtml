@@ -26,96 +26,101 @@
 
                     <!-- نوار فیلتر بالا -->
                     <div class="table-toolbar admin-users-filter">
-                        <form id="userFilterForm" class="row" style="margin:0;">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="search" class="control-label">جستجو</label>
-                                    <input type="text"
-                                           id="search"
-                                           name="search"
-                                           class="form-control input-sm"
-                                           placeholder="نام، موبایل یا ایمیل" />
+                        <form id="userFilterForm" style="margin:0;">
+                            <!-- سطر اول: جستجو، وضعیت، تعداد در صفحه -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="search" class="control-label">جستجو</label>
+                                        <input type="text"
+                                               id="search"
+                                               name="search"
+                                               class="form-control input-sm"
+                                               placeholder="نام، موبایل یا ایمیل" />
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="status" class="control-label">وضعیت</label>
+                                        <select id="status"
+                                                name="status"
+                                                class="form-control input-sm">
+                                            <option value="">همه وضعیت‌ها</option>
+                                            <option value="active">فعال</option>
+                                            <option value="locked">قفل شده</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="pageSize" class="control-label">تعداد در صفحه</label>
+                                        <select id="pageSize"
+                                                name="pageSize"
+                                                class="form-control input-sm">
+                                            <option value="10">10</option>
+                                            <option value="20" selected>20</option>
+                                            <option value="50">50</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="status" class="control-label">وضعیت</label>
-                                    <select id="status"
-                                            name="status"
-                                            class="form-control input-sm">
-                                        <option value="">همه وضعیت‌ها</option>
-                                        <option value="active">فعال</option>
-                                        <option value="locked">قفل شده</option>
-                                    </select>
+                            <!-- سطر دوم: فیلترهای تاریخ -->
+                            <div class="row" style="margin-top: 15px;">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="createdAtFrom" class="control-label">تاریخ ایجاد از</label>
+                                        <input type="text"
+                                               id="createdAtFrom"
+                                               name="createdAtFrom"
+                                               class="form-control input-sm jalali-date-input"
+                                               placeholder="انتخاب تاریخ"
+                                               dir="ltr" />
+                                        <input type="hidden" id="createdAtFromGregorian" />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="createdAtFrom" class="control-label">تاریخ ایجاد از</label>
-                                    <input type="text"
-                                           id="createdAtFrom"
-                                           name="createdAtFrom"
-                                           class="form-control input-sm jalali-date-input"
-                                           placeholder="1403/09/09"
-                                           dir="ltr" />
-                                    <input type="hidden" id="createdAtFromGregorian" />
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="createdAtTo" class="control-label">تاریخ ایجاد تا</label>
+                                        <input type="text"
+                                               id="createdAtTo"
+                                               name="createdAtTo"
+                                               class="form-control input-sm jalali-date-input"
+                                               placeholder="انتخاب تاریخ"
+                                               dir="ltr" />
+                                        <input type="hidden" id="createdAtToGregorian" />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="createdAtTo" class="control-label">تاریخ ایجاد تا</label>
-                                    <input type="text"
-                                           id="createdAtTo"
-                                           name="createdAtTo"
-                                           class="form-control input-sm jalali-date-input"
-                                           placeholder="1403/09/09"
-                                           dir="ltr" />
-                                    <input type="hidden" id="createdAtToGregorian" />
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="lastLoginAtFrom" class="control-label">آخرین ورود از</label>
+                                        <input type="text"
+                                               id="lastLoginAtFrom"
+                                               name="lastLoginAtFrom"
+                                               class="form-control input-sm jalali-date-input"
+                                               placeholder="انتخاب تاریخ"
+                                               dir="ltr" />
+                                        <input type="hidden" id="lastLoginAtFromGregorian" />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="lastLoginAtFrom" class="control-label">آخرین ورود از</label>
-                                    <input type="text"
-                                           id="lastLoginAtFrom"
-                                           name="lastLoginAtFrom"
-                                           class="form-control input-sm jalali-date-input"
-                                           placeholder="1403/09/09"
-                                           dir="ltr" />
-                                    <input type="hidden" id="lastLoginAtFromGregorian" />
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="lastLoginAtTo" class="control-label">آخرین ورود تا</label>
+                                        <input type="text"
+                                               id="lastLoginAtTo"
+                                               name="lastLoginAtTo"
+                                               class="form-control input-sm jalali-date-input"
+                                               placeholder="انتخاب تاریخ"
+                                               dir="ltr" />
+                                        <input type="hidden" id="lastLoginAtToGregorian" />
+                                    </div>
                                 </div>
                             </div>
-
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="lastLoginAtTo" class="control-label">آخرین ورود تا</label>
-                                    <input type="text"
-                                           id="lastLoginAtTo"
-                                           name="lastLoginAtTo"
-                                           class="form-control input-sm jalali-date-input"
-                                           placeholder="1403/09/09"
-                                           dir="ltr" />
-                                    <input type="hidden" id="lastLoginAtToGregorian" />
-                                </div>
-                            </div>
-
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="pageSize" class="control-label">تعداد در صفحه</label>
-                                    <select id="pageSize"
-                                            name="pageSize"
-                                            class="form-control input-sm">
-                                        <option value="10">10</option>
-                                        <option value="20" selected>20</option>
-                                        <option value="50">50</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <!-- دیگه دکمه اعمال فیلتر نداریم -->
                         </form>
                     </div>
 
@@ -196,19 +201,27 @@
     <script src="~/admin/js/toast.js" asp-append-version="true"></script>
     <script src="~/admin/js/api-toast-helper.js" asp-append-version="true"></script>
     <script src="~/admin/js/custom-popup.js" asp-append-version="true"></script>
+    <script type="module" src="~/admin/js/users-index.js" asp-append-version="true"></script>
     <script>
-        // Initialize date pickers after DOM ready
-        $(document).ready(function() {
+        // Initialize date pickers after module is loaded
+        // استفاده از setTimeout برای اطمینان از load شدن module
+        function initDatePickers() {
+            if (typeof window.loadUsers !== 'function') {
+                // Module هنوز load نشده، دوباره تلاش کن
+                setTimeout(initDatePickers, 100);
+                return;
+            }
+            
+            console.log('Initializing date pickers...');
+            
             // تاریخ ایجاد از
             JalaliDatePicker.init('#createdAtFrom', {
                 gregorianField: '#createdAtFromGregorian',
                 placeholder: 'انتخاب تاریخ',
                 onSelect: function(jalali, gregorian) {
                     console.log('Created From:', jalali, '->', gregorian);
-                    if (typeof loadUsers === 'function') {
-                        if (typeof currentPage !== 'undefined') currentPage = 1;
-                        loadUsers();
-                    }
+                    window.currentPage = 1;
+                    window.loadUsers();
                 }
             });
             
@@ -218,10 +231,8 @@
                 placeholder: 'انتخاب تاریخ',
                 onSelect: function(jalali, gregorian) {
                     console.log('Created To:', jalali, '->', gregorian);
-                    if (typeof loadUsers === 'function') {
-                        if (typeof currentPage !== 'undefined') currentPage = 1;
-                        loadUsers();
-                    }
+                    window.currentPage = 1;
+                    window.loadUsers();
                 }
             });
             
@@ -231,10 +242,8 @@
                 placeholder: 'انتخاب تاریخ',
                 onSelect: function(jalali, gregorian) {
                     console.log('Last Login From:', jalali, '->', gregorian);
-                    if (typeof loadUsers === 'function') {
-                        if (typeof currentPage !== 'undefined') currentPage = 1;
-                        loadUsers();
-                    }
+                    window.currentPage = 1;
+                    window.loadUsers();
                 }
             });
             
@@ -244,13 +253,19 @@
                 placeholder: 'انتخاب تاریخ',
                 onSelect: function(jalali, gregorian) {
                     console.log('Last Login To:', jalali, '->', gregorian);
-                    if (typeof loadUsers === 'function') {
-                        if (typeof currentPage !== 'undefined') currentPage = 1;
-                        loadUsers();
-                    }
+                    window.currentPage = 1;
+                    window.loadUsers();
                 }
             });
-        });
+            
+            console.log('Date pickers initialized successfully!');
+        }
+        
+        // شروع مقداردهی بعد از load شدن DOM
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDatePickers);
+        } else {
+            initDatePickers();
+        }
     </script>
-    <script type="module" src="~/admin/js/users-index.js" asp-append-version="true"></script>
 }

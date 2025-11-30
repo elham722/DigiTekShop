@@ -326,6 +326,9 @@
                     : this.options.gregorianField;
                 if (hiddenField) {
                     hiddenField.value = gregorianStr;
+                    console.log(`Hidden field ${this.options.gregorianField} set to: ${gregorianStr}`);
+                } else {
+                    console.warn(`Hidden field not found: ${this.options.gregorianField}`);
                 }
             }
             

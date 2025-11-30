@@ -101,28 +101,37 @@ public sealed class AdminUserReadService : IAdminUserReadService
         }
 
         //  date filters
+        // استفاده از timezone ایران (+3:30) برای محاسبه دقیق تاریخ
+        var iranTimeZone = TimeSpan.FromHours(3.5); // +03:30 Tehran
+        
         if (query.CreatedAtFrom.HasValue)
         {
-            var fromDate = new DateTimeOffset(query.CreatedAtFrom.Value.Date, TimeSpan.Zero);
+            // شروع روز به وقت ایران (00:00:00 Tehran = 20:30:00 UTC روز قبل)
+            var fromDate = new DateTimeOffset(query.CreatedAtFrom.Value.Date, iranTimeZone);
+            _logger.LogDebug("Filtering CreatedAtFrom >= {FromDate} (UTC: {FromDateUtc})", fromDate, fromDate.UtcDateTime);
             usersQuery = usersQuery.Where(u => u.CreatedAtUtc >= fromDate);
         }
 
         if (query.CreatedAtTo.HasValue)
         {
-            var toDate = new DateTimeOffset(query.CreatedAtTo.Value.Date.AddDays(1).AddTicks(-1), TimeSpan.Zero);
-            usersQuery = usersQuery.Where(u => u.CreatedAtUtc <= toDate);
+            // پایان روز به وقت ایران (00:00:00 روز بعد Tehran)
+            var toDate = new DateTimeOffset(query.CreatedAtTo.Value.Date.AddDays(1), iranTimeZone);
+            _logger.LogDebug("Filtering CreatedAtTo < {ToDate} (UTC: {ToDateUtc})", toDate, toDate.UtcDateTime);
+            usersQuery = usersQuery.Where(u => u.CreatedAtUtc < toDate);
         }
 
         if (query.LastLoginAtFrom.HasValue)
         {
-            var fromDate = new DateTimeOffset(query.LastLoginAtFrom.Value.Date, TimeSpan.Zero);
+            var fromDate = new DateTimeOffset(query.LastLoginAtFrom.Value.Date, iranTimeZone);
+            _logger.LogDebug("Filtering LastLoginAtFrom >= {FromDate} (UTC: {FromDateUtc})", fromDate, fromDate.UtcDateTime);
             usersQuery = usersQuery.Where(u => u.LastLoginAtUtc.HasValue && u.LastLoginAtUtc >= fromDate);
         }
 
         if (query.LastLoginAtTo.HasValue)
         {
-            var toDate = new DateTimeOffset(query.LastLoginAtTo.Value.Date.AddDays(1).AddTicks(-1), TimeSpan.Zero);
-            usersQuery = usersQuery.Where(u => u.LastLoginAtUtc.HasValue && u.LastLoginAtUtc <= toDate);
+            var toDate = new DateTimeOffset(query.LastLoginAtTo.Value.Date.AddDays(1), iranTimeZone);
+            _logger.LogDebug("Filtering LastLoginAtTo < {ToDate} (UTC: {ToDateUtc})", toDate, toDate.UtcDateTime);
+            usersQuery = usersQuery.Where(u => u.LastLoginAtUtc.HasValue && u.LastLoginAtUtc < toDate);
         }
 
         // Get users with pagination first
