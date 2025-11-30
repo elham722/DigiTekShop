@@ -38,22 +38,22 @@ public sealed class CustomerQueryRepository
             .AsNoTracking()
             .Where(c => c.UserId == userId)
             .Select(c => new MyProfileDto(
-                UserId: c.UserId,
-                CustomerId: c.Id.Value,
-                FullName: c.FullName,
-                Email: c.Email,
-                Phone: c.Phone,
-                IsActive: c.IsActive,
-                Addresses: c.Addresses
+                c.UserId,
+                c.Id.Value,
+                c.FullName,
+                c.Email,
+                c.Phone,
+                c.IsActive,
+                c.Addresses
                     .Select(a => new MyAddressDto(
-                        Id: EF.Property<int>(a, "Id"),
-                        Line1: a.Line1,
-                        Line2: a.Line2,
-                        City: a.City,
-                        State: a.State,
-                        PostalCode: a.PostalCode,
-                        Country: a.Country,
-                        IsDefault: a.IsDefault
+                        EF.Property<int>(a, "Id"),
+                        a.Line1,
+                        a.Line2,
+                        a.City,
+                        a.State,
+                        a.PostalCode,
+                        a.Country,
+                        a.IsDefault
                     ))
                     .ToList()
             ))

@@ -1,13 +1,9 @@
-﻿global using DigiTekShop.MVC.Common;
-global using DigiTekShop.MVC.Models;
-global using DigiTekShop.MVC.Models.Auth;
-global using Microsoft.AspNetCore.Mvc;
-global using System.Diagnostics;
-global using System.Text;
+﻿global using DigiTekShop.MVC.Models.Auth;
 global using Microsoft.AspNetCore.Authorization;
-global using System.IdentityModel.Tokens.Jwt;
 global using Microsoft.AspNetCore.DataProtection;
 global using Microsoft.AspNetCore.HttpOverrides;
+global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.AspNetCore.ResponseCompression;
+global using System.IdentityModel.Tokens.Jwt;
 global using Yarp.ReverseProxy.Configuration;
 global using Yarp.ReverseProxy.Transforms;
