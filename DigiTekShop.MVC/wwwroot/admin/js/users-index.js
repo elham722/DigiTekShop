@@ -205,7 +205,7 @@ function renderTable(data) {
     if (!data || !Array.isArray(data.items) || data.items.length === 0) {
         const tr = document.createElement("tr");
         const td = document.createElement("td");
-        td.colSpan = 8;
+        td.colSpan = 9;
         td.className = "text-center text-muted py-4";
         td.textContent = "هیچ کاربری یافت نشد";
         tr.appendChild(td);
@@ -213,8 +213,12 @@ function renderTable(data) {
         return;
     }
 
-    for (const user of data.items) {
+    // محاسبه شماره ردیف بر اساس صفحه فعلی
+    const startRowNumber = (currentPage - 1) * pageSize + 1;
+
+    data.items.forEach((user, index) => {
         const tr = document.createElement("tr");
+        const rowNumber = startRowNumber + index;
 
         const phoneFormatted = formatPhone(user.phone);
         const hasName = !!user.fullName;
@@ -230,6 +234,7 @@ function renderTable(data) {
         const phoneConfirmHtml = renderPhoneConfirmBadge(user.isPhoneConfirmed);
 
         tr.innerHTML = `
+            <td class="text-center"><span class="fa-num">${rowNumber}</span></td>
             <td>
                 <div class="d-flex flex-column">
                     <span class="fw-bold">${displayName}</span>
@@ -256,7 +261,7 @@ function renderTable(data) {
         `;
 
         tbody.appendChild(tr);
-    }
+    });
 }
 
 // ---------------------
@@ -330,21 +335,22 @@ async function updateUserRowDirectly(userId, buttonEl) {
         const statusHtml = renderStatusBadge(user.isLocked);
         const phoneConfirmHtml = renderPhoneConfirmBadge(user.isPhoneConfirmed);
 
-        // به‌روزرسانی سلول‌های ردیف
+        // به‌روزرسانی سلول‌های ردیف (شماره ردیف تغییر نمی‌کند)
         const cells = row.querySelectorAll('td');
-        if (cells.length >= 8) {
-            cells[0].innerHTML = `
+        if (cells.length >= 9) {
+            // cells[0] = شماره ردیف (تغییر نمی‌کند)
+            cells[1].innerHTML = `
                 <div class="d-flex flex-column">
                     <span class="fw-bold">${displayName}</span>
                 </div>
             `;
-            cells[1].innerHTML = `<span class="fa-num">${phoneFormatted}</span>`;
-            cells[2].textContent = email;
-            cells[3].innerHTML = rolesHtml;
-            cells[4].innerHTML = `${statusHtml} ${phoneConfirmHtml}`;
-            cells[5].innerHTML = `<span class="fa-num">${createdAt}</span>`;
-            cells[6].innerHTML = `<span class="fa-num">${lastLogin}</span>`;
-            cells[7].innerHTML = `
+            cells[2].innerHTML = `<span class="fa-num">${phoneFormatted}</span>`;
+            cells[3].textContent = email;
+            cells[4].innerHTML = rolesHtml;
+            cells[5].innerHTML = `${statusHtml} ${phoneConfirmHtml}`;
+            cells[6].innerHTML = `<span class="fa-num">${createdAt}</span>`;
+            cells[7].innerHTML = `<span class="fa-num">${lastLogin}</span>`;
+            cells[8].innerHTML = `
                  <a href="#" data-user-id="${user.id}" class="btn btn-info btn-xs" data-action="details">
                     <i class="fa fa-edit"></i> جزئیات
                  </a>
