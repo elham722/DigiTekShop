@@ -1,5 +1,4 @@
 ﻿using DigiTekShop.Application.Common.Events;
-using DigiTekShop.Contracts.Abstractions.Profile;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Command;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.Query;
 using DigiTekShop.Contracts.Abstractions.Repositories.Common.UnitOfWork;
@@ -59,10 +58,7 @@ public static class PersistenceRegistration
         services.AddScoped<ICustomerCommandRepository, CustomerCommandRepository>();
         services.AddScoped<ICustomerQueryRepository, CustomerQueryRepository>();
 
-        // Profile Repository
-        services.AddScoped<ICustomerProfileRepository, CustomerProfileRepository>();
-
-               // 4. Unit of Work
+        // 4. Unit of Work
                services.AddScoped<IUnitOfWork, EfUnitOfWork>();
                services.AddScoped<IIntegrationEventHandler<UserRegisteredIntegrationEvent>, UserRegisteredHandler>();
                

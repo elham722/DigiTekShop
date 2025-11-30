@@ -94,9 +94,6 @@ public static class InfrastructureRegistration
 
         services.AddSingleton<IRateLimiter, RedisRateLimiter>();
 
-        // Profile Service (Scoped - uses DbContext)
-        services.AddScoped<IProfileService, ProfileService>();
-
         #endregion
 
 
