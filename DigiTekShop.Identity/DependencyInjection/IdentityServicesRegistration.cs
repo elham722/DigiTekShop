@@ -16,9 +16,6 @@ public static class IdentityServicesRegistration
 
             opt.AddInterceptors(new IdentityOutboxBeforeCommitInterceptor(mapper, clock, corr));
             
-            // Optional: Automatically update UpdatedAt for Role entities when modified
-            // Uncomment the line below if you want automatic UpdatedAt tracking for Role
-            // opt.AddInterceptors(new RoleUpdatedAtInterceptor()); 
         });
 
         #endregion
@@ -86,6 +83,8 @@ public static class IdentityServicesRegistration
 
         services.AddScoped<IMeService, MeService>();
         services.AddScoped<IAdminUserReadService, AdminUserReadService>();
+
+        services.AddScoped<IUserProfileService, UserProfileService>();
 
         #endregion
 

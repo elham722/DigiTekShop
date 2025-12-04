@@ -1,0 +1,192 @@
+@using Microsoft.AspNetCore.Antiforgery
+@inject IAntiforgery Antiforgery
+@{
+    var tokens = Antiforgery.GetAndStoreTokens(Context);
+}
+
+@{
+    ViewData["Title"] = "تکمیل پروفایل";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - DigiTekShop</title>
+    <meta name="request-verification-token" content="@tokens.RequestToken" />
+
+    <link rel="stylesheet" href="~/css/main.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+</head>
+<body class="auth-body">
+    <div class="login-container">
+        <div class="login-card">
+            <!-- لوگو -->
+            <div class="logo-section">
+                <div class="logo-placeholder">
+                    <i class="ri-user-settings-line"></i>
+                </div>
+                <h1 class="logo-text">DigiTekShop</h1>
+            </div>
+
+            <!-- فرم تکمیل پروفایل -->
+            <div class="login-form">
+                <h2 class="login-title">تکمیل پروفایل</h2>
+                <p class="login-subtitle">لطفا اطلاعات خود را وارد کنید</p>
+
+                <!-- فرم اصلی -->
+                <div id="profileStep" class="auth-step active">
+                    <form id="completeProfileForm" class="auth-form" autocomplete="off" novalidate>
+                        <input name="__RequestVerificationToken" type="hidden" value="@tokens.RequestToken" />
+                        
+                        <!-- نام کامل -->
+                        <div class="mb-3">
+                            <label for="fullName" class="form-label">نام و نام خانوادگی</label>
+                            <input type="text"
+                                   id="fullName"
+                                   name="fullName"
+                                   class="form-control"
+                                   placeholder="علی محمدی"
+                                   minlength="2"
+                                   maxlength="200"
+                                   required>
+                            <div class="invalid-feedback" id="fullNameError"></div>
+                        </div>
+
+                        <!-- ایمیل (اختیاری) -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                ایمیل
+                                <span class="text-muted">(اختیاری)</span>
+                            </label>
+                            <input type="email"
+                                   id="email"
+                                   name="email"
+                                   class="form-control"
+                                   placeholder="example@email.com"
+                                   dir="ltr">
+                            <div class="invalid-feedback" id="emailError"></div>
+                        </div>
+
+                        <!-- پیام خطا -->
+                        <div id="errorMessage" class="alert alert-danger d-none" role="alert"></div>
+
+                        <button type="submit" class="login-btn">
+                            <span class="btn-text">تکمیل و ورود</span>
+                            <span class="btn-spinner d-none"><i class="ri-loader-4-line ri-spin"></i></span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- مرحله موفقیت -->
+                <div id="successStep" class="auth-step" aria-hidden="true">
+                    <div class="success-container">
+                        <div class="success-icon"><i class="ri-checkbox-circle-line"></i></div>
+                        <h3 class="success-title">پروفایل تکمیل شد</h3>
+                        <p class="success-message">در حال انتقال به صفحه اصلی...</p>
+                        <div class="success-spinner"><i class="ri-loader-4-line ri-spin"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="login-footer">
+                <p class="footer-text">
+                    با تکمیل پروفایل، 
+                    <a href="/legal/terms" class="privacy-link">شرایط استفاده</a>
+                    را می‌پذیرید.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Complete Profile Script -->
+    <script type="module">
+        const form = document.getElementById('completeProfileForm');
+        const profileStep = document.getElementById('profileStep');
+        const successStep = document.getElementById('successStep');
+        const errorMessage = document.getElementById('errorMessage');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnSpinner = submitBtn.querySelector('.btn-spinner');
+
+        function setLoading(isLoading) {
+            submitBtn.disabled = isLoading;
+            btnText.classList.toggle('d-none', isLoading);
+            btnSpinner.classList.toggle('d-none', !isLoading);
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('d-none');
+        }
+
+        function hideError() {
+            errorMessage.classList.add('d-none');
+        }
+
+        function showSuccess() {
+            profileStep.classList.remove('active');
+            profileStep.setAttribute('aria-hidden', 'true');
+            successStep.classList.add('active');
+            successStep.setAttribute('aria-hidden', 'false');
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+            setLoading(true);
+
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim() || null;
+
+            if (!fullName || fullName.length < 2) {
+                showError('نام و نام خانوادگی الزامی است (حداقل ۲ کاراکتر)');
+                setLoading(false);
+                return;
+            }
+
+            try {
+                // 1. کال API بک‌اند
+                const response = await fetch('/api/v1/profile/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fullName, email })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || 'خطا در تکمیل پروفایل');
+                }
+
+                // 2. آپدیت کوکی با توکن جدید
+                const setCookieResponse = await fetch('/Auth/SetAuthCookie', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: result.accessToken,
+                        refreshToken: result.refreshToken,
+                        returnUrl: '/',
+                        isNewUser: false
+                    })
+                });
+
+                if (!setCookieResponse.ok) {
+                    throw new Error('خطا در ذخیره توکن جدید');
+                }
+
+                // 3. نمایش موفقیت و ریدایرکت
+                showSuccess();
+                setTimeout(() => { window.location.href = '/'; }, 1500);
+
+            } catch (error) {
+                showError(error.message || 'خطا در ارتباط با سرور');
+                setLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>
+

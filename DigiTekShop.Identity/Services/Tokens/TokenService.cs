@@ -1,10 +1,4 @@
-﻿using DigiTekShop.Contracts.Abstractions.Identity.Permission;
-using DigiTekShop.Contracts.DTOs.Auth.Token;
-using DigiTekShop.Contracts.Options.Token;
-using DigiTekShop.SharedKernel.Authorization;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Security.Cryptography;
+﻿using DigiTekShop.SharedKernel.Authorization;
 
 namespace DigiTekShop.Identity.Services.Tokens;
 
@@ -56,8 +50,7 @@ public sealed class TokenService : ITokenService
 
         var now = _time.UtcNow;
         
-        // Revoke existing active tokens for this user+device to prevent duplicate key error
-        // This handles the case when user logs in multiple times without logging out
+      
         if (!string.IsNullOrWhiteSpace(_client.DeviceId))
         {
             var existingActiveTokens = await _db.RefreshTokens
@@ -78,7 +71,7 @@ public sealed class TokenService : ITokenService
             }
         }
 
-        // Get user roles and permissions for JWT claims
+        
         var roles = await _users.GetRolesAsync(user);
         var permissionsResult = await _permissionEvaluator.GetEffectivePermissionsAsync(user.Id.ToString(), ct);
         var permissions = permissionsResult.IsSuccess ? permissionsResult.Value!.ToList() : new List<string>();
@@ -147,7 +140,6 @@ public sealed class TokenService : ITokenService
         token.MarkAsUsed(now);
         token.Revoke("rotated", now);
 
-        // Get user roles and permissions for JWT claims (refresh = recalculate permissions)
         var roles = await _users.GetRolesAsync(token.User);
         var permissionsResult = await _permissionEvaluator.GetEffectivePermissionsAsync(token.User.Id.ToString(), ct);
         var permissions = permissionsResult.IsSuccess ? permissionsResult.Value!.ToList() : new List<string>();
@@ -167,8 +159,6 @@ public sealed class TokenService : ITokenService
 
         _db.RefreshTokens.Add(replacement);
 
-        // Mark the old token as rotated with the new token's ID
-        // The replacement.Id is already set by Guid.NewGuid() in the property initializer
         token.MarkAsRotated(replacement.Id, now);
 
         try
@@ -297,18 +287,20 @@ public sealed class TokenService : ITokenService
             new(JwtRegisteredClaimNames.Jti, jti),
             new(JwtRegisteredClaimNames.Iat, ToUnix(now).ToString(), ClaimValueTypes.Integer64),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Email, user.Email ?? string.Empty)
+            new(ClaimTypes.Email, user.Email ?? string.Empty),
+           
+            new("profile_setup", user.CustomerId.HasValue ? "done" : "pending")
         };
 
-        // Add device ID if present
+        
         if (!string.IsNullOrWhiteSpace(_client.DeviceId))
             claims.Add(new("did", _client.DeviceId!));
 
-        // Add roles
+       
         foreach (var role in roles)
             claims.Add(new(ClaimTypes.Role, role));
 
-        // Add permissions (using centralized claim type)
+        
         foreach (var permission in permissions)
             claims.Add(new(Permissions.ClaimType, permission));
 
@@ -333,10 +325,7 @@ public sealed class TokenService : ITokenService
         return (raw, hash, expires);
     }
 
-    /// <summary>
-    /// Hashes a refresh token using HMACSHA256 and returns Base64Url-encoded result.
-    /// Base64Url encoding is case-sensitive and consistent, so no normalization (ToLower/ToUpper) is needed.
-    /// </summary>
+  
     private string HashRefreshToken(string raw)
     {
         var secret = _jwt.RefreshTokenHashSecret;

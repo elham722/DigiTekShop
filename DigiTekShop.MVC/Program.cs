@@ -13,16 +13,14 @@ builder.WebHost.ConfigureKestrel(o =>
 builder.Services.AddControllersWithViews(o =>
 {
     o.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
+   
+    o.Filters.Add<DigiTekShop.MVC.Filters.EnsureProfileCompleteFilter>();
 });
 
 builder.Services.AddDataProtection()
     .SetApplicationName("DigiTekShop.MVC")
     .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
 
-// ⚠️ ARCHITECTURE NOTE:
-// ما دیگر CookieAuthentication جداگانه نداریم.
-// احراز هویت فقط از طریق JWT در Backend API انجام می‌شود.
-// MVC فقط کوکی‌های dt_at و dt_rt را نگه‌داری می‌کند و YARP آن‌ها را به Bearer Header تبدیل می‌کند.
 
 builder.Services.AddAuthorization();
 
@@ -39,7 +37,7 @@ builder.Services.AddAntiforgery(options =>
         : CookieSecurePolicy.Always;
 });
 
-// Response Compression (فقط Production - برای جلوگیری از تداخل با Browser Link در Development)
+
 if (!builder.Environment.IsDevelopment())
 {
     builder.Services.AddResponseCompression(options =>
@@ -99,28 +97,27 @@ builder.Services.AddReverseProxy()
     .LoadFromMemory(routes, clusters)
     .AddTransforms(transformBuilderContext =>
     {
-        // اضافه کردن TraceId برای observability
         transformBuilderContext.AddRequestHeader("X-Request-ID", "{TraceIdentifier}", append: false);
 
-        // 🔑 تبدیل کوکی dt_at به Authorization Bearer Header (فقط برای /api/*)
+        
         transformBuilderContext.AddRequestTransform(transformContext =>
         {
             var httpContext = transformContext.HttpContext;
 
-            // فقط برای مسیرهای /api
+            
             if (httpContext.Request.Path.StartsWithSegments("/api"))
             {
-                // خواندن AccessToken از کوکی
+                
                 if (httpContext.Request.Cookies.TryGetValue(CookieNames.AccessToken, out var accessToken) 
                     && !string.IsNullOrWhiteSpace(accessToken))
                 {
-                    // ست کردن Bearer Token در هدر درخواست به Backend API
+                   
                     transformContext.ProxyRequest.Headers.Authorization =
                         new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
                 }
             }
 
-            return default; // ValueTask<TResult> برای synchronous transform
+            return default; 
         });
     });
 
@@ -146,13 +143,12 @@ else
     app.UseDeveloperExceptionPage();
 }
 
-// Response Compression (فقط Production)
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseResponseCompression();
 }
 
-// Security Headers
 app.Use(async (context, next) =>
 {
     var headers = context.Response.Headers;
@@ -197,8 +193,6 @@ app.UseWebSockets();
 
 app.UseRouting();
 
-// ⚠️ UseAuthentication حذف شد چون دیگر CookieAuth Scheme نداریم
-// احراز هویت در Backend API انجام می‌شود؛ YARP کوکی را به Bearer Header تبدیل می‌کند
 app.UseAuthorization();
 
 
