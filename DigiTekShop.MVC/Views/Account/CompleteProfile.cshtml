@@ -111,6 +111,12 @@
         const btnText = submitBtn.querySelector('.btn-text');
         const btnSpinner = submitBtn.querySelector('.btn-spinner');
 
+        // گرفتن توکن ضد CSRF از متا تگ (همان کاری که در صفحه لاگین انجام می‌دهیم)
+        function getCsrfToken() {
+            const meta = document.querySelector('meta[name="request-verification-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        }
+
         function setLoading(isLoading) {
             submitBtn.disabled = isLoading;
             btnText.classList.toggle('d-none', isLoading);
@@ -162,9 +168,14 @@
                 }
 
                 // 2. آپدیت کوکی با توکن جدید
+                const csrfToken = getCsrfToken();
                 const setCookieResponse = await fetch('/Auth/SetAuthCookie', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'RequestVerificationToken': csrfToken || ''
+                    },
                     body: JSON.stringify({
                         accessToken: result.accessToken,
                         refreshToken: result.refreshToken,
